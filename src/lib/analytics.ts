@@ -247,7 +247,7 @@ export function getFunnelMetrics(workspaceId: string, range: DateRange): FunnelM
       funnel.id,
     );
 
-    const stepMetrics: FunnelStepMetrics[] = steps.map((step, index) => {
+    const stepMetrics: FunnelStepMetrics[] = steps.map((step) => {
       const visitors =
         get<{ n: number }>(
           `SELECT COUNT(DISTINCT session_key) AS n FROM analytics_events
@@ -265,8 +265,7 @@ export function getFunnelMetrics(workspaceId: string, range: DateRange): FunnelM
         visitors,
         conversions: 0,
         conversionRate: 0,
-        _index: index,
-      } as FunnelStepMetrics;
+      };
     });
 
     for (let i = 0; i < stepMetrics.length; i += 1) {

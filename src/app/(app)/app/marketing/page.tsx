@@ -4,8 +4,7 @@ import { MarketingWorkspace } from "@/app/(app)/app/marketing/workspace";
 import { PageHeader } from "@/components/ui/data";
 import { requireSession } from "@/lib/auth";
 import { getCampaignPerformance, resolveRange } from "@/lib/analytics";
-import { getIntegration, listFunnels, listOffers } from "@/lib/repo";
-import { publicSlug } from "@/lib/repo";
+import { getIntegration, listFunnels, listOffers, publicSlug } from "@/lib/repo";
 
 export const metadata: Metadata = { title: "Marketing" };
 
