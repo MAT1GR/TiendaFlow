@@ -40,10 +40,22 @@ export async function generateMetadata({
 
 export default async function PublicLandingPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ preview?: string }>;
 }) {
   const { slug } = await params;
+  const { preview } = await searchParams;
+
+  /**
+   * Vista previa desde el panel: la misma página, pero sin medir nada.
+   *
+   * Sin esto, cada vez que el vendedor mira su propia página le sumaría una
+   * visita a sus estadísticas —hundiendo su tasa de conversión— y le mandaría
+   * un PageView falso a Meta, que además usa esos eventos para optimizar.
+   */
+  const isPreview = preview === "1";
   const funnel = getFunnelByPublicSlug(slug);
   if (!funnel) notFound();
 
@@ -74,8 +86,10 @@ export default async function PublicLandingPage({
 
   return (
     <>
-      {pixel ? <MetaPixel pixelId={pixel.pixelId} events={["PageView", "ViewContent"]} /> : null}
-      <VisitTracker slug={slug} stepType="landing" />
+      {pixel && !isPreview ? (
+        <MetaPixel pixelId={pixel.pixelId} events={["PageView", "ViewContent"]} />
+      ) : null}
+      {!isPreview ? <VisitTracker slug={slug} stepType="landing" /> : null}
 
       {funnel.status !== "published" ? (
         <div className="bg-amber-500 px-4 py-2 text-center text-[13px] font-medium text-white">

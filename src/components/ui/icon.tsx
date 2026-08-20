@@ -1,5 +1,7 @@
 import type { SVGProps } from "react";
 
+import { cn } from "@/lib/utils";
+
 /**
  * Set de íconos propio (stroke 1.75, grilla 24) para no depender de una
  * librería externa y mantener un trazo consistente en toda la app.
@@ -94,24 +96,52 @@ export function Icon({ name, size = 20, ...props }: IconProps) {
   );
 }
 
-export function Logo({ size = 28 }: { size?: number }) {
+/**
+ * Isotipo de la marca. Se sirve como PNG con fondo transparente para que
+ * funcione igual sobre claro y sobre oscuro (los huecos internos del isotipo
+ * son calados, no blancos).
+ */
+export function Logo({ size = 28, className }: { size?: number; className?: string }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden="true">
-      <rect width="32" height="32" rx="9" fill="url(#tf-logo)" />
-      <path
-        d="M9 11h14M9 16h9M9 21h5"
-        stroke="white"
-        strokeWidth="2.4"
-        strokeLinecap="round"
-      />
-      <circle cx="22.5" cy="20.5" r="3.2" fill="white" fillOpacity="0.95" />
-      <defs>
-        <linearGradient id="tf-logo" x1="0" y1="0" x2="32" y2="32">
-          <stop stopColor="#6D5DFB" />
-          <stop offset="0.55" stopColor="#5B4AE8" />
-          <stop offset="1" stopColor="#22D3EE" />
-        </linearGradient>
-      </defs>
-    </svg>
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src="/brand/tiendaflow-mark-128.png"
+      width={size}
+      height={size}
+      alt=""
+      aria-hidden="true"
+      draggable={false}
+      className={cn("shrink-0 select-none", className)}
+      style={{ width: size, height: size }}
+    />
+  );
+}
+
+const WORDMARK_SIZES = {
+  sm: { mark: 26, text: "text-[15px]" },
+  md: { mark: 30, text: "text-[16px]" },
+  lg: { mark: 32, text: "text-[17px]" },
+} as const;
+
+/**
+ * Bloque de marca completo: isotipo + nombre. Es lo que va en el header de la
+ * landing, en el login, en el onboarding y en las páginas de error/acceso.
+ */
+export function Wordmark({
+  size = "md",
+  className,
+}: {
+  size?: keyof typeof WORDMARK_SIZES;
+  className?: string;
+}) {
+  const { mark, text } = WORDMARK_SIZES[size];
+
+  return (
+    <span className={cn("flex min-w-0 items-center gap-2.5", className)}>
+      <Logo size={mark} />
+      <span className={cn("truncate font-semibold tracking-tight text-ink-900", text)}>
+        TiendaFlow
+      </span>
+    </span>
   );
 }

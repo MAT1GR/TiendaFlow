@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-import { Icon } from "@/components/ui/icon";
+import { Icon, Wordmark } from "@/components/ui/icon";
 
 export default function GlobalError({
   error,
@@ -18,6 +18,8 @@ export default function GlobalError({
   return (
     <main className="grid min-h-dvh place-items-center px-5">
       <div className="w-full max-w-md text-center">
+        <Wordmark className="mb-10 justify-center" />
+
         <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-red-50 text-red-600">
           <Icon name="warning" size={22} />
         </span>

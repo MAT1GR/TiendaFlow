@@ -30,8 +30,35 @@ function bootstrap(): DatabaseSync {
   const schemaPath = path.join(process.cwd(), "src", "lib", "db", "schema.sql");
   const schema = readFileSync(schemaPath, "utf8");
   database.exec(schema);
+  migrate(database);
 
   return database;
+}
+
+/**
+ * Migraciones incrementales.
+ *
+ * `schema.sql` usa `CREATE TABLE IF NOT EXISTS`, así que una columna nueva no
+ * llega nunca a una base que ya existe. Acá agregamos las que falten, mirando
+ * primero `PRAGMA table_info` para que correrlo dos veces no rompa nada.
+ *
+ * Regla: las columnas nuevas van siempre con `DEFAULT`, porque SQLite no admite
+ * agregar una columna `NOT NULL` sin valor por defecto a una tabla con filas.
+ */
+function migrate(database: DatabaseSync) {
+  const ADDITIONS: Array<{ table: string; column: string; definition: string }> = [
+    { table: "orders", column: "commission_rate", definition: "REAL NOT NULL DEFAULT 0" },
+    { table: "orders", column: "commission_amount", definition: "REAL NOT NULL DEFAULT 0" },
+    { table: "orders", column: "paid_at", definition: "TEXT" },
+  ];
+
+  for (const { table, column, definition } of ADDITIONS) {
+    const columns = database.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+    if (columns.length === 0) continue; // la tabla todavía no existe
+    if (columns.some((info) => info.name === column)) continue;
+    database.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+    console.info(`[tiendaflow] migración: ${table}.${column} agregada.`);
+  }
 }
 
 export function db(): DatabaseSync {

@@ -45,6 +45,33 @@
   --shadow-glow: 0 12px 40px -12px rgb(109 93 251 / 0.55);
 }
 
+@layer components {
+  /**
+   * Emoji del sidebar.
+   *
+   * El orden de la pila importa: en iPhone y Mac los dibuja Apple Color Emoji
+   * (los "de iPhone"); en Windows cae en Segoe UI Emoji, que son más planos.
+   * Eso lo decide el sistema operativo, no la app.
+   *
+   * El ancho fijo mantiene los labels alineados aunque los emoji tengan
+   * anchos distintos, y `line-height: 1` evita que empujen la altura del item.
+   */
+  .tf-emoji {
+    font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji",
+      "Twemoji Mozilla", "Android Emoji", sans-serif;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: 1.25rem;
+    flex: 0 0 1.25rem;
+    font-size: 1rem;
+    line-height: 1;
+    font-style: normal;
+    /* Los emoji ya traen su color: que no herede el del texto ni el subrayado. */
+    text-decoration: none;
+  }
+}
+
 @layer base {
   :root {
     color-scheme: light;

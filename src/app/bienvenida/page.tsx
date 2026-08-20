@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 
 import { OnboardingWizard } from "@/app/bienvenida/wizard";
-import { Logo } from "@/components/ui/icon";
+import { Wordmark } from "@/components/ui/icon";
 import { currentUser } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Bienvenido" };
@@ -23,10 +23,7 @@ export default async function OnboardingPage() {
       />
 
       <div className="relative mx-auto flex min-h-dvh w-full max-w-3xl flex-col px-5 py-8 sm:px-8">
-        <div className="mb-8 flex items-center gap-2.5">
-          <Logo size={30} />
-          <span className="text-[16px] font-semibold tracking-tight text-ink-900">TiendaFlow</span>
-        </div>
+        <Wordmark className="mb-8" />
 
         <OnboardingWizard firstName={user.full_name.split(" ")[0]} />
       </div>

@@ -4,7 +4,7 @@ import { MetaForm } from "@/app/(app)/app/integraciones/meta/form";
 import { PageHeader } from "@/components/ui/data";
 import { requireSession } from "@/lib/auth";
 import { META_EVENTS } from "@/lib/integrations/meta";
-import { getIntegration } from "@/lib/repo";
+import { getIntegration, hasIntegrationSecret } from "@/lib/repo";
 import { parseJson } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Meta Ads" };
@@ -16,9 +16,7 @@ export default async function MetaIntegrationPage() {
     integration?.public_config ?? null,
     {},
   );
-  const hasToken = Boolean(
-    parseJson<{ access_token?: string }>(integration?.secret_config ?? null, {}).access_token,
-  );
+  const hasToken = hasIntegrationSecret(workspace.id, "meta");
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">

@@ -58,11 +58,22 @@ const DETAILS: Record<
   },
 };
 
-export function PaymentProviders({ providers }: { providers: ProviderStatus[] }) {
+export function PaymentProviders({
+  providers,
+  workspaceId,
+  origin,
+}: {
+  providers: ProviderStatus[];
+  workspaceId: string;
+  origin: string;
+}) {
   const router = useRouter();
   const toast = useToast();
   const [editing, setEditing] = useState<ProviderStatus | null>(null);
   const [pending, startTransition] = useTransition();
+
+  const webhookUrl = (provider: ProviderStatus) =>
+    `${origin}/api/webhooks/${provider.id}/${workspaceId}`;
 
   return (
     <>
@@ -134,16 +145,22 @@ export function PaymentProviders({ providers }: { providers: ProviderStatus[] })
         })}
       </div>
 
-      <ProviderModal provider={editing} onClose={() => setEditing(null)} />
+      <ProviderModal
+        provider={editing}
+        webhookUrl={editing ? webhookUrl(editing) : ""}
+        onClose={() => setEditing(null)}
+      />
     </>
   );
 }
 
 function ProviderModal({
   provider,
+  webhookUrl,
   onClose,
 }: {
   provider: ProviderStatus | null;
+  webhookUrl: string;
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -214,11 +231,90 @@ function ProviderModal({
           </Select>
         </Field>
 
+        <WebhookSection
+          provider={provider}
+          webhookUrl={webhookUrl}
+          error={state && !state.ok ? state.fieldErrors?.webhook_secret : undefined}
+        />
+
         <Alert tone="info">
-          No verificamos la conexión en este momento: la validación real ocurre en el primer cobro.
-          Si las credenciales están mal, el checkout te lo va a decir con el error del proveedor.
+          No verificamos las credenciales al guardarlas: la validación real ocurre en el primer
+          cobro. Si están mal, el checkout te lo va a decir con el error del proveedor.
         </Alert>
       </form>
     </Modal>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Aviso de cobro.
+ *
+ * Mercado Pago acepta la URL de notificación en cada preferencia, así que se la
+ * mandamos nosotros y el vendedor no toca nada. Stripe, en cambio, exige dar de
+ * alta el endpoint en su panel: ahí sí le mostramos la URL para copiar.
+ *
+ * La clave de firma es opcional en los dos casos. Sin ella igual es seguro:
+ * antes de acreditar una venta siempre le volvemos a preguntar al proveedor con
+ * las credenciales del vendedor. La firma solo nos deja descartar ruido antes.
+ */
+function WebhookSection({
+  provider,
+  webhookUrl,
+  error,
+}: {
+  provider: ProviderStatus;
+  webhookUrl: string;
+  error?: string;
+}) {
+  const toast = useToast();
+  const isStripe = provider.id === "stripe";
+
+  return (
+    <div className="flex flex-col gap-3 rounded-2xl border border-ink-200 bg-ink-50/60 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[13.5px] font-semibold text-ink-900">Aviso de cobro</p>
+        <ConnectionStatus status={provider.webhookVerified ? "connected" : "disconnected"} />
+      </div>
+
+      <p className="text-[12.5px] leading-relaxed text-ink-500">
+        {isStripe
+          ? "Stripe necesita que des de alta esta URL en tu panel, en Developers → Webhooks. Sin eso no nos entera cuando alguien paga."
+          : "A Mercado Pago le pasamos esta URL en cada cobro, así que no tenés que configurar nada. Te la dejamos por si querés verla."}
+      </p>
+
+      <div className="flex items-center gap-2">
+        <code className="tf-scroll min-w-0 flex-1 overflow-x-auto whitespace-nowrap rounded-xl border border-ink-200 bg-white px-3 py-2 text-[12px] text-ink-700">
+          {webhookUrl}
+        </code>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          icon="copy"
+          onClick={() => {
+            void navigator.clipboard
+              .writeText(webhookUrl)
+              .then(() => toast.success("Copiamos la URL."))
+              .catch(() => toast.error("No pudimos copiar", "Seleccioná la URL y copiala a mano."));
+          }}
+        >
+          <span className="sr-only">Copiar URL</span>
+        </Button>
+      </div>
+
+      <Field
+        label={isStripe ? "Clave de firma del webhook (whsec_…)" : "Clave secreta del webhook"}
+        hint={
+          provider.webhookVerified
+            ? "Ya tenés una cargada. Dejalo vacío para conservarla."
+            : "Opcional. Si la cargás, verificamos la firma de cada aviso antes de procesarlo."
+        }
+        error={error}
+      >
+        <Input name="webhook_secret" type="password" autoComplete="off" />
+      </Field>
+    </div>
   );
 }

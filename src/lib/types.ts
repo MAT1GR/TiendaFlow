@@ -290,6 +290,10 @@ export interface Order {
   utm_campaign: string | null;
   utm_content: string | null;
   utm_term: string | null;
+  /** Comisión de TiendaFlow congelada al momento del cobro. */
+  commission_rate: number;
+  commission_amount: number;
+  paid_at: string | null;
   is_demo: number;
   created_at: string;
   updated_at: string;

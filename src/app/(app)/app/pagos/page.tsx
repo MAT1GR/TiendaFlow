@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import type { Metadata } from "next";
 
 import { PaymentProviders } from "@/app/(app)/app/pagos/providers";
@@ -13,6 +14,13 @@ export default async function PaymentsPage() {
   const providers = listProviderStatus(workspace.id);
   const anyConnected = providers.some((provider) => provider.connected);
 
+  // Base pública para armar las URLs de webhook que el vendedor tiene que
+  // pegar en el panel de su proveedor.
+  const headerList = await headers();
+  const origin =
+    process.env.TIENDAFLOW_SITE_URL ??
+    `${headerList.get("x-forwarded-proto") ?? "http"}://${headerList.get("host") ?? "localhost:3000"}`;
+
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
       <PageHeader
@@ -27,11 +35,12 @@ export default async function PaymentsPage() {
         </Alert>
       ) : null}
 
-      <PaymentProviders providers={providers} />
+      <PaymentProviders providers={providers} workspaceId={workspace.id} origin={origin} />
 
       <Alert tone="info" title="Dónde viven tus credenciales">
         La clave pública se guarda junto a la configuración del workspace. La clave secreta se
-        guarda aparte y nunca se envía al navegador: solo la usa el servidor al crear el cobro.
+        guarda cifrada con AES-256 y nunca se envía al navegador: solo la descifra el servidor en el
+        momento de crear el cobro o de confirmar un pago.
       </Alert>
     </div>
   );

@@ -57,7 +57,9 @@ export function LandingEditor({
 
   const [sections, setSections] = useState<SectionData[]>(initialSections);
   const [selectedId, setSelectedId] = useState<string | null>(initialSections[0]?.id ?? null);
-  const [device, setDevice] = useState<Device>("desktop");
+  // Arranca en celular: la enorme mayoría del tráfico de infoproducto entra
+  // desde Instagram o TikTok, así que esa es la vista que hay que cuidar.
+  const [device, setDevice] = useState<Device>("mobile");
   const [dirty, setDirty] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);

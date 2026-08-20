@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 
-import { Icon, Logo, type IconName } from "@/components/ui/icon";
+import { Icon, Wordmark, type IconName } from "@/components/ui/icon";
 import { currentUser } from "@/lib/auth";
 
 export const metadata: Metadata = {
@@ -104,9 +104,8 @@ export default async function MarketingPage() {
     <div className="min-h-dvh bg-white">
       <header className="sticky top-0 z-40 border-b border-ink-200 bg-white/85 backdrop-blur-md">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-4 px-5 sm:px-8">
-          <Link href="/" className="flex items-center gap-2.5">
-            <Logo size={30} />
-            <span className="text-[16px] font-semibold tracking-tight text-ink-900">TiendaFlow</span>
+          <Link href="/" className="flex items-center">
+            <Wordmark />
           </Link>
 
           <nav className="ml-6 hidden items-center gap-6 md:flex">
@@ -528,11 +527,8 @@ export default async function MarketingPage() {
       <footer className="border-t border-ink-200">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-5 py-10 sm:px-8 md:flex-row md:items-center md:justify-between">
           <div>
-            <Link href="/" className="flex items-center gap-2.5">
-              <Logo size={26} />
-              <span className="text-[15px] font-semibold tracking-tight text-ink-900">
-                TiendaFlow
-              </span>
+            <Link href="/" className="flex w-fit items-center">
+              <Wordmark size="sm" />
             </Link>
             <p className="mt-2 text-[13px] text-ink-500">
               De una idea a una oferta lista para vender.

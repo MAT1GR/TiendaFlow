@@ -3,9 +3,10 @@
 import { revalidatePath } from "next/cache";
 
 import { requireSession } from "@/lib/auth";
+import { isProviderId } from "@/lib/integrations/payments";
+import { isPlanId, PLANS } from "@/lib/plans";
 import { nowIso, run } from "@/lib/db";
 import * as repo from "@/lib/repo";
-import { parseJson } from "@/lib/utils";
 import {
   fail,
   guarded,
@@ -65,10 +66,7 @@ export async function saveMetaIntegrationAction(
     const events = formData.getAll("events").map(String);
     const testEventCode = optionalText(formData.get("test_event_code"));
 
-    const existing = repo.getIntegration(workspace.id, "meta");
-    const hadToken = Boolean(
-      parseJson<{ access_token?: string }>(existing?.secret_config ?? null, {}).access_token,
-    );
+    const hadToken = repo.hasIntegrationSecret(workspace.id, "meta");
 
     // El Pixel es público (va en el navegador); el token de la API de Conversiones
     // se guarda aparte en `secret_config` y nunca se serializa al cliente.
@@ -125,12 +123,11 @@ export async function savePaymentProviderAction(
     const { workspace } = await requireSession();
     const provider = String(formData.get("provider"));
 
-    if (provider !== "stripe" && provider !== "mercadopago") {
+    if (!isProviderId(provider)) {
       return fail("Ese proveedor de pago todavía no está soportado.");
     }
 
     const publicKey = requiredText(formData.get("public_key"), "La clave pública");
-    const secretKey = optionalText(formData.get("secret_key"));
 
     if (provider === "stripe" && !publicKey.startsWith("pk_")) {
       return fail("La clave pública de Stripe empieza con pk_.", { public_key: "Formato inválido" });
@@ -141,16 +138,26 @@ export async function savePaymentProviderAction(
       });
     }
 
-    const existing = repo.getIntegration(workspace.id, provider);
-    const hadSecret = Boolean(
-      parseJson<{ secret_key?: string }>(existing?.secret_config ?? null, {}).secret_key,
+    // `secret_config` se guarda como un único blob cifrado, así que hay que
+    // mezclar lo nuevo con lo que ya estaba: escribir solo la clave del webhook
+    // borraría la clave secreta.
+    const stored = repo.readIntegrationSecret<{ secret_key: string; webhook_secret: string }>(
+      workspace.id,
+      provider,
     );
 
-    if (!secretKey && !hadSecret) {
-      return fail(
-        "Necesitamos la clave secreta para poder cobrar. Se guarda solo en el servidor.",
-        { secret_key: "Requerida" },
-      );
+    const secretKey = optionalText(formData.get("secret_key")) ?? stored.secret_key ?? null;
+    const hookSecret = optionalText(formData.get("webhook_secret")) ?? stored.webhook_secret ?? null;
+
+    if (!secretKey) {
+      return fail("Necesitamos la clave secreta para poder cobrar. Se guarda cifrada en el servidor.", {
+        secret_key: "Requerida",
+      });
+    }
+    if (provider === "stripe" && hookSecret && !hookSecret.startsWith("whsec_")) {
+      return fail("La clave de firma del webhook de Stripe empieza con whsec_.", {
+        webhook_secret: "Formato inválido",
+      });
     }
 
     repo.saveIntegration(workspace.id, provider, {
@@ -159,17 +166,23 @@ export async function savePaymentProviderAction(
         public_key: publicKey,
         mode: String(formData.get("mode") ?? "test"),
       },
-      secret_config: secretKey ? { secret_key: secretKey } : undefined,
+      secret_config: hookSecret
+        ? { secret_key: secretKey, webhook_secret: hookSecret }
+        : { secret_key: secretKey },
       last_error: null,
     });
 
     revalidatePath("/app/pagos");
     revalidatePath("/app/lanzamiento");
 
-    return ok(
-      null,
-      "Guardamos las credenciales. Todavía no verificamos la conexión contra el proveedor: eso ocurre en el primer cobro real.",
-    );
+    const note =
+      provider === "mercadopago"
+        ? "Guardamos las credenciales cifradas. A Mercado Pago le avisamos la URL de notificación en cada cobro, así que no tenés que configurar nada más."
+        : hookSecret
+          ? "Guardamos las credenciales cifradas. Ya podemos verificar la firma de los webhooks de Stripe."
+          : "Guardamos las credenciales cifradas. Falta dar de alta el webhook en tu panel de Stripe: la URL está acá abajo.";
+
+    return ok(null, note);
   });
 }
 
@@ -317,15 +330,17 @@ export async function markNotificationsReadAction(): Promise<ActionResult<null>>
 export async function changePlanAction(plan: string): Promise<ActionResult<null>> {
   return guarded(async () => {
     const { workspace } = await requireSession();
-    if (!["starter", "pro", "scale"].includes(plan)) return fail("Ese plan no existe.");
+    if (!isPlanId(plan)) return fail("Ese plan no existe.");
 
     repo.ensureSubscription(workspace.id);
     repo.setPlan(workspace.id, plan);
     revalidatePath("/app/configuracion");
 
+    const next = PLANS[plan];
     return ok(
       null,
-      "Actualizamos el plan en tu workspace. No se cobró nada: todavía no hay un proveedor de facturación conectado.",
+      `Pasaste al plan ${next.name}: la comisión de tus próximas ventas es ${Math.round(next.commissionRate * 100)}%. ` +
+        "No se cobró el abono: todavía no hay un proveedor de facturación conectado.",
     );
   });
 }

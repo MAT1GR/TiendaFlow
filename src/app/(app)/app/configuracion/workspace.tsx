@@ -26,28 +26,9 @@ import {
   Tabs,
   useToast,
 } from "@/components/ui/primitives";
+import { PLAN_IDS, PLANS } from "@/lib/plans";
 import { cn, formatDate } from "@/lib/utils";
 
-const PLANS = [
-  {
-    id: "starter",
-    name: "Starter",
-    blurb: "Para lanzar tu primera oferta.",
-    features: ["1 funnel activo", "Productos ilimitados", "Checkout y tracking", "Analytics básico"],
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    blurb: "Para escalar con varias ofertas a la vez.",
-    features: ["Funnels ilimitados", "Upsells y downsells", "IA sin límite de uso", "Dominios propios"],
-  },
-  {
-    id: "scale",
-    name: "Scale",
-    blurb: "Para equipos que operan varios productos.",
-    features: ["Todo lo de Pro", "Afiliados", "Analytics avanzado", "Permisos por equipo"],
-  },
-];
 
 export function SettingsWorkspace({
   user,
@@ -321,13 +302,14 @@ function PlanPanel({
         </div>
       </Card>
 
-      <Alert tone="warning" title="La facturación todavía no está conectada">
-        Podés cambiar de plan para probar los límites, pero no se cobra nada: falta conectar el
-        proveedor de facturación. Los precios finales tampoco están definidos.
+      <Alert tone="warning" title="El abono todavía no se cobra">
+        Podés cambiar de plan y la comisión por venta se aplica de verdad desde el próximo cobro,
+        pero el abono mensual no se debita: falta conectar el proveedor de facturación.
       </Alert>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        {PLANS.map((plan) => {
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {PLAN_IDS.map((planId) => {
+          const plan = PLANS[planId];
           const current = plan.id === subscription.plan;
           return (
             <Card
@@ -339,10 +321,15 @@ function PlanPanel({
             >
               <p className="text-[16px] font-semibold text-ink-900">{plan.name}</p>
               <p className="mt-1 text-[13px] text-ink-500">{plan.blurb}</p>
-              <p className="mt-4 text-[13px] font-medium text-ink-400">Precio a definir</p>
+              <p className="mt-4 text-[22px] font-semibold tracking-tight text-ink-900">
+                {plan.priceUsd === 0 ? "Gratis" : `US$${plan.priceUsd}`}
+                {plan.priceUsd > 0 ? (
+                  <span className="text-[13px] font-medium text-ink-400"> /mes</span>
+                ) : null}
+              </p>
 
               <ul className="mt-4 flex flex-1 flex-col gap-1.5">
-                {plan.features.map((feature) => (
+                {plan.highlights.map((feature) => (
                   <li key={feature} className="flex gap-2 text-[13px] text-ink-700">
                     <Icon name="check" size={14} className="mt-0.5 shrink-0 text-accent-600" />
                     {feature}

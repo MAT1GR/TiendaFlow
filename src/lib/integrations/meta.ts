@@ -2,7 +2,7 @@ import "server-only";
 
 import crypto from "node:crypto";
 
-import { getIntegration } from "@/lib/repo";
+import { getIntegration, readIntegrationSecret } from "@/lib/repo";
 import { parseJson } from "@/lib/utils";
 
 /**
@@ -91,9 +91,9 @@ export async function sendConversionEvent(
     integration.public_config,
     {},
   );
-  const secret = parseJson<{ access_token?: string; test_event_code?: string }>(
-    integration.secret_config,
-    {},
+  const secret = readIntegrationSecret<{ access_token: string; test_event_code: string }>(
+    workspaceId,
+    "meta",
   );
 
   const datasetId = publicConfig.dataset_id || publicConfig.pixel_id;

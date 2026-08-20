@@ -6,6 +6,7 @@ import { Copilot } from "@/components/shell/copilot";
 import { Sidebar } from "@/components/shell/sidebar";
 import { Topbar } from "@/components/shell/topbar";
 import { ToastProvider } from "@/components/ui/primitives";
+import type { ProductNavEntry } from "@/lib/product-nav";
 import type { Notification } from "@/lib/types";
 
 export function AppShell({
@@ -14,6 +15,7 @@ export function AppShell({
   plan,
   launchCompletion,
   notifications,
+  products,
   children,
 }: {
   user: { full_name: string; email: string };
@@ -21,6 +23,7 @@ export function AppShell({
   plan: string;
   launchCompletion: number;
   notifications: Notification[];
+  products: ProductNavEntry[];
   children: ReactNode;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -33,6 +36,7 @@ export function AppShell({
           workspaceName={workspaceName}
           plan={plan}
           launchCompletion={launchCompletion}
+          products={products}
           open={menuOpen}
           onClose={() => setMenuOpen(false)}
         />

@@ -300,11 +300,15 @@ CREATE TABLE IF NOT EXISTS orders (
   utm_campaign TEXT,
   utm_content TEXT,
   utm_term TEXT,
+  commission_rate REAL NOT NULL DEFAULT 0,
+  commission_amount REAL NOT NULL DEFAULT 0,
+  paid_at TEXT,
   is_demo INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_orders_ws ON orders(workspace_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_orders_reference ON orders(reference);
 
 CREATE TABLE IF NOT EXISTS order_items (
   id TEXT PRIMARY KEY,
@@ -334,6 +338,10 @@ CREATE TABLE IF NOT EXISTS payments (
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
+-- Evita que un webhook reintentado acredite el mismo pago dos veces.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_provider_ref
+  ON payments(workspace_id, provider, provider_payment_id)
+  WHERE provider_payment_id IS NOT NULL;
 
 -- --- Marketing y atribución ------------------------------------------------
 

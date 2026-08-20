@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { Icon, Logo } from "@/components/ui/icon";
+import { Icon, Wordmark } from "@/components/ui/icon";
 
 const HIGHLIGHTS = [
   { icon: "box" as const, text: "Creá o importá tu producto digital" },
@@ -13,9 +13,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   return (
     <div className="grid min-h-dvh lg:grid-cols-2">
       <div className="flex flex-col px-5 py-8 sm:px-10">
-        <Link href="/" className="mb-10 flex items-center gap-2.5">
-          <Logo size={32} />
-          <span className="text-[17px] font-semibold tracking-tight text-ink-900">TiendaFlow</span>
+        <Link href="/" className="mb-10 inline-flex w-fit">
+          <Wordmark size="lg" />
         </Link>
         <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center">{children}</div>
         <p className="mx-auto mt-8 w-full max-w-sm text-[12px] text-ink-400">

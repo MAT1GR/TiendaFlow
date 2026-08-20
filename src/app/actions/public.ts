@@ -4,8 +4,8 @@ import { cookies, headers } from "next/headers";
 import crypto from "node:crypto";
 
 import { get } from "@/lib/db";
-import { sendConversionEvent } from "@/lib/integrations/meta";
 import { activeProvider, getProvider } from "@/lib/integrations/payments";
+import { settleOrder } from "@/lib/integrations/settlement";
 import * as repo from "@/lib/repo";
 import { fail, guarded, ok, type ActionResult } from "@/app/actions/shared";
 import type { Funnel } from "@/lib/types";
@@ -208,6 +208,9 @@ export async function submitCheckoutAction(input: {
       customerEmail: email,
       successUrl: `${origin}${nextUrl}`,
       cancelUrl: `${origin}/f/${input.slug}/checkout?cancelado=1`,
+      // El workspace viaja en la URL para que el webhook sepa de quién es la
+      // venta antes de tener que confiar en nada del cuerpo del aviso.
+      notifyUrl: `${origin}/api/webhooks/${providerId}/${funnel.workspace_id}`,
     });
 
     if (result.status === "redirect") {
@@ -345,45 +348,17 @@ export async function confirmManualPaymentAction(input: {
     if (!order || order.access_token !== input.token) {
       return fail("No pudimos verificar tu pedido.");
     }
-    if (order.status === "paid") return ok(null, "Este pedido ya estaba confirmado.");
 
-    repo.markOrderPaid(funnel.workspace_id, order.id, "manual");
-
-    const sessionKey = await visitorSession();
-    repo.trackEvent(funnel.workspace_id, {
-      name: "purchase",
-      funnel_id: funnel.id,
-      order_id: order.id,
-      session_key: sessionKey,
-      value: order.total,
-    });
-
-    const customer = order.customer_id
-      ? repo.getCustomer(funnel.workspace_id, order.customer_id)
-      : null;
     const headerList = await headers();
-
-    // Evento de servidor a Meta. Si no está configurado, `sent` viene en false
-    // y no pasa nada más: no se simula un envío exitoso.
-    await sendConversionEvent(funnel.workspace_id, {
-      event: "Purchase",
-      eventId: order.id,
-      value: order.total,
-      currency: order.currency,
-      user: {
-        email: customer?.email,
-        phone: customer?.phone,
-        clientIp: headerList.get("x-forwarded-for")?.split(",")[0] ?? null,
-        userAgent: headerList.get("user-agent"),
-      },
+    const outcome = await settleOrder(funnel.workspace_id, order.id, {
+      provider: "manual",
+      sessionKey: await visitorSession(),
+      clientIp: headerList.get("x-forwarded-for")?.split(",")[0] ?? null,
+      userAgent: headerList.get("user-agent"),
     });
 
-    repo.createNotification(funnel.workspace_id, {
-      title: `Nueva venta: ${order.reference}`,
-      body: `${customer?.full_name ?? "Cliente"} compró por ${order.total} ${order.currency}.`,
-      href: `/app/ventas/${order.id}`,
-      type: "success",
-    });
+    if (outcome.alreadyPaid) return ok(null, "Este pedido ya estaba confirmado.");
+    if (!outcome.settled) return fail(outcome.reason ?? "No pudimos confirmar el pedido.");
 
     return ok(null, "Confirmamos el pedido.");
   });

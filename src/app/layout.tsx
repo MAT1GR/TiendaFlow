@@ -2,7 +2,14 @@ import type { Metadata, Viewport } from "next";
 
 import "./globals.css";
 
+/**
+ * Base para resolver las URLs absolutas de las imágenes sociales
+ * (`opengraph-image.png` / `twitter-image.png`).
+ */
+const siteUrl = process.env.TIENDAFLOW_SITE_URL ?? "http://localhost:3000";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: {
     default: "TiendaFlow — De una idea a una oferta lista para vender",
     template: "%s · TiendaFlow",
@@ -14,6 +21,13 @@ export const metadata: Metadata = {
     title: "TiendaFlow",
     description: "De una idea a una oferta lista para vender.",
     type: "website",
+    siteName: "TiendaFlow",
+    locale: "es_AR",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "TiendaFlow",
+    description: "De una idea a una oferta lista para vender.",
   },
 };
 

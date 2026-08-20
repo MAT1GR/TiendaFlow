@@ -3,7 +3,9 @@ import "server-only";
 import crypto from "node:crypto";
 
 import { all, get, nowIso, run, transaction } from "@/lib/db";
-import { slugify } from "@/lib/utils";
+import { decryptSecret, encryptSecret } from "@/lib/crypto";
+import { commissionFor } from "@/lib/plans";
+import { parseJson, slugify } from "@/lib/utils";
 import type {
   Affiliate,
   AffiliateLink,
@@ -989,9 +991,6 @@ export function getOrder(workspaceId: string, orderId: string) {
   return get<Order>(`SELECT * FROM orders WHERE workspace_id = ? AND id = ?`, workspaceId, orderId);
 }
 
-export function getOrderByReference(reference: string) {
-  return get<Order>(`SELECT * FROM orders WHERE reference = ?`, reference);
-}
 
 export function listOrderItems(workspaceId: string, orderId: string) {
   return all<OrderItem>(
@@ -1122,29 +1121,84 @@ export function addOrderItem(
   });
 }
 
-export function markOrderPaid(workspaceId: string, orderId: string, provider = "manual") {
+export interface SettleOptions {
+  provider?: string;
+  /** Id del pago en el proveedor. Es la llave de idempotencia del webhook. */
+  providerPaymentId?: string | null;
+  /** Payload crudo del proveedor, para poder auditar después. */
+  rawPayload?: unknown;
+}
+
+export interface SettleResult {
+  order: Order | null;
+  /** `true` si la orden ya estaba paga: el webhook llegó repetido. */
+  alreadyPaid: boolean;
+}
+
+/**
+ * Acredita una orden.
+ *
+ * Es idempotente por partida doble: no hace nada si la orden ya está paga, y
+ * tampoco si ya existe un pago registrado con el mismo `provider_payment_id`.
+ * Los proveedores reintentan sus webhooks, así que esto se va a llamar más de
+ * una vez con los mismos datos y tiene que ser seguro.
+ *
+ * La comisión de TiendaFlow se congela acá con la tasa del plan vigente al
+ * momento del cobro: si el workspace cambia de plan mañana, las ventas viejas
+ * conservan la comisión con la que se liquidaron.
+ */
+export function markOrderPaid(
+  workspaceId: string,
+  orderId: string,
+  options: SettleOptions = {},
+): SettleResult {
   const order = getOrder(workspaceId, orderId);
-  if (!order) return null;
+  if (!order) return { order: null, alreadyPaid: false };
+  if (order.status === "paid") return { order, alreadyPaid: true };
+
+  const provider = options.provider ?? "manual";
+
+  if (options.providerPaymentId) {
+    const duplicate = get<{ id: string }>(
+      `SELECT id FROM payments
+       WHERE workspace_id = ? AND provider = ? AND provider_payment_id = ?`,
+      workspaceId,
+      provider,
+      options.providerPaymentId,
+    );
+    if (duplicate) return { order, alreadyPaid: true };
+  }
+
+  const plan = getSubscription(workspaceId)?.plan ?? "free";
+  const commission = commissionFor(plan, order.total);
+  const now = ts();
 
   transaction(() => {
     run(
-      `UPDATE orders SET status = 'paid', updated_at = ? WHERE workspace_id = ? AND id = ?`,
-      ts(),
+      `UPDATE orders SET status = 'paid', commission_rate = ?, commission_amount = ?,
+         paid_at = ?, updated_at = ?
+       WHERE workspace_id = ? AND id = ?`,
+      commission.rate,
+      commission.amount,
+      now,
+      now,
       workspaceId,
       orderId,
     );
     run(
       `INSERT INTO payments (id, workspace_id, order_id, provider, provider_payment_id, status,
          amount, currency, error_message, raw_payload, created_at, updated_at)
-       VALUES (?,?,?,?,NULL,'approved',?,?,NULL,NULL,?,?)`,
+       VALUES (?,?,?,?,?,'approved',?,?,NULL,?,?,?)`,
       id(),
       workspaceId,
       orderId,
       provider,
+      options.providerPaymentId ?? null,
       order.total,
       order.currency,
-      ts(),
-      ts(),
+      options.rawPayload ? JSON.stringify(options.rawPayload).slice(0, 8000) : null,
+      now,
+      now,
     );
     if (order.customer_id) {
       run(
@@ -1160,16 +1214,49 @@ export function markOrderPaid(workspaceId: string, orderId: string, provider = "
            updated_at = ?
          WHERE workspace_id = ? AND id = ?`,
         order.total,
-        ts(),
+        now,
         order.total,
-        ts(),
+        now,
         workspaceId,
         order.customer_id,
       );
     }
   });
 
-  return getOrder(workspaceId, orderId);
+  return { order: getOrder(workspaceId, orderId), alreadyPaid: false };
+}
+
+/** Registra un intento de cobro fallido, para poder mostrarlo en la venta. */
+export function recordFailedPayment(
+  workspaceId: string,
+  orderId: string,
+  provider: string,
+  reason: string,
+  providerPaymentId?: string | null,
+) {
+  const now = ts();
+  run(
+    `INSERT INTO payments (id, workspace_id, order_id, provider, provider_payment_id, status,
+       amount, currency, error_message, raw_payload, created_at, updated_at)
+     VALUES (?,?,?,?,?,'failed',0,'',?,NULL,?,?)`,
+    id(),
+    workspaceId,
+    orderId,
+    provider,
+    providerPaymentId ?? null,
+    reason.slice(0, 500),
+    now,
+    now,
+  );
+}
+
+/** Busca una orden por su referencia pública, la que viaja al proveedor de pago. */
+export function getOrderByReference(workspaceId: string, reference: string) {
+  return get<Order>(
+    `SELECT * FROM orders WHERE workspace_id = ? AND reference = ?`,
+    workspaceId,
+    reference,
+  );
 }
 
 export function updateOrderStatus(workspaceId: string, orderId: string, status: string) {
@@ -1306,6 +1393,30 @@ export function getIntegration(workspaceId: string, provider: IntegrationProvide
   );
 }
 
+/**
+ * Credenciales privadas de una integración, ya descifradas.
+ *
+ * Es el ÚNICO camino para leer `secret_config`. Nadie más debería parsear esa
+ * columna: viene cifrada, y el valor que devuelve esta función no puede
+ * serializarse jamás hacia un Client Component.
+ */
+export function readIntegrationSecret<T extends Record<string, unknown>>(
+  workspaceId: string,
+  provider: IntegrationProvider,
+): Partial<T> {
+  const integration = getIntegration(workspaceId, provider);
+  if (!integration) return {};
+  return parseJson<Partial<T>>(decryptSecret(integration.secret_config), {});
+}
+
+/** `true` si la integración tiene alguna credencial guardada. */
+export function hasIntegrationSecret(
+  workspaceId: string,
+  provider: IntegrationProvider,
+): boolean {
+  return Object.keys(readIntegrationSecret(workspaceId, provider)).length > 0;
+}
+
 export function saveIntegration(
   workspaceId: string,
   provider: IntegrationProvider,
@@ -1325,7 +1436,7 @@ export function saveIntegration(
        WHERE workspace_id = ? AND provider = ?`,
       input.status,
       input.public_config ? JSON.stringify(input.public_config) : existing.public_config,
-      input.secret_config ? JSON.stringify(input.secret_config) : null,
+      input.secret_config ? encryptSecret(JSON.stringify(input.secret_config)) : null,
       input.last_error ?? null,
       now,
       now,
@@ -1342,7 +1453,7 @@ export function saveIntegration(
       provider,
       input.status,
       input.public_config ? JSON.stringify(input.public_config) : null,
-      input.secret_config ? JSON.stringify(input.secret_config) : null,
+      input.secret_config ? encryptSecret(JSON.stringify(input.secret_config)) : null,
       now,
       input.last_error ?? null,
       now,
@@ -1536,7 +1647,7 @@ export function ensureSubscription(workspaceId: string) {
   run(
     `INSERT INTO subscriptions (id, workspace_id, plan, status, provider, provider_subscription_id,
        current_period_end, cancel_at_period_end, created_at, updated_at)
-     VALUES (?,?,'starter','trialing',NULL,NULL,?,0,?,?)`,
+     VALUES (?,?,'free','active',NULL,NULL,?,0,?,?)`,
     id(),
     workspaceId,
     new Date(Date.now() + 14 * 86400_000).toISOString(),

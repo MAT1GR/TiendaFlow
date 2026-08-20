@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/shell/app-shell";
 import { currentUser, currentWorkspace } from "@/lib/auth";
 import { getLaunchStatus } from "@/lib/launch";
+import { productNavList } from "@/lib/product-workspace";
 import { ensureSubscription, listNotifications } from "@/lib/repo";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -15,6 +16,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const subscription = ensureSubscription(workspace.id);
   const launch = getLaunchStatus(workspace.id);
   const notifications = listNotifications(workspace.id, 20);
+  const products = productNavList(workspace.id);
 
   return (
     <AppShell
@@ -23,6 +25,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       plan={subscription.plan}
       launchCompletion={launch.completion}
       notifications={notifications}
+      products={products}
     >
       {children}
     </AppShell>

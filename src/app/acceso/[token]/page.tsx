@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
-import { Icon, Logo } from "@/components/ui/icon";
+import { Icon, Wordmark } from "@/components/ui/icon";
 import { get } from "@/lib/db";
 import { getCustomer, listOrderItems, listProductFiles } from "@/lib/repo";
 import { formatDate, formatMoney } from "@/lib/utils";
@@ -38,10 +38,7 @@ export default async function AccessPage({
 
   return (
     <main className="mx-auto w-full max-w-2xl px-5 py-12">
-      <div className="flex items-center gap-2.5">
-        <Logo size={28} />
-        <span className="text-[15px] font-semibold tracking-tight text-ink-900">TiendaFlow</span>
-      </div>
+      <Wordmark size="sm" />
 
       <h1 className="mt-8 text-[28px] font-semibold leading-tight tracking-tight text-ink-900">
         {paid ? `Hola${customer ? `, ${customer.full_name.split(" ")[0]}` : ""}` : "Pedido pendiente"}

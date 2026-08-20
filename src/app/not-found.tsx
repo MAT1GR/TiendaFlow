@@ -1,14 +1,13 @@
 import Link from "next/link";
 
-import { Icon, Logo } from "@/components/ui/icon";
+import { Icon, Wordmark } from "@/components/ui/icon";
 
 export default function NotFound() {
   return (
     <main className="grid min-h-dvh place-items-center px-5">
       <div className="w-full max-w-md text-center">
-        <Link href="/" className="inline-flex items-center gap-2.5">
-          <Logo size={30} />
-          <span className="text-[16px] font-semibold tracking-tight text-ink-900">TiendaFlow</span>
+        <Link href="/" className="inline-flex justify-center">
+          <Wordmark />
         </Link>
 
         <h1 className="mt-8 text-[30px] font-semibold tracking-tight text-ink-900">
