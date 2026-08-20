@@ -6,6 +6,7 @@ import { useActionState, useEffect, useState, useTransition } from "react";
 import { generateAdCopyAction } from "@/app/actions/ai";
 import { createCampaignAction } from "@/app/actions/settings";
 import { Table, Td, Tr } from "@/components/ui/data";
+import { Explain, TermLabel } from "@/components/ui/explain";
 import { Alert, TemplateNotice } from "@/components/ui/feedback";
 import { Icon } from "@/components/ui/icon";
 import {
@@ -119,8 +120,8 @@ function CampaignsPanel({
     <>
       <Card>
         <CardHeader
-          title="Campañas"
-          subtitle="Sirven para atribuir cada venta a su origen."
+          title={<TermLabel term="campana">Campañas</TermLabel>}
+          subtitle="Cargalas acá para saber qué ventas trajo cada una. La campaña real se crea en el Administrador de Anuncios de Meta."
           action={
             <Button size="sm" icon="plus" onClick={() => setOpen(true)}>
               Crear campaña
@@ -462,8 +463,8 @@ function TrackingPanel({
 
       <Card>
         <CardHeader
-          title="Generador de links con UTM"
-          subtitle="Pegá este link en tu anuncio para que TiendaFlow pueda atribuir la venta."
+          title={<TermLabel term="utm">Generador de links con UTM</TermLabel>}
+          subtitle="Copiá el link de abajo y usalo en tu anuncio. Es lo que nos permite saber qué campaña trajo cada venta."
         />
         <div className="flex flex-col gap-4 p-5 pt-4">
           {funnels.length === 0 ? (

@@ -5,6 +5,7 @@ import { useActionState, useEffect, useState } from "react";
 
 import { createAffiliateAction } from "@/app/actions/settings";
 import { Avatar, Table, Td, Tr } from "@/components/ui/data";
+import { TermLabel } from "@/components/ui/explain";
 import { Alert, DemoTag } from "@/components/ui/feedback";
 import { Icon } from "@/components/ui/icon";
 import {
@@ -51,8 +52,8 @@ export function AffiliatesPanel({
     <>
       <Card>
         <CardHeader
-          title="Programa de afiliados"
-          subtitle="Cada afiliado tiene su link con código propio."
+          title={<TermLabel term="afiliado">Programa de afiliados</TermLabel>}
+          subtitle="Gente que vende tu producto a cambio de una comisión. Cada uno tiene su link para poder contarle las ventas que trae."
           action={
             <Button size="sm" icon="plus" onClick={() => setOpen(true)}>
               Sumar afiliado

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useState, useTransition } from "react";
 
 import { disconnectIntegrationAction, savePaymentProviderAction } from "@/app/actions/settings";
+import { HowTo } from "@/components/ui/explain";
 import { Alert, ConnectionStatus } from "@/components/ui/feedback";
 import { Icon } from "@/components/ui/icon";
 import {
@@ -16,6 +17,28 @@ import {
   useToast,
 } from "@/components/ui/primitives";
 import type { ProviderStatus } from "@/lib/integrations/payments";
+
+const STEPS: Record<string, React.ReactNode[]> = {
+  stripe: [
+    <>Entrá a <strong>dashboard.stripe.com</strong> con tu cuenta.</>,
+    <>En el menú de arriba tocá <strong>Desarrolladores</strong> (Developers).</>,
+    <>Entrá a <strong>Claves de API</strong> (API keys).</>,
+    <>
+      Copiá la <strong>Publishable key</strong> (empieza con <code>pk_</code>) y la{" "}
+      <strong>Secret key</strong> (empieza con <code>sk_</code>). Para ver la secreta hay que tocar
+      “Revelar”.
+    </>,
+  ],
+  mercadopago: [
+    <>Entrá a <strong>mercadopago.com.ar/developers</strong> con tu cuenta de Mercado Pago.</>,
+    <>Andá a <strong>Tus integraciones</strong> y elegí tu aplicación (o creá una).</>,
+    <>En el menú de la izquierda tocá <strong>Credenciales de producción</strong>.</>,
+    <>
+      Copiá la <strong>Public Key</strong> (empieza con <code>APP_USR</code>) y el{" "}
+      <strong>Access Token</strong>.
+    </>,
+  ],
+};
 
 const DETAILS: Record<
   string,
@@ -160,6 +183,8 @@ function ProviderModal({
         <input type="hidden" name="provider" value={provider.id} />
 
         {state && !state.ok ? <Alert tone="error">{state.error}</Alert> : null}
+
+        {STEPS[provider.id] ? <HowTo steps={STEPS[provider.id]} /> : null}
 
         <Field
           label={detail?.publicLabel ?? "Clave pública"}

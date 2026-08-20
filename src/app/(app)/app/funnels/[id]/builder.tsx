@@ -15,6 +15,7 @@ import {
   reorderFunnelStepsAction,
   setFunnelStatusAction,
 } from "@/app/actions/funnels";
+import { TermLabel } from "@/components/ui/explain";
 import { Alert, TemplateNotice } from "@/components/ui/feedback";
 import { Icon, type IconName } from "@/components/ui/icon";
 import {
@@ -25,6 +26,7 @@ import {
   Dropdown,
   Field,
   Input,
+  LinkButton,
   MenuItem,
   Modal,
   Select,
@@ -216,8 +218,8 @@ export function FunnelBuilder({
 
       <Card>
         <CardHeader
-          title="Pasos del funnel"
-          subtitle="Cada paso muestra sus métricas de los últimos 30 días."
+          title={<TermLabel term="funnel">Pasos del funnel</TermLabel>}
+          subtitle="Cada pantalla que ve la persona, en orden. Abajo de cada una está cuánta gente pasó a la siguiente."
           action={
             <Dropdown
               trigger={() => (
@@ -313,14 +315,17 @@ export function FunnelBuilder({
 
                         <div className="flex items-center gap-1.5">
                           {landingId ? (
-                            <Button
+                            // Link y no botón: navegar no debería depender de que
+                            // React ya haya hidratado, y así se puede abrir en
+                            // una pestaña nueva.
+                            <LinkButton
+                              href={`/app/landings/${landingId}`}
                               variant="secondary"
                               size="sm"
                               icon="edit"
-                              onClick={() => router.push(`/app/landings/${landingId}`)}
                             >
                               Editar página
-                            </Button>
+                            </LinkButton>
                           ) : null}
                           {funnel.published_url ? (
                             <Link

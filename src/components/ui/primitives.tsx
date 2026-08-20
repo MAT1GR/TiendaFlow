@@ -157,7 +157,8 @@ export function Field({
   children,
   className,
 }: {
-  label?: string;
+  /** Acepta nodos para poder colgarle un "?" del glosario al lado. */
+  label?: ReactNode;
   hint?: string;
   error?: string;
   required?: boolean;
@@ -167,7 +168,7 @@ export function Field({
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
       {label ? (
-        <label className="text-[13px] font-medium text-ink-700">
+        <label className="flex items-center gap-1.5 text-[13px] font-medium text-ink-700">
           {label}
           {required ? <span className="ml-0.5 text-brand-600">*</span> : null}
         </label>

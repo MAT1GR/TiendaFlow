@@ -5,6 +5,7 @@ import { useEffect, useState, useTransition } from "react";
 
 import { applyOfferDraftAction, generateOfferDraftAction } from "@/app/actions/ai";
 import { createOfferAction } from "@/app/actions/catalog";
+import { MoreOptions, TermLabel } from "@/components/ui/explain";
 import { Alert, TemplateNotice } from "@/components/ui/feedback";
 import { Icon } from "@/components/ui/icon";
 import {
@@ -197,7 +198,10 @@ export function NewOfferForm({
       <Card className="flex flex-col gap-4 p-5">
         <h2 className="text-[15px] font-semibold text-ink-900">La promesa</h2>
 
-        <Field label="Headline" hint="Lo primero que lee la persona en la landing.">
+        <Field
+          label={<TermLabel term="headline">Headline</TermLabel>}
+          hint="La frase más grande de la página, la primera que se lee."
+        >
           <Input
             value={form.headline}
             onChange={(event) => update("headline", event.target.value)}
@@ -226,7 +230,10 @@ export function NewOfferForm({
           <Field label="Texto del botón">
             <Input value={form.cta_text} onChange={(event) => update("cta_text", event.target.value)} />
           </Field>
-          <Field label="Garantía" hint="Escribí solo lo que puedas cumplir.">
+          <Field
+            label={<TermLabel term="garantia">Garantía</TermLabel>}
+            hint="Escribí solo lo que puedas cumplir."
+          >
             <Input
               value={form.guarantee}
               onChange={(event) => update("guarantee", event.target.value)}
@@ -238,20 +245,21 @@ export function NewOfferForm({
 
       <Card className="flex flex-col gap-4 p-5">
         <h2 className="text-[15px] font-semibold text-ink-900">El precio</h2>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label={`Precio (${currency})`} required>
-            <Input
-              type="number"
-              min={0}
-              step="any"
-              value={form.price}
-              onChange={(event) => update("price", event.target.value)}
-              required
-            />
-          </Field>
+        <Field label={`Precio (${currency})`} required>
+          <Input
+            type="number"
+            min={0}
+            step="any"
+            value={form.price}
+            onChange={(event) => update("price", event.target.value)}
+            required
+          />
+        </Field>
+
+        <MoreOptions hint="descuento">
           <Field
-            label={`Precio tachado (${currency})`}
-            hint="Solo si es un precio real de referencia."
+            label={<TermLabel term="precio_tachado">{`Precio tachado (${currency})`}</TermLabel>}
+            hint="Se muestra cruzado al lado del tuyo. Poné solo un precio que hayas cobrado de verdad alguna vez."
           >
             <Input
               type="number"
@@ -261,7 +269,7 @@ export function NewOfferForm({
               onChange={(event) => update("compare_at_price", event.target.value)}
             />
           </Field>
-        </div>
+        </MoreOptions>
         {Number(form.compare_at_price) > Number(form.price) && Number(form.price) > 0 ? (
           <p className="text-[13px] text-accent-700">
             Se muestra un {Math.round((1 - Number(form.price) / Number(form.compare_at_price)) * 100)}% de

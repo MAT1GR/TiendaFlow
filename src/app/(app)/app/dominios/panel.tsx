@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useTransition } from "react";
 
 import { addDomainAction, deleteDomainAction, verifyDomainAction } from "@/app/actions/settings";
+import { Explain, HowTo } from "@/components/ui/explain";
 import { Alert, ConnectionStatus } from "@/components/ui/feedback";
 import { Icon } from "@/components/ui/icon";
 import {
@@ -59,8 +60,13 @@ export function DomainsPanel({
 
       <Card className="p-5">
         <CardHeader
-          title="Agregar dominio propio"
-          subtitle="Un dominio o subdominio que ya tengas."
+          title={
+            <span className="inline-flex items-center gap-1.5">
+              Agregar dominio propio
+              <Explain term="dominio" />
+            </span>
+          }
+          subtitle="Una dirección web que ya hayas comprado. Es opcional: mientras tanto tus páginas funcionan igual con la dirección que te damos nosotros."
           className="px-0 pt-0"
         />
 
@@ -159,8 +165,25 @@ export function DomainsPanel({
                 </div>
               </div>
 
+              <HowTo
+                title="¿Qué hago con esta tabla?"
+                className="mt-4"
+                steps={[
+                  <>Entrá al sitio donde <strong>compraste el dominio</strong> (GoDaddy, Namecheap, Nic.ar, Hostinger…).</>,
+                  <>Buscá la sección <strong>DNS</strong>, “Administrar DNS” o “Zona DNS”.</>,
+                  <>
+                    Creá <strong>dos registros nuevos</strong> copiando exactamente los valores de la
+                    tabla de abajo: uno de tipo CNAME y otro de tipo TXT.
+                  </>,
+                  <>
+                    Guardá y volvé acá. Los cambios de DNS pueden tardar hasta 48 horas en aplicarse,
+                    aunque normalmente son minutos.
+                  </>,
+                ]}
+              />
+
               <div className="tf-scroll mt-4 overflow-x-auto rounded-2xl bg-ink-900 p-4">
-                <p className="text-[11.5px] font-semibold uppercase tracking-wider text-white/50">
+                <p className="flex items-center gap-1.5 text-[11.5px] font-semibold uppercase tracking-wider text-white/50">
                   Registros DNS a crear
                 </p>
                 <table className="mt-2 w-full min-w-[420px] text-left font-mono text-[12px] text-white/85">

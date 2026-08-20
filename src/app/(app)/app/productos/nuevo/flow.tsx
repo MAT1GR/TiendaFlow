@@ -5,6 +5,7 @@ import { useRef, useState, useTransition } from "react";
 
 import { applyProductDraftAction, generateProductDraftAction } from "@/app/actions/ai";
 import { createProductAction } from "@/app/actions/catalog";
+import { MoreOptions } from "@/components/ui/explain";
 import { Alert, TemplateNotice } from "@/components/ui/feedback";
 import { Icon, type IconName } from "@/components/ui/icon";
 import {
@@ -249,25 +250,16 @@ export function NewProductFlow({
               />
             </Field>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Tipo">
-                <Select value={form.type} onChange={(event) => update("type", event.target.value)}>
-                  <option value="ebook">Ebook</option>
-                  <option value="pdf">PDF</option>
-                  <option value="template">Plantilla</option>
-                  <option value="guide">Guía</option>
-                  <option value="file">Archivo digital</option>
-                  <option value="other">Otro producto digital</option>
-                </Select>
-              </Field>
-              <Field label="Categoría">
-                <Input
-                  value={form.category}
-                  onChange={(event) => update("category", event.target.value)}
-                  placeholder="Desarrollo personal"
-                />
-              </Field>
-            </div>
+            <Field label="Tipo">
+              <Select value={form.type} onChange={(event) => update("type", event.target.value)}>
+                <option value="ebook">Ebook</option>
+                <option value="pdf">PDF</option>
+                <option value="template">Plantilla</option>
+                <option value="guide">Guía</option>
+                <option value="file">Archivo digital</option>
+                <option value="other">Otro producto digital</option>
+              </Select>
+            </Field>
 
             <Field label="Descripción">
               <Textarea
@@ -322,6 +314,19 @@ export function NewProductFlow({
                 placeholder="14900"
               />
             </Field>
+
+            <MoreOptions>
+              <Field
+                label="Categoría"
+                hint="Para ordenar tus productos entre sí. No se muestra a quien compra."
+              >
+                <Input
+                  value={form.category}
+                  onChange={(event) => update("category", event.target.value)}
+                  placeholder="Desarrollo personal"
+                />
+              </Field>
+            </MoreOptions>
           </section>
         ) : null}
 

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useTransition } from "react";
 
 import { disconnectIntegrationAction, saveMetaIntegrationAction } from "@/app/actions/settings";
+import { Explain, HowTo, MoreOptions } from "@/components/ui/explain";
 import { Alert, ConnectionStatus } from "@/components/ui/feedback";
 import { Icon } from "@/components/ui/icon";
 import {
@@ -99,9 +100,23 @@ export function MetaForm({
       <form action={formAction} className="flex flex-col gap-5">
         <Card className="flex flex-col gap-4 p-5">
           <CardHeader
-            title="Pixel"
-            subtitle="Se dispara en el navegador de tus visitantes."
+            title={
+              <span className="inline-flex items-center gap-1.5">
+                Pixel
+                <Explain term="pixel" />
+              </span>
+            }
+            subtitle="Le avisa a Facebook e Instagram qué hace la gente que te mandan: si miró, si empezó a comprar, si compró."
             className="px-0 pt-0"
+          />
+
+          <HowTo
+            steps={[
+              <>Entrá a <strong>business.facebook.com</strong> con la cuenta que usás para tus anuncios.</>,
+              <>En el menú de la izquierda buscá <strong>Administrador de Eventos</strong>.</>,
+              <>Elegí tu conjunto de datos. Si no tenés ninguno, creá uno con <strong>Conectar orígenes de datos → Web</strong>.</>,
+              <>Arriba de todo vas a ver el nombre y abajo un número largo: <strong>ese número es el ID del Pixel</strong>. Copialo y pegalo acá.</>,
+            ]}
           />
 
           <Field
@@ -121,9 +136,24 @@ export function MetaForm({
 
         <Card className="flex flex-col gap-4 p-5">
           <CardHeader
-            title="API de Conversiones"
-            subtitle="Eventos enviados desde el servidor, más confiables que el navegador."
+            title={
+              <span className="inline-flex items-center gap-1.5">
+                API de Conversiones
+                <Explain term="capi" />
+              </span>
+            }
+            subtitle="Hace lo mismo que el Pixel pero desde el servidor. Se usan los dos juntos porque muchos navegadores bloquean el Pixel."
             className="px-0 pt-0"
+          />
+
+          <HowTo
+            title="¿Dónde saco el token?"
+            steps={[
+              <>En el mismo <strong>Administrador de Eventos</strong>, entrá a tu conjunto de datos.</>,
+              <>Andá a la pestaña <strong>Configuración</strong>.</>,
+              <>Bajá hasta <strong>API de conversiones</strong> y tocá <strong>Generar token de acceso</strong>.</>,
+              <>Copialo y pegalo acá. Se guarda solo en el servidor: no viaja al navegador de nadie.</>,
+            ]}
           />
 
           <Field
@@ -137,19 +167,27 @@ export function MetaForm({
             <Input name="access_token" type="password" autoComplete="off" placeholder="EAAG…" />
           </Field>
 
-          <Field label="Dataset ID" hint="Si lo dejás vacío usamos el ID del Pixel.">
-            <Input name="dataset_id" defaultValue={datasetId} inputMode="numeric" />
-          </Field>
+          <MoreOptions hint="casi nadie necesita tocar esto">
+            <Field
+              label="Dataset ID"
+              hint="Dejalo vacío y usamos el ID del Pixel, que es lo correcto en la mayoría de los casos."
+            >
+              <Input name="dataset_id" defaultValue={datasetId} inputMode="numeric" />
+            </Field>
 
-          <Field label="Código de evento de prueba" hint="Opcional, para verificar en Test Events.">
-            <Input name="test_event_code" placeholder="TEST12345" />
-          </Field>
+            <Field
+              label="Código de evento de prueba"
+              hint="Solo si estás verificando la conexión con la herramienta Test Events de Meta."
+            >
+              <Input name="test_event_code" placeholder="TEST12345" />
+            </Field>
+          </MoreOptions>
         </Card>
 
         <Card className="flex flex-col gap-3 p-5">
           <CardHeader
             title="Eventos"
-            subtitle="Elegí qué eventos quiere recibir tu cuenta."
+            subtitle="Los momentos del recorrido que le avisamos a Meta. Vienen todos activos, que es lo recomendado."
             className="px-0 pt-0"
           />
           <div className="grid gap-2 sm:grid-cols-2">

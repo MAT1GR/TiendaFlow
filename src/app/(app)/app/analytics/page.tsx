@@ -89,12 +89,14 @@ export default async function AnalyticsPage({
         />
         <MetricCard
           label="Visitantes"
+          explain="visitantes"
           value={formatNumber(totals.visitors, true)}
           deltaPercent={compare(totals.visitors, previous.visitors).deltaPercent}
           icon="users"
         />
         <MetricCard
           label="Conversión"
+          explain="conversion"
           value={formatPercent(totals.conversionRate)}
           deltaPercent={compare(totals.conversionRate, previous.conversionRate).deltaPercent}
           icon="target"
@@ -102,6 +104,7 @@ export default async function AnalyticsPage({
         />
         <MetricCard
           label="Ticket promedio"
+          explain="ticket_promedio"
           value={formatMoney(totals.averageOrderValue, workspace.currency, true)}
           deltaPercent={compare(totals.averageOrderValue, previous.averageOrderValue).deltaPercent}
           icon="tag"
@@ -109,6 +112,7 @@ export default async function AnalyticsPage({
         />
         <MetricCard
           label="Tasa de reembolso"
+          explain="reembolso"
           value={formatPercent(totals.refundRate)}
           deltaPercent={compare(totals.refundRate, previous.refundRate).deltaPercent}
           invertDelta
@@ -123,12 +127,14 @@ export default async function AnalyticsPage({
         />
         <MetricCard
           label="ROAS"
+          explain="roas"
           value={totals.roas ? `${totals.roas.toFixed(2)}x` : "—"}
           icon="trendUp"
           emptyReason={totals.roas === null ? "Requiere integración con Meta" : undefined}
         />
         <MetricCard
           label="CPA"
+          explain="cpa"
           value={totals.cpa ? formatMoney(totals.cpa, workspace.currency) : "—"}
           invertDelta
           icon="target"
@@ -136,18 +142,21 @@ export default async function AnalyticsPage({
         />
         <MetricCard
           label="Take rate order bump"
+          explain="take_rate"
           value={takeRates.bumpTakeRate !== null ? formatPercent(takeRates.bumpTakeRate) : "—"}
           icon="plus"
           emptyReason={takeRates.bumpTakeRate === null ? "Sin ventas en el período" : undefined}
         />
         <MetricCard
           label="Take rate upsell"
+          explain="take_rate"
           value={takeRates.upsellTakeRate !== null ? formatPercent(takeRates.upsellTakeRate) : "—"}
           icon="trendUp"
           emptyReason={takeRates.upsellTakeRate === null ? "Sin ventas en el período" : undefined}
         />
         <MetricCard
           label="Checkouts iniciados"
+          explain="checkout"
           value={formatNumber(totals.checkouts)}
           icon="card"
         />

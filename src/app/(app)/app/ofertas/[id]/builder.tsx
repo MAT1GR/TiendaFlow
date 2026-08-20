@@ -16,6 +16,7 @@ import {
   saveUpsellAction,
   updateOfferAction,
 } from "@/app/actions/catalog";
+import { Explain, MoreOptions, TermLabel } from "@/components/ui/explain";
 import { Alert, TemplateNotice } from "@/components/ui/feedback";
 import { Icon } from "@/components/ui/icon";
 import {
@@ -228,7 +229,7 @@ function OfferForm({
             <Input name="name" defaultValue={offer.name} required />
           </Field>
 
-          <Field label="Headline">
+          <Field label={<TermLabel term="headline">Headline</TermLabel>}>
             <Input
               name="headline"
               value={values.headline}
@@ -262,7 +263,7 @@ function OfferForm({
                 onChange={(event) => setValues((c) => ({ ...c, cta_text: event.target.value }))}
               />
             </Field>
-            <Field label="Garantía">
+            <Field label={<TermLabel term="garantia">Garantía</TermLabel>}>
               <Input
                 name="guarantee"
                 value={values.guarantee}
@@ -290,7 +291,7 @@ function OfferForm({
             <Field label={`Precio (${currency})`} required>
               <Input name="price" type="number" min={0} step="any" defaultValue={offer.price} required />
             </Field>
-            <Field label={`Precio tachado (${currency})`}>
+            <Field label={<TermLabel term="precio_tachado">{`Precio tachado (${currency})`}</TermLabel>}>
               <Input
                 name="compare_at_price"
                 type="number"
@@ -405,8 +406,8 @@ function BonusesPanel({
     <>
       <Card>
         <CardHeader
-          title="Bonos"
-          subtitle="Sumá valor percibido sin subir el precio."
+          title={<TermLabel term="bono">Bonos</TermLabel>}
+          subtitle="Cosas extra que regalás junto al producto. Suben lo que la persona siente que se lleva, sin que bajes el precio."
           action={
             <div className="flex gap-2">
               <Button size="sm" icon="plus" onClick={() => setEditing("new")}>
@@ -613,8 +614,8 @@ function BumpPanel({
       <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
         <Card>
           <CardHeader
-            title="Order bump"
-            subtitle="El complemento que aparece dentro del checkout."
+            title={<TermLabel term="order_bump">Order bump</TermLabel>}
+            subtitle="Una casilla con un extra barato, que aparece dentro del checkout justo antes de pagar."
             action={
               <Button size="sm" icon="plus" onClick={() => setEditing("new")}>
                 Crear order bump
@@ -879,8 +880,14 @@ function UpsellsPanel({
     <>
       <Card>
         <CardHeader
-          title="Upsells y downsells"
-          subtitle="Lo que ofrecés después de la compra, antes de la página de gracias."
+          title={
+            <span className="inline-flex items-center gap-2">
+              <TermLabel term="upsell">Upsells</TermLabel>
+              <span className="text-ink-400">y</span>
+              <TermLabel term="downsell">downsells</TermLabel>
+            </span>
+          }
+          subtitle="Una segunda oferta que aparece cuando la persona ya te pagó. Es la venta más barata que vas a hacer."
           action={
             <Button size="sm" icon="plus" onClick={() => setEditingUpsell("new")}>
               Crear upsell
@@ -1140,7 +1147,7 @@ function UpsellModal({
               required
             />
           </Field>
-          <Field label={`Precio tachado (${currency})`}>
+          <Field label={<TermLabel term="precio_tachado">{`Precio tachado (${currency})`}</TermLabel>}>
             <Input
               name="compare_at_price"
               type="number"
@@ -1151,17 +1158,22 @@ function UpsellModal({
           </Field>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Botón de aceptar">
-            <Input name="accept_label" defaultValue={upsell?.accept_label ?? "Sí, lo quiero agregar"} />
-          </Field>
-          <Field label="Botón de rechazar">
-            <Input
-              name="decline_label"
-              defaultValue={upsell?.decline_label ?? "No gracias, seguir sin esto"}
-            />
-          </Field>
-        </div>
+        <MoreOptions hint="textos de los botones">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Botón de aceptar">
+              <Input
+                name="accept_label"
+                defaultValue={upsell?.accept_label ?? "Sí, lo quiero agregar"}
+              />
+            </Field>
+            <Field label="Botón de rechazar">
+              <Input
+                name="decline_label"
+                defaultValue={upsell?.decline_label ?? "No gracias, seguir sin esto"}
+              />
+            </Field>
+          </div>
+        </MoreOptions>
       </form>
     </Modal>
   );
@@ -1237,7 +1249,7 @@ function DownsellModal({
               required
             />
           </Field>
-          <Field label={`Precio tachado (${currency})`}>
+          <Field label={<TermLabel term="precio_tachado">{`Precio tachado (${currency})`}</TermLabel>}>
             <Input
               name="compare_at_price"
               type="number"

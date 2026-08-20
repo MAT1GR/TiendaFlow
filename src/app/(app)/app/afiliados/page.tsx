@@ -40,6 +40,7 @@ export default async function AffiliatesPage() {
         <MetricCard label="Clics" value={formatNumber(totalClicks, true)} icon="target" />
         <MetricCard
           label="Conversión"
+          explain="conversion"
           value={formatPercent(totalClicks ? (totalConversions / totalClicks) * 100 : 0)}
           icon="trendUp"
           emptyReason={totalClicks === 0 ? "Sin clics registrados" : undefined}

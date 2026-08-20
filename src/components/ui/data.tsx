@@ -1,8 +1,10 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { Explain } from "@/components/ui/explain";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { Sparkline } from "@/components/ui/chart";
+import type { GlossaryKey } from "@/lib/glossary";
 import { cn } from "@/lib/utils";
 
 /* -------------------------------------------------------------------------- */
@@ -18,6 +20,7 @@ export function MetricCard({
   trend,
   invertDelta,
   emptyReason,
+  explain,
 }: {
   label: string;
   value: string;
@@ -29,6 +32,8 @@ export function MetricCard({
   invertDelta?: boolean;
   /** Si la métrica no se puede calcular, se explica por qué en vez de mostrar 0. */
   emptyReason?: string;
+  /** Término del glosario: agrega un "?" que lo explica en criollo. */
+  explain?: GlossaryKey;
 }) {
   const hasDelta = typeof deltaPercent === "number" && Number.isFinite(deltaPercent);
   const positive = hasDelta ? (invertDelta ? deltaPercent! < 0 : deltaPercent! > 0) : false;
@@ -37,7 +42,10 @@ export function MetricCard({
   return (
     <div className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-ink-200 bg-white p-4 transition-all duration-200 hover:border-ink-300 hover:shadow-[0_2px_4px_rgba(15,23,42,.04),0_16px_36px_-20px_rgba(15,23,42,.28)]">
       <div className="flex items-start justify-between gap-2">
-        <p className="text-[12.5px] font-medium text-ink-500">{label}</p>
+        <p className="flex items-center gap-1.5 text-[12.5px] font-medium text-ink-500">
+          {label}
+          {explain ? <Explain term={explain} /> : null}
+        </p>
         {icon ? (
           <span className="grid size-7 place-items-center rounded-lg bg-brand-50 text-brand-600">
             <Icon name={icon} size={15} />

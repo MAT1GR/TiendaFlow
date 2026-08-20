@@ -130,6 +130,7 @@ export default async function DashboardPage({
         />
         <MetricCard
           label="Conversión"
+          explain="conversion"
           value={formatPercent(totals.conversionRate)}
           deltaPercent={conversion.deltaPercent}
           hint={`${formatNumber(totals.visitors)} visitantes`}
@@ -138,6 +139,7 @@ export default async function DashboardPage({
         />
         <MetricCard
           label="ROAS"
+          explain="roas"
           value={totals.roas ? `${totals.roas.toFixed(2)}x` : "—"}
           deltaPercent={roas.deltaPercent}
           icon="megaphone"
@@ -149,6 +151,7 @@ export default async function DashboardPage({
         />
         <MetricCard
           label="Ticket promedio"
+          explain="ticket_promedio"
           value={formatMoney(totals.averageOrderValue, workspace.currency, true)}
           deltaPercent={aov.deltaPercent}
           hint="vs período anterior"

@@ -160,7 +160,7 @@ await step("Configurar Meta Pixel", async () => {
 
 await step("Generar landing con IA", async () => {
   await page.goto(funnelUrl, { waitUntil: "domcontentloaded" });
-  await page.getByRole("button", { name: /Editar página/i }).first().click();
+  await page.getByRole("link", { name: /Editar página/i }).first().click();
   await page.waitForURL("**/app/landings/**", { timeout: 20000 });
   await page.getByRole("button", { name: /Generar landing con IA/i }).first().click();
   await page.getByRole("button", { name: /^Generar landing$/ }).click();

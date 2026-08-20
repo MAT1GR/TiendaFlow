@@ -54,12 +54,14 @@ export default async function OrdersPage() {
         />
         <MetricCard
           label="Ticket promedio"
+          explain="ticket_promedio"
           value={formatMoney(totals.averageOrderValue, workspace.currency, true)}
           icon="tag"
           emptyReason={totals.orders === 0 ? "Todavía no hay ventas" : undefined}
         />
         <MetricCard
           label="Tasa de reembolso"
+          explain="reembolso"
           value={formatPercent(totals.refundRate)}
           icon="refresh"
           invertDelta
