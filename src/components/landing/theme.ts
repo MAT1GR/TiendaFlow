@@ -17,9 +17,20 @@
  * del carácter de estas páginas.
  */
 
+import { DEFAULT_LAYOUT } from "@/components/landing/estructuras";
+
 export interface LandingTheme {
   /** Id del preset elegido, o `"custom"` si el vendedor tocó los colores. */
   preset: string;
+  /**
+   * Id del estilo de página (ver `estructuras.ts`).
+   *
+   * Vive acá y no en su propia columna porque es lo mismo que los colores: una
+   * decisión de presentación que se guarda junto con la página. El orden real
+   * de los bloques ya está en `landing_sections`; esto solo recuerda cuál eligió
+   * para poder marcarlo en el panel.
+   */
+  layout: string;
   /** Fondo de la página. */
   bg: string;
   /** Fondo de tarjetas y cajas. */
@@ -63,7 +74,13 @@ const BODY_STACK = '"DM Sans", "Inter", ui-sans-serif, system-ui, -apple-system,
 /* Presets                                                                     */
 /* -------------------------------------------------------------------------- */
 
-export interface Preset extends LandingTheme {
+/**
+ * Un preset es solo una paleta: no decide la estructura de la página.
+ *
+ * Por eso deja afuera `layout` — elegir "Noche" no tiene por qué reordenarle
+ * los bloques a nadie.
+ */
+export interface Preset extends Omit<LandingTheme, "layout"> {
   label: string;
   /** Para dibujar la muestra en el selector. */
   swatch: [string, string, string];
@@ -209,6 +226,7 @@ export function readTheme(stored: unknown): LandingTheme {
 
   return {
     preset: texto(raw.preset, base.preset),
+    layout: texto(raw.layout, DEFAULT_LAYOUT.id),
     bg: texto(raw.bg, base.bg),
     surface: texto(raw.surface, base.surface),
     accent: acentoHeredado ?? texto(raw.preset ? raw.accent : null, base.accent),
@@ -223,8 +241,11 @@ export function readTheme(stored: unknown): LandingTheme {
   };
 }
 
+/** Los colores y la tipografía de un tema, sin lo estructural. */
+export type ThemeColors = Omit<LandingTheme, "layout" | "preset">;
+
 /** Las variables CSS que consumen todos los bloques. */
-export function themeVars(theme: LandingTheme): React.CSSProperties {
+export function themeVars(theme: ThemeColors): React.CSSProperties {
   return {
     "--tf-bg": theme.bg,
     "--tf-surface": theme.surface,

@@ -81,12 +81,22 @@ export function aiStatus(): AiStatus {
     };
   }
 
+  /*
+   * El mensaje dice qué falta y dónde ponerlo.
+   *
+   * "No hay un proveedor conectado" manda a adivinar: la clave se configura en
+   * un archivo, no en ninguna pantalla de la app, y el server la lee una sola
+   * vez al arrancar. Sin esas dos aclaraciones alguien puede tener la clave
+   * cargada y seguir viendo borradores locales sin entender por qué.
+   */
   return {
     configured: false,
     provider: "template",
     model: null,
     reason:
-      "No hay un proveedor de IA conectado. TiendaFlow arma borradores locales con los datos que cargaste.",
+      "Falta la clave del proveedor de IA. Agregala en el archivo .env.local de la raíz del " +
+      "proyecto (GEMINI_API_KEY=... o ANTHROPIC_API_KEY=...) y reiniciá el servidor: se lee al " +
+      "arrancar. Mientras tanto TiendaFlow arma borradores locales con los datos que cargaste.",
   };
 }
 

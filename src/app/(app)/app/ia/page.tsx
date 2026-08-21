@@ -148,10 +148,12 @@ export default async function AiPage() {
       {!status.configured ? (
         <Alert tone="info" title="Estás usando borradores locales">
           Todavía no hay un proveedor de IA conectado, así que armamos los borradores con los datos
-          que ya cargaste y te lo avisamos en cada resultado. Para generación real, definí{" "}
-          <code className="rounded bg-ink-100 px-1 py-0.5 text-[12px]">ANTHROPIC_API_KEY</code> o{" "}
-          <code className="rounded bg-ink-100 px-1 py-0.5 text-[12px]">GEMINI_API_KEY</code> en el
-          servidor y reiniciá la aplicación. La clave nunca se expone al navegador.
+          que ya cargaste y te lo avisamos en cada resultado. Para generación real, agregá{" "}
+          <code className="rounded bg-ink-100 px-1 py-0.5 text-[12px]">GEMINI_API_KEY</code> o{" "}
+          <code className="rounded bg-ink-100 px-1 py-0.5 text-[12px]">ANTHROPIC_API_KEY</code> al
+          archivo <code className="rounded bg-ink-100 px-1 py-0.5 text-[12px]">.env.local</code> de
+          la raíz del proyecto y reiniciá el servidor: la clave se lee al arrancar. Nunca se
+          expone al navegador.
         </Alert>
       ) : null}
 

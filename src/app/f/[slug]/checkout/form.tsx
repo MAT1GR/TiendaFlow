@@ -130,9 +130,12 @@ export function CheckoutForm({
   }
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
-      <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
-        <form onSubmit={submit} className="order-2 flex flex-col gap-5 lg:order-1">
+    /* `@container`: el checkout también se muestra como vista previa adentro
+       del panel, en una caja mucho más angosta que la ventana. Midiendo su
+       propia caja, la misma pantalla sirve para las dos cosas. */
+    <main className="@container mx-auto w-full max-w-5xl px-4 py-8 @2xl:px-6 @2xl:py-12">
+      <div className="grid gap-6 @3xl:grid-cols-[1fr_400px]">
+        <form onSubmit={submit} className="order-2 flex flex-col gap-5 @3xl:order-1">
           {cancelled ? (
             <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13.5px] text-amber-800">
               Cancelaste el pago. Podés volver a intentarlo cuando quieras.
@@ -148,7 +151,7 @@ export function CheckoutForm({
             </div>
           ) : null}
 
-          <section className="rounded-3xl border border-ink-200 bg-white p-5 sm:p-6">
+          <section className="rounded-3xl border border-ink-200 bg-white p-5 @2xl:p-6">
             <h2 className="text-[17px] font-semibold text-ink-900">Tus datos</h2>
             <p className="mt-1 text-[13px] text-ink-500">
               Al email que pongas te mandamos el acceso.
@@ -226,7 +229,7 @@ export function CheckoutForm({
             </section>
           ) : null}
 
-          <section className="rounded-3xl border border-ink-200 bg-white p-5 sm:p-6">
+          <section className="rounded-3xl border border-ink-200 bg-white p-5 @2xl:p-6">
             <h2 className="text-[17px] font-semibold text-ink-900">Pago</h2>
             {provider ? (
               <p className="mt-2 flex items-center gap-2 text-[13.5px] text-ink-600">
@@ -277,8 +280,8 @@ export function CheckoutForm({
           </div>
         </form>
 
-        <aside className="order-1 lg:order-2">
-          <div className="sticky top-6 rounded-3xl border border-ink-200 bg-white p-5 sm:p-6">
+        <aside className="order-1 @3xl:order-2">
+          <div className="sticky top-6 rounded-3xl border border-ink-200 bg-white p-5 @2xl:p-6">
             <h2 className="text-[13px] font-semibold uppercase tracking-wider text-ink-400">
               Tu pedido
             </h2>

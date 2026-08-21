@@ -25,7 +25,9 @@ export interface SectionData {
 export const SECTION_LIBRARY: Array<{
   type: string;
   label: string;
-  group: "Estructura" | "Contenido" | "Conversión" | "Media";
+  /** El emoji con el que se lo reconoce en la lista de secciones. */
+  emoji: string;
+  group: "Recomendadas" | "Para sumar confianza" | "Imágenes y video" | "Texto suelto";
   icon: Parameters<typeof Icon>[0]["name"];
   defaults: Record<string, unknown>;
 }> = [
@@ -33,7 +35,8 @@ export const SECTION_LIBRARY: Array<{
   {
     type: "hero",
     label: "Encabezado",
-    group: "Estructura",
+    emoji: "🎯",
+    group: "Recomendadas",
     icon: "star",
     defaults: {
       eyebrow: "PARA QUIENES…",
@@ -48,7 +51,8 @@ export const SECTION_LIBRARY: Array<{
   {
     type: "stats",
     label: "Los números de tu oferta",
-    group: "Contenido",
+    emoji: "🔢",
+    group: "Para sumar confianza",
     icon: "chart",
     defaults: {
       items: [
@@ -69,7 +73,8 @@ export const SECTION_LIBRARY: Array<{
   {
     type: "problems",
     label: "El problema",
-    group: "Contenido",
+    emoji: "😕",
+    group: "Recomendadas",
     icon: "warning",
     defaults: {
       title: "Querés lograrlo.",
@@ -84,8 +89,9 @@ export const SECTION_LIBRARY: Array<{
   },
   {
     type: "gallery",
-    label: "Galería visual",
-    group: "Media",
+    label: "Galería de imágenes",
+    emoji: "📸",
+    group: "Imágenes y video",
     icon: "image",
     defaults: {
       kicker: "IMAGINÁ TODO LO QUE PODÉS LOGRAR",
@@ -107,7 +113,8 @@ export const SECTION_LIBRARY: Array<{
   {
     type: "solution",
     label: "La solución",
-    group: "Contenido",
+    emoji: "💡",
+    group: "Recomendadas",
     icon: "sparkles",
     defaults: {
       badge: "UNA BIBLIOTECA PARA USAR UNA Y OTRA VEZ",
@@ -127,7 +134,8 @@ export const SECTION_LIBRARY: Array<{
   {
     type: "modules",
     label: "Qué recibís",
-    group: "Contenido",
+    emoji: "📕",
+    group: "Recomendadas",
     icon: "layers",
     defaults: {
       kicker: "TODO INCLUIDO EN UN SOLO ACCESO",
@@ -147,7 +155,8 @@ export const SECTION_LIBRARY: Array<{
   {
     type: "bonuses",
     label: "Bonos",
-    group: "Conversión",
+    emoji: "🎁",
+    group: "Recomendadas",
     icon: "gift",
     defaults: {
       kicker: "RECURSOS COMPLEMENTARIOS",
@@ -159,7 +168,8 @@ export const SECTION_LIBRARY: Array<{
   {
     type: "pricing",
     label: "Precio",
-    group: "Conversión",
+    emoji: "💰",
+    group: "Recomendadas",
     icon: "tag",
     defaults: {
       title: "Empezá hoy",
@@ -177,7 +187,8 @@ export const SECTION_LIBRARY: Array<{
   {
     type: "testimonials",
     label: "Testimonios",
-    group: "Conversión",
+    emoji: "💬",
+    group: "Recomendadas",
     icon: "users",
     defaults: {
       kicker: "",
@@ -190,7 +201,8 @@ export const SECTION_LIBRARY: Array<{
   {
     type: "guarantee",
     label: "Garantía",
-    group: "Conversión",
+    emoji: "🛡️",
+    group: "Recomendadas",
     icon: "shield",
     defaults: {
       title: "Probalo con tranquilidad durante 7 días",
@@ -202,7 +214,8 @@ export const SECTION_LIBRARY: Array<{
   {
     type: "faq",
     label: "Preguntas frecuentes",
-    group: "Conversión",
+    emoji: "❓",
+    group: "Recomendadas",
     icon: "info",
     defaults: {
       kicker: "PREGUNTAS FRECUENTES",
@@ -213,7 +226,8 @@ export const SECTION_LIBRARY: Array<{
   {
     type: "cta",
     label: "Último llamado",
-    group: "Estructura",
+    emoji: "🚀",
+    group: "Recomendadas",
     icon: "arrowRight",
     defaults: {
       kicker: "PODÉS EMPEZAR HOY",
@@ -227,7 +241,8 @@ export const SECTION_LIBRARY: Array<{
   {
     type: "footer",
     label: "Pie de página",
-    group: "Estructura",
+    emoji: "🦾",
+    group: "Texto suelto",
     icon: "file",
     defaults: {
       brand: "TU MARCA",
@@ -239,29 +254,33 @@ export const SECTION_LIBRARY: Array<{
   /* --- Bloques sueltos que se pueden sumar --- */
   {
     type: "headline",
-    label: "Titular",
-    group: "Contenido",
+    label: "Titular suelto",
+    emoji: "📝",
+    group: "Texto suelto",
     icon: "edit",
     defaults: { text: "Un titular que rompa la objeción principal" },
   },
   {
     type: "subheadline",
-    label: "Subtítulo",
-    group: "Contenido",
+    label: "Subtítulo suelto",
+    emoji: "📄",
+    group: "Texto suelto",
     icon: "edit",
     defaults: { text: "Una línea de apoyo que sume claridad." },
   },
   {
     type: "benefits",
     label: "Beneficios",
-    group: "Contenido",
+    emoji: "⭐",
+    group: "Recomendadas",
     icon: "check",
     defaults: { title: "Lo que te llevás", items: ["Primer beneficio", "Segundo beneficio"] },
   },
   {
     type: "features",
     label: "Cómo funciona",
-    group: "Contenido",
+    emoji: "🗺️",
+    group: "Para sumar confianza",
     icon: "layers",
     defaults: {
       title: "Cómo funciona",
@@ -273,8 +292,9 @@ export const SECTION_LIBRARY: Array<{
   },
   {
     type: "comparison",
-    label: "Antes y después",
-    group: "Conversión",
+    label: "Con esto vs. sin esto",
+    emoji: "⚖️",
+    group: "Para sumar confianza",
     icon: "chart",
     defaults: {
       title: "Con esto vs. sin esto",
@@ -287,35 +307,40 @@ export const SECTION_LIBRARY: Array<{
   {
     type: "mockup",
     label: "Mockup del producto",
-    group: "Media",
+    emoji: "📦",
+    group: "Imágenes y video",
     icon: "box",
     defaults: { title: "Así se ve por dentro", caption: "Vista del material" },
   },
   {
     type: "countdown",
     label: "Contador",
-    group: "Conversión",
+    emoji: "⏱️",
+    group: "Para sumar confianza",
     icon: "clock",
     defaults: { title: "La oferta cierra pronto", text: "Definí la fecha real de cierre." },
   },
   {
     type: "social_proof",
     label: "Prueba social",
-    group: "Conversión",
+    emoji: "👍",
+    group: "Para sumar confianza",
     icon: "star",
     defaults: { text: "Espacio para prueba social real cuando la tengas.", placeholder: true },
   },
   {
     type: "video",
     label: "Video",
-    group: "Media",
+    emoji: "🎥",
+    group: "Imágenes y video",
     icon: "video",
     defaults: { title: "Mirá cómo funciona", url: "" },
   },
   {
     type: "image",
     label: "Imagen",
-    group: "Media",
+    emoji: "🖼️",
+    group: "Imágenes y video",
     icon: "image",
     defaults: { alt: "Descripción de la imagen", url: "" },
   },
@@ -427,7 +452,7 @@ function Band({
 }) {
   return (
     <section
-      className={cn("px-5 py-12 sm:px-8 sm:py-16", className)}
+      className={cn("px-5 py-12 @2xl:px-8 @2xl:py-16", className)}
       style={tono === "surface" ? { backgroundColor: "var(--tf-surface)" } : undefined}
     >
       <div className="mx-auto w-full max-w-3xl">{children}</div>
@@ -469,8 +494,8 @@ function Titulo({
       className={cn(
         "mt-3 font-extrabold",
         as === "h1"
-          ? "text-[clamp(2.1rem,8vw,3.6rem)] leading-[1.04]"
-          : "text-[clamp(1.5rem,4.6vw,2.15rem)] leading-[1.18]",
+          ? "text-[clamp(2.1rem,8cqw,3.6rem)] leading-[1.04]"
+          : "text-[clamp(1.5rem,4.6cqw,2.15rem)] leading-[1.18]",
         centrado && "text-center",
       )}
       style={{ color: "var(--tf-text)", letterSpacing: as === "h1" ? "-0.045em" : "-0.03em" }}
@@ -485,7 +510,7 @@ function Bajada({ children, centrado = true }: { children: string; centrado?: bo
   return (
     <p
       className={cn(
-        "mx-auto mt-4 max-w-2xl text-[16px] leading-relaxed sm:text-[17px]",
+        "mx-auto mt-4 max-w-2xl text-[16px] leading-relaxed @2xl:text-[17px]",
         centrado && "text-center",
       )}
       style={{ color: "var(--tf-muted)" }}
@@ -525,7 +550,7 @@ function Numero({ valor, etiqueta }: { valor: string; etiqueta: string }) {
   return (
     <div className="text-center">
       <p
-        className="text-[clamp(1.75rem,6vw,2.5rem)] font-extrabold leading-none"
+        className="text-[clamp(1.75rem,6cqw,2.5rem)] font-extrabold leading-none"
         style={{ color: "var(--tf-accent)", letterSpacing: "-0.03em" }}
       >
         {valor}
@@ -631,7 +656,7 @@ export function LandingSectionView({
     /* ---------------------------------------------------------------- 1 */
     case "hero":
       return (
-        <Band className="pt-14 text-center sm:pt-20">
+        <Band className="pt-14 text-center @2xl:pt-20">
           <Kicker>{str(c, "eyebrow")}</Kicker>
           <Titulo as="h1">{str(c, "headline", "Tu titular principal")}</Titulo>
           <Bajada>{str(c, "subheadline")}</Bajada>
@@ -664,15 +689,15 @@ export function LandingSectionView({
     /* ---------------------------------------------------------------- 2 */
     case "stats":
       return (
-        <Band tono="surface" className="py-10 sm:py-12">
-          <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
+        <Band tono="surface" className="py-10 @2xl:py-12">
+          <div className="grid grid-cols-2 gap-6 @2xl:grid-cols-4">
             {cards(c, "items").map((item, index) => (
               <Numero key={index} valor={item.value} etiqueta={item.label} />
             ))}
           </div>
 
           {cards(c, "highlights").length > 0 ? (
-            <div className="mt-10 grid gap-4 sm:grid-cols-3">
+            <div className="mt-10 grid gap-4 @2xl:grid-cols-3">
               {cards(c, "highlights").map((item, index) => (
                 <Caja key={index}>
                   <p className="text-[14.5px] font-bold" style={{ color: "var(--tf-text)" }}>
@@ -701,7 +726,7 @@ export function LandingSectionView({
       return (
         <Band>
           <h2
-            className="text-center text-[clamp(1.5rem,4.6vw,2.15rem)] font-extrabold leading-[1.18]"
+            className="text-center text-[clamp(1.5rem,4.6cqw,2.15rem)] font-extrabold leading-[1.18]"
             style={{ color: "var(--tf-text)", letterSpacing: "-0.03em" }}
           >
             {str(c, "title")}
@@ -732,7 +757,7 @@ export function LandingSectionView({
 
           {str(c, "closing") ? (
             <p
-              className="mt-10 text-center text-[clamp(1.05rem,3vw,1.35rem)] font-extrabold leading-snug"
+              className="mt-10 text-center text-[clamp(1.05rem,3cqw,1.35rem)] font-extrabold leading-snug"
               style={{ color: "var(--tf-text)" }}
             >
               <Multiline text={str(c, "closing")} />
@@ -767,7 +792,7 @@ export function LandingSectionView({
           ) : null}
 
           {cards(c, "images").length > 0 ? (
-            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="mt-3 grid grid-cols-2 gap-3 @2xl:grid-cols-3">
               {cards(c, "images").map((image, index) => (
                 <Hueco key={index} label={image.alt} className="aspect-square" chico />
               ))}
@@ -802,7 +827,7 @@ export function LandingSectionView({
           {/* El nombre del producto es lo único con tipografía display: es la
               marca, y merece verse distinto del resto de la página. */}
           <h2
-            className="mt-6 text-[clamp(2rem,7vw,3.4rem)] font-extrabold leading-[1.05]"
+            className="mt-6 text-[clamp(2rem,7cqw,3.4rem)] font-extrabold leading-[1.05]"
             style={{ color: "var(--tf-text)", fontFamily: "var(--tf-display)" }}
           >
             {str(c, "title")}
@@ -810,7 +835,7 @@ export function LandingSectionView({
 
           {str(c, "subtitle") ? (
             <p
-              className="mt-3 text-[clamp(1rem,3vw,1.35rem)] font-extrabold uppercase"
+              className="mt-3 text-[clamp(1rem,3cqw,1.35rem)] font-extrabold uppercase"
               style={{ color: "var(--tf-accent)", letterSpacing: "0.05em" }}
             >
               {str(c, "subtitle")}
@@ -917,7 +942,7 @@ export function LandingSectionView({
           </div>
 
           {cards(c, "metrics").length > 0 ? (
-            <div className="mt-6 grid grid-cols-2 gap-6 sm:grid-cols-3">
+            <div className="mt-6 grid grid-cols-2 gap-6 @2xl:grid-cols-3">
               {cards(c, "metrics").map((item, index) => (
                 <Numero key={index} valor={item.value} etiqueta={item.label} />
               ))}
@@ -1031,7 +1056,7 @@ export function LandingSectionView({
 
             <div className="mt-6 flex items-baseline justify-center gap-3">
               <span
-                className="text-[clamp(2.25rem,8vw,3rem)] font-extrabold leading-none"
+                className="text-[clamp(2.25rem,8cqw,3rem)] font-extrabold leading-none"
                 style={{ color: "var(--tf-accent)", letterSpacing: "-0.03em" }}
               >
                 {priceLabel ?? str(c, "price_label", "$0")}
@@ -1111,7 +1136,7 @@ export function LandingSectionView({
             </p>
           ) : null}
 
-          <div className="mt-9 grid gap-4 sm:grid-cols-2">
+          <div className="mt-9 grid gap-4 @2xl:grid-cols-2">
             {items.map((item, index) => (
               <Caja key={index}>
                 <p className="text-[13px] tracking-[0.2em]" style={{ color: "var(--tf-accent)" }}>
@@ -1157,7 +1182,7 @@ export function LandingSectionView({
               ↺
             </span>
             <h2
-              className="mt-5 text-[clamp(1.35rem,4vw,1.9rem)] font-extrabold leading-tight"
+              className="mt-5 text-[clamp(1.35rem,4cqw,1.9rem)] font-extrabold leading-tight"
               style={{ color: "var(--tf-text)", letterSpacing: "-0.02em" }}
             >
               <Multiline text={str(c, "title", "Garantía")} />
@@ -1312,7 +1337,7 @@ export function LandingSectionView({
       return (
         <Band>
           <Titulo>{str(c, "title", "Lo que te llevás")}</Titulo>
-          <ul className="mt-9 grid gap-3 sm:grid-cols-2">
+          <ul className="mt-9 grid gap-3 @2xl:grid-cols-2">
             {lines(c, "items").map((item, index) => (
               <li key={index}>
                 <Caja className="flex items-start gap-3 !py-4">
@@ -1336,7 +1361,7 @@ export function LandingSectionView({
       return (
         <Band>
           <Titulo>{str(c, "title", "Cómo funciona")}</Titulo>
-          <div className="mt-9 grid gap-4 sm:grid-cols-3">
+          <div className="mt-9 grid gap-4 @2xl:grid-cols-3">
             {cards(c, "items").map((item, index) => (
               <Caja key={index}>
                 <p className="text-[16px] font-bold" style={{ color: "var(--tf-text)" }}>
@@ -1363,7 +1388,7 @@ export function LandingSectionView({
       return (
         <Band tono="surface">
           <Titulo>{str(c, "title")}</Titulo>
-          <div className="mt-9 grid gap-4 sm:grid-cols-2">
+          <div className="mt-9 grid gap-4 @2xl:grid-cols-2">
             <Caja>
               <p className="text-[15px] font-bold" style={{ color: "var(--tf-muted)" }}>
                 {str(c, "without_title")}

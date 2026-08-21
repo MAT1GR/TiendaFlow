@@ -7,6 +7,7 @@ import { createFunnelAction } from "@/app/actions/funnels";
 import { Alert } from "@/components/ui/feedback";
 import { Icon } from "@/components/ui/icon";
 import { Button, Card, Field, Input, Select, useToast } from "@/components/ui/primitives";
+import { withFlow } from "@/lib/product-flow";
 
 const DEFAULT_STEPS = ["Donde lo contás", "Donde te pagan", "Una oferta extra", "Gracias"];
 
@@ -14,10 +15,13 @@ export function NewFunnelForm({
   offers,
   products,
   initialOfferId,
+  enFlujo,
 }: {
   offers: Array<{ id: string; name: string; productId: string | null }>;
   products: Array<{ id: string; name: string }>;
   initialOfferId?: string;
+  /** Viene encadenando los pasos de la creación: al guardar, sigue al que falta. */
+  enFlujo?: boolean;
 }) {
   const router = useRouter();
   const toast = useToast();
@@ -26,7 +30,7 @@ export function NewFunnelForm({
   const [offerId, setOfferId] = useState(initialOfferId ?? offers[0]?.id ?? "");
   const [name, setName] = useState(() => {
     const offer = offers.find((item) => item.id === (initialOfferId ?? offers[0]?.id));
-    return offer ? `Funnel ${offer.name.replace(/^Oferta\s+/i, "")}` : "";
+    return offer ? offer.name.replace(/^Oferta\s+/i, "") : "";
   });
   const [source, setSource] = useState("meta_ads");
 
@@ -46,10 +50,11 @@ export function NewFunnelForm({
       if (result.ok) {
         toast.success("Tu página de venta está lista", "Ahora escribí lo que va adentro.");
         // Volvemos al producto si sabemos de cuál es; el armador suelto queda
-        // solo como pantalla de respaldo.
+        // solo como pantalla de respaldo. Si viene del paso a paso, la marca
+        // viaja con él para que el editor sepa mostrarle cómo seguir.
         router.push(
           offer?.productId
-            ? `/app/productos/${offer.productId}/pagina`
+            ? withFlow(`/app/productos/${offer.productId}/pagina`, enFlujo)
             : `/app/funnels/${result.data.id}?nuevo=1`,
         );
       } else {
@@ -69,7 +74,7 @@ export function NewFunnelForm({
             onChange={(event) => {
               setOfferId(event.target.value);
               const offer = offers.find((item) => item.id === event.target.value);
-              if (offer) setName(`Funnel ${offer.name.replace(/^Oferta\s+/i, "")}`);
+              if (offer) setName(offer.name.replace(/^Oferta\s+/i, ""));
             }}
           >
             {offers.map((offer) => (
@@ -80,7 +85,7 @@ export function NewFunnelForm({
           </Select>
         </Field>
 
-        <Field label="Nombre del funnel" required>
+        <Field label="Nombre de la página" hint="Solo para vos: es cómo la vas a encontrar en tus listados." required>
           <Input value={name} onChange={(event) => setName(event.target.value)} required />
         </Field>
 

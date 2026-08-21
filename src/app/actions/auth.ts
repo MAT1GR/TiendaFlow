@@ -8,13 +8,16 @@ import {
   createPasswordResetToken,
   createSession,
   currentUser,
+  currentWorkspace,
   destroySession,
   hashPassword,
   requireSession,
   verifyPassword,
 } from "@/lib/auth";
+import { DEFAULT_PRESET, PRESETS, readTheme } from "@/components/landing/theme";
 import { get, nowIso, run, transaction } from "@/lib/db";
-import { ensureSubscription, id as newId } from "@/lib/repo";
+import { isPlanId } from "@/lib/plans";
+import { ensureSubscription, id as newId, setPlan } from "@/lib/repo";
 import { seedDemoWorkspace } from "@/lib/seed";
 import { slugify } from "@/lib/utils";
 import type { User } from "@/lib/types";
@@ -210,6 +213,15 @@ export async function resetPasswordAction(
   return result;
 }
 
+/**
+ * Cierra el alta: bautiza la tienda, le guarda los colores y anota por dónde
+ * quiere empezar el vendedor.
+ *
+ * El nombre y los colores no son metadatos del formulario: el nombre pasa a
+ * ser el del workspace (y con él la dirección pública de la tienda), y los
+ * colores quedan como punto de partida de cada página de venta que arme
+ * después. Por eso se escriben acá y no en una pantalla de configuración.
+ */
 export async function completeOnboardingAction(
   _prev: ActionResult<{ next: string }> | null,
   formData: FormData,
@@ -218,11 +230,32 @@ export async function completeOnboardingAction(
     const user = await currentUser();
     if (!user) return fail("Tu sesión expiró. Volvé a iniciar sesión.");
 
-    const answers = {
-      productSource: String(formData.get("product_source") ?? ""),
-      channel: String(formData.get("channel") ?? ""),
-      goal: String(formData.get("goal") ?? ""),
-    };
+    const workspace = await currentWorkspace();
+    if (!workspace) return fail("No encontramos tu tienda. Volvé a iniciar sesión.");
+
+    const storeName = requiredText(formData.get("store_name"), "El nombre de tu tienda");
+
+    const productSource = String(formData.get("product_source") ?? "");
+    const answers = { productSource };
+
+    // El plan elegido en el alta. Cualquier valor raro cae en `free`: nadie
+    // termina con un plan inexistente por mandar el formulario a mano.
+    const planElegido = String(formData.get("plan") ?? "");
+    const plan = isPlanId(planElegido) ? planElegido : "free";
+
+    const preset =
+      PRESETS.find((item) => item.preset === String(formData.get("theme_preset") ?? "")) ??
+      DEFAULT_PRESET;
+
+    // El slug es la dirección pública de la tienda. Se regenera acá porque en
+    // el alta todavía no hay nada publicado: más adelante cambiarlo rompería
+    // los links que el vendedor ya compartió.
+    const baseSlug = slugify(storeName) || workspace.slug;
+    let slug = baseSlug;
+    let counter = 2;
+    while (get(`SELECT id FROM workspaces WHERE slug = ? AND id != ?`, slug, workspace.id)) {
+      slug = `${baseSlug}-${counter++}`;
+    }
 
     run(
       `UPDATE users SET onboarding_completed = 1, onboarding_answers = ?, updated_at = ? WHERE id = ?`,
@@ -231,22 +264,36 @@ export async function completeOnboardingAction(
       user.id,
     );
 
+    run(
+      `UPDATE workspaces SET name = ?, slug = ?, theme = ?, updated_at = ? WHERE id = ?`,
+      storeName,
+      slug,
+      JSON.stringify(readTheme(preset)),
+      nowIso(),
+      workspace.id,
+    );
+
+    ensureSubscription(workspace.id);
+    setPlan(workspace.id, plan);
+
     revalidatePath("/app", "layout");
 
-    const next =
-      answers.productSource === "ia"
-        ? "/app/productos/nuevo?fuente=ia"
-        : answers.goal === "producto"
-          ? "/app/productos/nuevo"
-          : answers.goal === "funnel"
-            ? "/app/funnels/nuevo"
-            : answers.goal === "oferta"
-              ? "/app/ofertas/nueva"
-              : answers.goal === "ventas"
-                ? "/app/pagos"
-                : "/app";
+    /*
+     * El alta termina siempre en la creación del producto.
+     *
+     * Antes preguntábamos qué quería hacer primero y lo mandábamos ahí, pero
+     * no era una elección real: sin producto no hay oferta que armar, ni
+     * página que publicar, ni nada que cobrar. Quien elegía "configurar
+     * ventas" caía en una pantalla que no podía completar.
+     *
+     * Lo único que se arrastra del alta es qué tipo de producto tiene, para
+     * que el flujo arranque en el paso que le corresponde y no le vuelva a
+     * preguntar lo mismo.
+     */
+    const fuente =
+      productSource === "ia" ? "ia" : productSource === "cero" ? "cero" : "propio";
 
-    return ok({ next });
+    return ok({ next: `/app/productos/nuevo?fuente=${fuente}` });
   });
 
   if (result.ok) redirect(result.data.next);

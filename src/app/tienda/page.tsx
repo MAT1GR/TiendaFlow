@@ -2,11 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
+import { DISPLAY_FONTS, readTheme, themeVars } from "@/components/landing/theme";
 import { Icon } from "@/components/ui/icon";
 import { tiendaActual } from "@/lib/public-url";
 import { all } from "@/lib/db";
 import { getWorkspaceBySlug } from "@/lib/repo";
-import { formatMoney } from "@/lib/utils";
+import { formatMoney, parseJson } from "@/lib/utils";
 
 /**
  * La portada de una tienda.
@@ -56,51 +57,81 @@ export default async function StorefrontPage() {
 
   const productos = publicados(workspace.id);
 
-  return (
-    <main className="mx-auto w-full max-w-3xl px-5 py-16 sm:px-8">
-      <h1 className="text-[30px] font-semibold tracking-tight text-ink-900 sm:text-[38px]">
-        {workspace.name}
-      </h1>
+  // Los colores que el vendedor eligió al crear la tienda. La portada tiene
+  // que verse como sus páginas de venta: es la misma marca.
+  const theme = readTheme(parseJson<unknown>(workspace.theme, {}));
 
-      {productos.length === 0 ? (
-        <p className="mt-6 rounded-2xl border border-dashed border-ink-300 bg-ink-50 px-5 py-8 text-center text-[14px] text-ink-500">
-          Todavía no hay nada publicado en esta tienda.
-        </p>
-      ) : (
-        <ul className="mt-8 flex flex-col gap-3">
-          {productos.map((producto) => (
-            <li key={producto.slug}>
-              <Link
-                href={`/${producto.slug}`}
-                className="group flex items-center gap-4 rounded-2xl border border-ink-200 bg-white p-5 transition-all hover:border-ink-300 hover:shadow-soft"
-              >
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[16px] font-semibold text-ink-900">
-                    {producto.nombre}
+  return (
+    <div className="min-h-dvh" style={themeVars(theme)}>
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,700;0,800;1,700&display=swap"
+      />
+
+      <main className="mx-auto w-full max-w-3xl px-5 py-16 sm:px-8">
+        <h1
+          className="text-[30px] font-bold tracking-tight sm:text-[38px]"
+          style={{ fontFamily: DISPLAY_FONTS[theme.display].stack }}
+        >
+          {workspace.name}
+        </h1>
+
+        {productos.length === 0 ? (
+          <p
+            className="mt-6 border border-dashed px-5 py-8 text-center text-[14px]"
+            style={{
+              borderColor: "var(--tf-line)",
+              color: "var(--tf-muted)",
+              borderRadius: "var(--tf-radius)",
+            }}
+          >
+            Todavía no hay nada publicado en esta tienda.
+          </p>
+        ) : (
+          <ul className="mt-8 flex flex-col gap-3">
+            {productos.map((producto) => (
+              <li key={producto.slug}>
+                <Link
+                  href={`/${producto.slug}`}
+                  className="group flex items-center gap-4 border p-5 transition-all hover:shadow-soft"
+                  style={{
+                    backgroundColor: "var(--tf-surface)",
+                    borderColor: "var(--tf-line)",
+                    borderRadius: "var(--tf-radius)",
+                  }}
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[16px] font-semibold">{producto.nombre}</span>
+                    {producto.subtitulo ? (
+                      <span
+                        className="mt-0.5 block text-[13.5px]"
+                        style={{ color: "var(--tf-muted)" }}
+                      >
+                        {producto.subtitulo}
+                      </span>
+                    ) : null}
                   </span>
-                  {producto.subtitulo ? (
-                    <span className="mt-0.5 block text-[13.5px] text-ink-500">
-                      {producto.subtitulo}
+
+                  {producto.precio ? (
+                    <span className="shrink-0 text-[16px] font-semibold tabular-nums">
+                      {formatMoney(producto.precio, producto.moneda ?? "ARS")}
                     </span>
                   ) : null}
-                </span>
 
-                {producto.precio ? (
-                  <span className="shrink-0 text-[16px] font-semibold tabular-nums text-ink-900">
-                    {formatMoney(producto.precio, producto.moneda ?? "ARS")}
-                  </span>
-                ) : null}
-
-                <Icon
-                  name="chevronRight"
-                  size={18}
-                  className="shrink-0 text-ink-300 transition-transform group-hover:translate-x-0.5"
-                />
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-    </main>
+                  <Icon
+                    name="chevronRight"
+                    size={18}
+                    className="shrink-0 transition-transform group-hover:translate-x-0.5"
+                    style={{ color: "var(--tf-accent)" }}
+                  />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </main>
+    </div>
   );
 }

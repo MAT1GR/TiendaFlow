@@ -19,12 +19,17 @@ export interface NavGroup {
 /**
  * Navegación principal.
  *
- * Seis destinos arriba y tres abajo. Nada más.
+ * Cinco destinos arriba y tres abajo. Nada más.
  *
  * El centro de la app es el producto: todo lo que sirve para venderlo —precio,
  * bonos, página, cobro, ofertas posteriores, métricas— vive adentro del
  * producto, no en secciones sueltas. Por eso no están "Ofertas", "Funnels" ni
  * "Landings": se llegan desde el producto que las usa.
+ *
+ * Tampoco está "Mis productos": el selector que está arriba del menú ya lista
+ * los productos, dice en qué etapa está cada uno y lleva a la biblioteca
+ * completa. Tener las dos cosas obligaba a elegir entre dos caminos para lo
+ * mismo, que es la peor forma de ordenar un menú.
  *
  * Lo de abajo es de otra naturaleza: no es trabajo diario, es plomería que se
  * toca una vez y se olvida. Por eso va separado y no compite con lo de arriba.
@@ -34,7 +39,6 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "",
     items: [
       { label: "Inicio", href: "/app", emoji: "🏠", icon: "dashboard", exact: true },
-      { label: "Mis productos", href: "/app/productos", emoji: "📦", icon: "box" },
       { label: "Ventas", href: "/app/ventas", emoji: "🛒", icon: "cart" },
       { label: "Clientes", href: "/app/clientes", emoji: "👥", icon: "users" },
       { label: "Marketing", href: "/app/marketing", emoji: "📣", icon: "megaphone" },

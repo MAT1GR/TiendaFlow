@@ -31,6 +31,9 @@ CREATE TABLE IF NOT EXISTS workspaces (
   country TEXT NOT NULL DEFAULT 'AR',
   currency TEXT NOT NULL DEFAULT 'ARS',
   tax_id TEXT,
+  -- Los colores de la tienda, elegidos en el alta. Mismo formato que
+  -- landing_pages.theme: se usan como punto de partida de cada página nueva.
+  theme TEXT,
   is_demo INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
@@ -128,6 +131,8 @@ CREATE TABLE IF NOT EXISTS offers (
   UNIQUE (workspace_id, slug)
 );
 CREATE INDEX IF NOT EXISTS idx_offers_ws ON offers(workspace_id);
+-- El espacio de trabajo del producto siempre pide "la oferta de ESTE producto".
+CREATE INDEX IF NOT EXISTS idx_offers_product ON offers(workspace_id, product_id);
 
 CREATE TABLE IF NOT EXISTS bonuses (
   id TEXT PRIMARY KEY,
@@ -216,6 +221,8 @@ CREATE TABLE IF NOT EXISTS funnels (
   UNIQUE (workspace_id, slug)
 );
 CREATE INDEX IF NOT EXISTS idx_funnels_ws ON funnels(workspace_id);
+-- Idem: "la página de venta de ESTA oferta".
+CREATE INDEX IF NOT EXISTS idx_funnels_offer ON funnels(workspace_id, offer_id);
 
 CREATE TABLE IF NOT EXISTS funnel_steps (
   id TEXT PRIMARY KEY,
@@ -246,6 +253,9 @@ CREATE TABLE IF NOT EXISTS landing_pages (
   updated_at TEXT NOT NULL,
   UNIQUE (workspace_id, slug)
 );
+-- La página se busca siempre por su paso del recorrido, y esa consulta corre
+-- en cada navegación adentro del producto.
+CREATE INDEX IF NOT EXISTS idx_pages_step ON landing_pages(workspace_id, funnel_step_id);
 
 CREATE TABLE IF NOT EXISTS landing_sections (
   id TEXT PRIMARY KEY,
@@ -323,6 +333,8 @@ CREATE TABLE IF NOT EXISTS order_items (
   created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_items_order ON order_items(order_id);
+-- Las ventas de un producto, para el contador que se ve en cada pantalla suya.
+CREATE INDEX IF NOT EXISTS idx_items_product ON order_items(workspace_id, product_id);
 
 CREATE TABLE IF NOT EXISTS payments (
   id TEXT PRIMARY KEY,
@@ -397,6 +409,9 @@ CREATE TABLE IF NOT EXISTS analytics_events (
 );
 CREATE INDEX IF NOT EXISTS idx_events_ws ON analytics_events(workspace_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_events_name ON analytics_events(workspace_id, name);
+-- Las visitas de una página puntual. Sin esto, contar visitas escanea toda la
+-- tabla de eventos, que es la que más rápido crece de toda la base.
+CREATE INDEX IF NOT EXISTS idx_events_funnel ON analytics_events(workspace_id, funnel_id, name);
 
 -- --- Afiliados -------------------------------------------------------------
 

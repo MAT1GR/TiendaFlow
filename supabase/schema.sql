@@ -44,6 +44,8 @@ create table if not exists public.workspaces (
   country text not null default 'AR',
   currency text not null default 'ARS',
   tax_id text,
+  -- Los colores de la tienda, elegidos en el alta.
+  theme jsonb,
   is_demo boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

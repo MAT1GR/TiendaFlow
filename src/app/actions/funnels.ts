@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 
 import { requireSession } from "@/lib/auth";
+import { checkPublishQuota } from "@/lib/quota";
+import { findLayout } from "@/components/landing/estructuras";
 import { readTheme } from "@/components/landing/theme";
 import { landingTemplate } from "@/lib/landing-template";
 import { funnelPublishBlockers } from "@/lib/launch";
@@ -29,7 +31,7 @@ export async function createFunnelAction(
   return guarded(async () => {
     const { workspace } = await requireSession();
 
-    const name = requiredText(formData.get("name"), "El nombre del funnel");
+    const name = requiredText(formData.get("name"), "El nombre de la página");
     const offerId = optionalText(formData.get("offer_id"));
     const productId = optionalText(formData.get("product_id"));
 
@@ -52,7 +54,9 @@ export async function createFunnelAction(
     const landingStep = steps.find((step) => step.type === "landing");
     if (landingStep) {
       const pageId = repo.createLandingPage(workspace.id, {
-        name: `Landing ${name}`,
+        // El vendedor nunca ve este nombre en la pantalla del editor, pero sí
+        // en listados: que diga "Página de venta de X" y no "Landing Funnel X".
+        name: `Página de venta de ${name}`,
         offer_id: offerId,
         funnel_step_id: landingStep.id,
       });
@@ -68,6 +72,9 @@ export async function createFunnelAction(
           offer: offer ?? null,
           bonuses: offerId ? repo.listBonuses(workspace.id, offerId) : [],
           workspaceName: workspace.name,
+          // El estilo de página de la tienda: la página nace con la estructura
+          // que el vendedor usó la última vez, no siempre con la clásica.
+          layout: findLayout(repo.workspaceTheme(workspace.id).layout),
         }),
       );
     }
@@ -95,7 +102,7 @@ export async function renameFunnelAction(
     if (!repo.getFunnel(workspace.id, funnelId)) return fail("No encontramos ese funnel.");
 
     repo.updateFunnel(workspace.id, funnelId, {
-      name: requiredText(formData.get("name"), "El nombre del funnel"),
+      name: requiredText(formData.get("name"), "El nombre de la página"),
       offer_id: optionalText(formData.get("offer_id")),
       traffic_source: String(formData.get("traffic_source") ?? "meta_ads"),
     });
@@ -230,6 +237,12 @@ export async function publishFunnelAction(funnelId: string): Promise<ActionResul
     if (blockers.length) {
       return fail(`No podemos publicar todavía:\n· ${blockers.join("\n· ")}`);
     }
+
+    // La capacidad del plan es lo último que se mira: primero que la página
+    // esté sana, después si le queda lugar. Al revés, alguien con el cupo lleno
+    // nunca se entera de que además le falta el medio de pago.
+    const cupo = checkPublishQuota(workspace.id, funnelId);
+    if (!cupo.ok) return fail(cupo.reason!);
 
     const url = `/f/${repo.publicSlug(funnel)}`;
     repo.updateFunnel(workspace.id, funnelId, { status: "published", published_url: url });

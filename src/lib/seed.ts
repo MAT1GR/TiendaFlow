@@ -4,7 +4,7 @@ import crypto from "node:crypto";
 
 import { get, nowIso, run, transaction } from "@/lib/db";
 import { landingTemplate } from "@/lib/landing-template";
-import { id } from "@/lib/repo";
+import { id, workspaceTheme } from "@/lib/repo";
 import { slugify } from "@/lib/utils";
 
 /**
@@ -294,7 +294,9 @@ export function seedDemoWorkspace(workspaceId: string) {
       offerId,
       "Landing Hábitos Saludables",
       "landing-habitos-saludables",
-      JSON.stringify({ accent: "#6D5DFB" }),
+      // El demo usa los colores de la tienda: si mostrara otra paleta, el
+      // vendedor estaría mirando un ejemplo que no se parece a lo suyo.
+      JSON.stringify(workspaceTheme(workspaceId)),
       "Guía de Hábitos Saludables",
       "El sistema de 21 días para sostener lo que empezás.",
       now,

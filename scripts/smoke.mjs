@@ -71,33 +71,57 @@ await step("Registro de usuario", async () => {
   await page.waitForURL("**/bienvenida", { timeout: 20000 });
 });
 
-await step("Onboarding en 3 pasos", async () => {
+await step("Alta de la primera tienda", async () => {
+  await page.getByPlaceholder(/Taller de Cerámica/i).fill("Tienda Smoke");
+  await page.getByRole("button", { name: /^Siguiente$/ }).click();
   await page.getByRole("button", { name: /Tengo un ebook/i }).click();
   await page.getByRole("button", { name: /^Siguiente$/ }).click();
-  await page.getByRole("button", { name: /Meta Ads/i }).click();
+  await page.getByRole("button", { name: /Océano/i }).click();
   await page.getByRole("button", { name: /^Siguiente$/ }).click();
-  await page.getByRole("button", { name: /Crear mi producto/i }).click();
-  await page.getByRole("button", { name: /^Empezar$/ }).click();
+  // El alta cierra eligiendo plan: Free es el que trae marcado por defecto.
+  await page.getByText(/Elegí con qué plan arrancás/).waitFor({ timeout: 15000 });
+  await page.getByRole("button", { name: /Crear mi tienda y cargar mi producto/i }).click();
+  // El alta termina siempre en la creación del producto: no hay otra rama.
   await page.waitForURL("**/app/productos/nuevo**", { timeout: 20000 });
+});
+
+await step("La tienda quedó con el nombre que puso el vendedor", async () => {
+  // Se chequea sobre la pantalla en la que ya estamos: el nombre de la tienda
+  // vive en el shell de la app, así que no hace falta ir a Configuración.
+  await page.getByText("Tienda Smoke").first().waitFor({ timeout: 15000 });
 });
 
 let productUrl = "";
 
-await step("Crear producto (flujo de 6 pasos)", async () => {
-  await page.getByRole("button", { name: /^Siguiente$/ }).click(); // origen → info
+await step("Crear producto: nombre, descripción y la IA arma la carta de ventas", async () => {
   await page.fill('input[placeholder="Guía de Hábitos Saludables"]', "Guía Smoke Test");
   await page.fill(
-    'input[placeholder="El sistema de 21 días para sostener lo que empezás"]',
-    "Un subtítulo de prueba",
+    "textarea",
+    "Es una guía de 21 días para gente que arranca mil veces con los hábitos y abandona a la semana. Adentro hay rutinas cortas y plantillas de seguimiento.",
   );
-  await page.fill('input[placeholder="14900"]', "12000");
-  for (let i = 0; i < 4; i += 1) {
-    await page.getByRole("button", { name: /^Siguiente$/ }).click();
-    await page.waitForTimeout(120);
+  await page.getByRole("button", { name: /Armar mi carta de ventas/i }).click();
+  await page.getByText(/Esta es tu carta de ventas/i).waitFor({ timeout: 30000 });
+});
+
+await step("La carta de ventas trae avatar, dolor y transformación", async () => {
+  for (const label of [
+    /A quién le hablás/i,
+    /El problema que resolvés/i,
+    /En qué queda cuando termina/i,
+  ]) {
+    await page.getByText(label).first().waitFor({ timeout: 10000 });
   }
+  // Los tres campos vienen completos: son los que alimentan oferta, página y ads.
+  const vacios = await page
+    .locator("textarea")
+    .evaluateAll((nodes) => nodes.filter((node) => !node.value.trim()).length);
+  if (vacios) throw new Error(`${vacios} campos de la carta llegaron vacíos`);
+});
+
+await step("Crear el producto desde la carta", async () => {
   await page.getByRole("button", { name: /^Crear producto$/ }).click();
-  await page.waitForURL(/\/app\/productos\/[0-9a-f-]{36}/, { timeout: 20000 });
-  productUrl = page.url();
+  await page.waitForURL(/\/app\/productos\/[0-9a-f-]{36}/, { timeout: 30000 });
+  productUrl = page.url().split("?")[0];
 });
 
 await step("Crear oferta con propuesta de IA", async () => {
@@ -166,7 +190,7 @@ await step("Configurar Meta Pixel", async () => {
 
 await step("Generar la página de venta con IA, sin salir del producto", async () => {
   await page.goto(`${productUrl}/pagina`, { waitUntil: "domcontentloaded" });
-  await page.getByRole("button", { name: /Generar landing con IA/i }).first().click();
+  await page.getByRole("button", { name: /Mejorar con IA/i }).first().click();
   await page.getByRole("button", { name: /^Generar landing$/ }).click();
   await page.getByText(/Borrador local, no generado por IA/i).first().waitFor({ timeout: 25000 });
   const sections = await page.locator("aside ol li").count();

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { DEFAULT_LAYOUT, type LandingLayout } from "@/components/landing/estructuras";
 import { landingTemplate } from "@/lib/landing-template";
 import { runAiTask, type AiResult } from "@/lib/ai/provider";
 import { formatMoney, formatPercent } from "@/lib/utils";
@@ -33,6 +34,12 @@ export interface ProductDraft {
   positioning: string;
   description: string;
   short_description: string;
+  /** El avatar: a quién le habla la carta de ventas, en una frase. */
+  audience: string;
+  /** El dolor concreto de ese avatar, en su propio idioma. */
+  main_problem: string;
+  /** El después: en qué queda la persona cuando termina. */
+  transformation: string;
   benefits: string[];
   outline: Array<{ chapter: string; summary: string; bullets: string[] }>;
   faq: Array<{ question: string; answer: string }>;
@@ -41,7 +48,12 @@ export interface ProductDraft {
 }
 
 export interface ProductBriefInput {
+  /** Lo que el vendedor escribió con sus palabras sobre el producto. */
   topic: string;
+  /** El nombre que le puso, si ya tiene uno. */
+  productName?: string;
+  /** `true` cuando el material ya existe y no hay que proponerle un índice. */
+  yaLoTiene?: boolean;
   audience?: string;
   level?: string;
   problem?: string;
@@ -50,33 +62,90 @@ export interface ProductBriefInput {
   length?: string;
 }
 
+/**
+ * La carta de ventas completa a partir de dos datos.
+ *
+ * El vendedor pone el nombre y cuenta con sus palabras qué es lo que vende. De
+ * ahí sale todo lo demás: a quién le habla, qué dolor resuelve, en qué queda la
+ * persona, los beneficios, el índice y las preguntas. Pedirle que complete
+ * "audiencia", "problema principal" y "transformación" en un formulario era
+ * pedirle que hiciera el trabajo de marketing antes de tener el producto, y son
+ * justo los tres campos que un modelo deduce bien de una descripción en
+ * lenguaje natural.
+ *
+ * Los campos sueltos se siguen aceptando: si el vendedor ya los definió, mandan
+ * sobre lo que deduzca la IA.
+ */
 export function generateProductDraft(input: ProductBriefInput): Promise<AiResult<ProductDraft>> {
+  /*
+   * El tema, en pocas palabras.
+   *
+   * `input.topic` ahora es la descripción libre del vendedor y puede ser un
+   * párrafo entero. Estos tres valores son el respaldo cuando no hay IA, y de
+   * acá salen después el problema del producto, los beneficios de la oferta y
+   * las pastillas del hero. Si les metemos el párrafo completo, la página
+   * termina con una pastilla de tres renglones.
+   */
+  const tema = input.productName?.trim() || primeraFrase(input.topic) || "tu tema";
   const audience = input.audience?.trim() || "personas que quieren avanzar en este tema";
-  const problem = input.problem?.trim() || `no saber por dónde empezar con ${input.topic}`;
+  const problem = input.problem?.trim() || `no saber por dónde empezar con ${tema}`;
   const outcome = input.outcome?.trim() || "un plan concreto para aplicar desde el primer día";
+
+  const dato = (label: string, valor?: string) =>
+    valor?.trim() ? `${label}: ${valor.trim()}` : `${label}: deducilo de la descripción`;
 
   return runAiTask<ProductDraft>({
     task: "product_draft",
     system: SYSTEM_BASE,
     schemaHint:
-      '{ titles: string[5], subtitle, positioning, description, short_description, benefits: string[6], outline: [{chapter, summary, bullets: string[3]}], faq: [{question, answer}], bonus_ideas: string[4], offer_ideas: string[3] }',
+      '{ titles: string[5], subtitle, positioning, description, short_description, audience, main_problem, transformation, benefits: string[6], outline: [{chapter, summary, bullets: string[3]}], faq: [{question, answer}], bonus_ideas: string[4], offer_ideas: string[3] }',
     maxTokens: 4000,
-    prompt: `Creá el borrador completo de un producto digital.
+    prompt: `A partir de lo que escribió el vendedor, armá la carta de ventas completa de su producto digital.
 
-Tema: ${input.topic}
-Audiencia: ${audience}
-Nivel de experiencia de la audiencia: ${input.level ?? "principiante"}
-Problema principal que resuelve: ${problem}
-Resultado que busca el lector: ${outcome}
+Nombre que le puso: ${input.productName?.trim() || "todavía no tiene"}
+Lo que contó, con sus palabras:
+"""
+${input.topic}
+"""
+
+${dato("Audiencia", input.audience)}
+${dato("Problema principal", input.problem)}
+${dato("Resultado que busca", input.outcome)}
 Tono: ${TONE_HINT[input.tone ?? "cercano"] ?? TONE_HINT.cercano}
-Extensión aproximada: ${input.length ?? "corta (30-50 páginas)"}
+${
+  input.yaLoTiene
+    ? "El material YA existe: el índice tiene que describir lo que razonablemente hay adentro, no inventarle capítulos nuevos."
+    : `Todavía no está escrito: proponé el índice. Extensión aproximada: ${input.length ?? "corta (30-50 páginas)"}.`
+}
 
-Generá: 5 títulos posibles, un subtítulo, el posicionamiento en una frase,
-una descripción larga (3 párrafos), una descripción corta (máx 160 caracteres),
-6 beneficios, un índice de 6 a 8 capítulos con resumen y 3 bullets cada uno,
-5 preguntas frecuentes con respuesta, 4 ideas de bonos y 3 ideas de oferta.`,
+Lo primero y más importante son estos tres campos, porque de ellos cuelga todo
+lo que la app escribe después (la oferta, la página de venta y los anuncios):
+
+· audience — el avatar, en una frase concreta. Quién es y en qué momento está.
+  "Personas que arrancan mil veces con los hábitos y abandonan a la semana",
+  no "personas interesadas en el bienestar".
+· main_problem — el dolor, dicho como lo diría esa persona, no como categoría.
+· transformation — en qué queda cuando termina. Un después, no una promesa vaga.
+
+Después: 5 títulos posibles (el primero puede ser el que ya puso, si funciona),
+un subtítulo, el posicionamiento en una frase, una descripción larga de 3
+párrafos, una descripción corta (máx 160 caracteres), 6 beneficios escritos como
+resultado y no como característica, un índice de 6 a 8 capítulos con resumen y 3
+bullets cada uno, 5 preguntas frecuentes con respuesta, 4 ideas de bonos y 3
+ideas de oferta.
+
+No inventes cifras, testimonios ni resultados de clientes: no los tenés.`,
     fallback: (): ProductDraft => {
-      const topic = input.topic.trim() || "tu tema";
+      /*
+       * Sin proveedor de IA no hay carta de ventas: hay andamio.
+       *
+       * `topic` ahora es la descripción libre del vendedor, que puede tener
+       * párrafos enteros. Meterla dentro de un título daría algo ilegible, así
+       * que para los textos cortos usamos el nombre que puso y la descripción
+       * queda para los campos largos. La UI lo marca como borrador local.
+       */
+      const descripcion = input.topic.trim();
+      const topic = tema;
       const chapters = [
         "Por dónde empezar",
         "Los errores que te frenan",
@@ -95,7 +164,10 @@ una descripción larga (3 párrafos), una descripción corta (máx 160 caractere
         ],
         subtitle: `Todo lo que necesitás para ${outcome}`,
         positioning: `Para ${audience} que quieren dejar de ${problem} y conseguir ${outcome}.`,
-        description: `Esta guía está pensada para ${audience}.\n\nAdentro vas a encontrar el paso a paso para resolver ${problem}, con ejercicios concretos y ejemplos aplicables desde el primer día.\n\nAl terminar vas a tener ${outcome}.`,
+        audience,
+        main_problem: problem,
+        transformation: outcome,
+        description: `${descripcion || `Esta guía está pensada para ${audience}.`}\n\nAdentro vas a encontrar el paso a paso para resolver ${problem}, con ejercicios concretos y ejemplos aplicables desde el primer día.\n\nAl terminar vas a tener ${outcome}.`,
         short_description: `Guía práctica sobre ${topic} para ${audience}.`.slice(0, 160),
         benefits: [
           `Entendés exactamente por dónde empezar con ${topic}`,
@@ -156,6 +228,14 @@ export interface OfferDraft {
   headline: string;
   positioning: string;
   promise: string;
+  /**
+   * El precio sugerido para el producto principal.
+   *
+   * El producto ya no nace con precio: ponerle un número antes de saber qué
+   * lleva adentro la oferta era adivinar. Acá sí hay con qué — promesa, bonos,
+   * garantía— así que la IA propone y el vendedor decide.
+   */
+  suggested_price: number;
   benefits: string[];
   cta_text: string;
   guarantee: string;
@@ -184,7 +264,7 @@ export function generateOfferDraft(input: OfferBriefInput): Promise<AiResult<Off
     task: "offer_draft",
     system: SYSTEM_BASE,
     schemaHint:
-      '{ headline, positioning, promise, benefits: string[6], cta_text, guarantee, bonuses: [{name, description, value}], order_bump: {name, description, price, checkbox_label}, upsell: {name, headline, description, price}, downsell: {name, headline, description, price} }',
+      '{ headline, positioning, promise, suggested_price: number, benefits: string[6], cta_text, guarantee, bonuses: [{name, description, value}], order_bump: {name, description, price, checkbox_label}, upsell: {name, headline, description, price}, downsell: {name, headline, description, price} }',
     maxTokens: 3000,
     prompt: `Armá una oferta irresistible para este producto digital.
 
@@ -195,16 +275,24 @@ Transformación: ${transformation}
 Precio principal: ${formatMoney(input.price, input.currency)}
 Tono: ${TONE_HINT[input.tone ?? "directo"] ?? TONE_HINT.directo}
 
-Devolvé headline, posicionamiento, promesa principal, 6 beneficios en formato
-resultado (no características), texto del CTA, texto de garantía, 3 bonos con
-valor percibido, un order bump de bajo precio, un upsell y un downsell.
-El order bump debe costar entre el 15% y el 30% del precio principal.
-El upsell entre 1,5x y 3x. El downsell alrededor del 50% del upsell.
+Devolvé headline, posicionamiento, promesa principal, un precio sugerido, 6
+beneficios en formato resultado (no características), texto del CTA, texto de
+garantía, 3 bonos con valor percibido, un order bump de bajo precio, un upsell
+y un downsell.
+
+Sobre "suggested_price": es una propuesta, no un dato. Tené en cuenta que es un
+producto digital, que la moneda es ${input.currency} y que el precio de arriba
+es el punto de partida. Devolvé un número redondo y verosimíl para ese mercado.
+El resto de los precios va relativo a ese: el order bump entre el 15% y el 30%
+del principal, el upsell entre 1,5x y 3x, el downsell alrededor del 50% del
+upsell.
+
 No inventes cifras de resultados de clientes.`,
     fallback: (): OfferDraft => ({
       headline: `${input.productName}: ${transformation}`,
       positioning: `Para ${audience} que quieren dejar atrás ${problem}.`,
       promise: `Un camino claro para llegar a ${transformation}, sin dar vueltas.`,
+      suggested_price: input.price,
       benefits: [
         `Salís de ${problem} con un plan concreto`,
         "Sabés exactamente qué hacer primero",
@@ -279,12 +367,57 @@ export interface LandingBriefInput {
   benefits?: string[];
   guarantee?: string | null;
   bonuses?: Array<{ name: string; description: string | null }>;
+  /** El estilo de página elegido. Define qué bloques se le piden al modelo. */
+  layout?: LandingLayout;
 }
+
+/**
+ * Qué campos lleva cada bloque.
+ *
+ * Antes esta lista estaba escrita a mano dentro del prompt, con los 13 bloques
+ * del estilo clásico numerados. Ahora que el vendedor puede elegir el estilo de
+ * su página, el prompt se arma con los bloques de SU estilo: pedirle al modelo
+ * bloques que la página no tiene es gastar tokens y arriesgar que devuelva
+ * secciones que después hay que tirar.
+ */
+const BLOCK_SPECS: Record<string, string> = {
+  hero: "eyebrow, headline, subheadline, cta, pills[] (3 frases cortas), social, trust",
+  stats: "items[{value, label}] (4), highlights[{title, subtitle, text}] (3)",
+  problems: "title, subtitle, items[] (5 dolores concretos, en segunda persona), closing",
+  gallery: "kicker, title, subtitle, featured_alt, images[{alt}] (6), note",
+  solution:
+    "badge, title, subtitle, text, tags[] (4), highlight, stats[{value, label}] (3), features[] (4)",
+  modules: "kicker, title, box_title, items[{title, description}] (6), metrics[{value, label}] (2)",
+  bonuses: "kicker, title, items[{name, description, badge}], footer_note",
+  pricing:
+    "title, badge, product_name, subtitle, price_label, compare_label, note, includes[] (6), cta, trust[] (3)",
+  testimonials: "kicker, title, subtitle, items[] vacío y placeholder true",
+  guarantee: "title, text, seal, note",
+  faq: "kicker, title, items[{question, answer}] (8 preguntas reales de objeción)",
+  cta: "kicker, headline, subheadline, cta, micro, trust[] (3)",
+  footer: "brand, text, links[] (3)",
+  benefits: "title, items[] (6 resultados concretos, en segunda persona)",
+  features:
+    "title, items[{title, description}] (3 pasos, del pago al primer resultado, numerados en el title)",
+  comparison:
+    "title, without_title, with_title, without_items[] (5), with_items[] (5) — en espejo, punto por punto",
+  countdown: "title, text (sin inventar una fecha: decile al vendedor que ponga la suya)",
+  headline: "text",
+  subheadline: "text",
+  mockup: "title, caption",
+  social_proof: "text, placeholder true",
+  video: "title, url vacío",
+  image: "alt, url vacío",
+};
 
 export function generateLandingDraft(input: LandingBriefInput): Promise<AiResult<LandingDraft>> {
   const audience = input.audience?.trim() || "tu audiencia";
   const problem = input.problem?.trim() || "el problema que resolvés";
   const transformation = input.transformation?.trim() || "el resultado que prometés";
+
+  // Los bloques del estilo que eligió el vendedor, no una lista fija.
+  const layout = input.layout ?? DEFAULT_LAYOUT;
+  const bloques = layout.structure;
 
   /**
    * El borrador local y el pedido a la IA comparten la misma estructura: la
@@ -315,13 +448,15 @@ export function generateLandingDraft(input: LandingBriefInput): Promise<AiResult
       },
       bonuses: input.bonuses ?? [],
       workspaceName: input.productName,
+      layout,
     });
 
   return runAiTask<LandingDraft>({
     task: "landing_draft",
     system: SYSTEM_BASE,
-    schemaHint:
-      '{ sections: [{ type: "hero"|"stats"|"problems"|"gallery"|"solution"|"modules"|"bonuses"|"pricing"|"testimonials"|"guarantee"|"faq"|"cta"|"footer", content: object }] }',
+    schemaHint: `{ sections: [{ type: ${bloques
+      .map((tipo) => `"${tipo}"`)
+      .join("|")}, content: object }] }`,
     maxTokens: 4000,
     prompt: `Escribí el copy completo de una landing page de venta directa para tráfico frío de Meta Ads.
 
@@ -335,21 +470,29 @@ Tono: ${TONE_HINT[input.tone ?? "directo"] ?? TONE_HINT.directo}
 ${input.benefits?.length ? `Beneficios ya definidos: ${input.benefits.join(" | ")}` : ""}
 ${input.bonuses?.length ? `Bonos ya definidos: ${input.bonuses.map((b) => b.name).join(" | ")}` : ""}
 
-Devolvé EXACTAMENTE estos 13 bloques, en este orden y con estos campos:
+Devolvé EXACTAMENTE estos ${bloques.length} bloques, en este orden y con estos campos:
 
-1. hero — eyebrow, headline, subheadline, cta, pills[] (3 frases cortas), social, trust
-2. stats — items[{value, label}] (4), highlights[{title, subtitle, text}] (3)
-3. problems — title, subtitle, items[] (5 dolores concretos, en segunda persona), closing
-4. gallery — kicker, title, subtitle, featured_alt, images[{alt}] (6), note
-5. solution — badge, title, subtitle, text, tags[] (4), highlight, stats[{value, label}] (3), features[] (4)
-6. modules — kicker, title, box_title, items[{title, description}] (6), metrics[{value, label}] (2)
-7. bonuses — kicker, title, items[{name, description, badge}], footer_note
-8. pricing — title, badge, product_name, subtitle, price_label, compare_label, note, includes[] (6), cta, trust[] (3)
-9. testimonials — kicker, title, subtitle, items[] vacío y placeholder true
-10. guarantee — title, text, seal, note
-11. faq — kicker, title, items[{question, answer}] (8 preguntas reales de objeción)
-12. cta — kicker, headline, subheadline, cta, micro, trust[] (3)
-13. footer — brand, text, links[] (3)
+${bloques.map((tipo, i) => `${i + 1}. ${tipo} — ${BLOCK_SPECS[tipo] ?? "los campos que corresponda"}`).join("\n")}
+
+LONGITUD — la regla que más se incumple, leela dos veces:
+· Escribí CORTO. Una landing se escanea, no se lee. Si una frase dice lo mismo
+  con la mitad de las palabras, va con la mitad. Preferí punto antes que coma.
+· Una idea por campo. Nada de encadenar con "y además", "también", "por si fuera poco".
+· Contá los caracteres antes de devolver. Máximos por campo:
+  - headline / title / box_title: 60 caracteres.
+  - subheadline / subtitle / promise: 100 caracteres.
+  - eyebrow / kicker / badge / seal / price_label / compare_label: 30 caracteres.
+  - cta: 25 caracteres.
+  - pills, tags, features, includes, trust, links: 35 caracteres cada uno.
+  - items de "problems": 90 caracteres cada uno, una sola frase.
+  - closing de "problems", micro de "cta", note, footer_note, social: 90 caracteres.
+  - description de "modules" y "bonuses", title de "highlights": 110 caracteres.
+  - text de "solution", "guarantee" y "highlights": 200 caracteres.
+  - question de "faq": 60 caracteres. answer de "faq": 160 caracteres, dos frases máximo.
+  - label de "stats" y "metrics": una o dos palabras. value: 4 caracteres.
+· Sin adjetivos de relleno: "increíble", "revolucionario", "único en su tipo",
+  "la mejor herramienta del mercado". Si se puede borrar sin perder sentido, se borra.
+· Si te falta contenido para llenar un campo, dejalo corto. Nunca lo estires.
 
 Reglas:
 · Cada headline tiene que ser específico y hablarle a esa audiencia, no genérico.
@@ -641,4 +784,10 @@ export interface DashboardInsight {
 
 function capitalize(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+/** La primera oración de un texto largo, recortada para que entre en un título. */
+function primeraFrase(texto: string): string {
+  const frase = texto.split(/(?<=[.!?\n])/)[0]?.trim().replace(/[.!?]$/, "") ?? "";
+  return frase.length > 60 ? `${frase.slice(0, 57).trimEnd()}…` : frase;
 }

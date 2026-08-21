@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
 import { AfterPurchaseWizard } from "@/app/(app)/app/productos/[id]/despues/wizard";
+import { ExperienceSteps, stepBlurb } from "@/components/app/experience-steps";
 import { SectionIntro } from "@/components/app/section-intro";
 import { LinkButton } from "@/components/ui/primitives";
 import { requireSession } from "@/lib/auth";
@@ -33,6 +34,7 @@ export default async function AfterPurchaseTab({ params }: { params: Promise<{ i
   if (!offer) {
     return (
       <EmptyGate
+        productId={id}
         title="Primero necesitás ponerle precio"
         body="Todo lo que se ofrece alrededor de la compra se cuelga de tu oferta principal."
         href={`/app/productos/${id}/oferta`}
@@ -49,7 +51,9 @@ export default async function AfterPurchaseTab({ params }: { params: Promise<{ i
   const base = `/app/productos/${id}/despues`;
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4">
+      <Recorrido productId={id} />
+
       <SectionIntro
         emoji="🎁"
         title="Después de comprar"
@@ -265,20 +269,35 @@ function Moment({
   );
 }
 
+/**
+ * El recorrido de compra. Esta pantalla es el tercero de sus cuatro pasos, y
+ * verlo entero es lo que hace que "después de comprar" signifique algo.
+ */
+function Recorrido({ productId }: { productId: string }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <ExperienceSteps productId={productId} current="despues" />
+      <p className="text-[13px] text-ink-500">{stepBlurb("despues")}</p>
+    </div>
+  );
+}
+
 function EmptyGate({
+  productId,
   title,
   body,
   href,
   cta,
 }: {
+  productId: string;
   title: string;
   body: string;
   href: string;
   cta: string;
 }) {
   return (
-    <div className="flex flex-col gap-5">
-      <SectionIntro emoji="🎁" title="Después de comprar" blurb={sectionBlurb("despues")} />
+    <div className="flex flex-col gap-4">
+      <Recorrido productId={productId} />
 
       <div className="rounded-2xl border border-ink-200 bg-white p-8 text-center">
         <h2 className="text-[19px] font-semibold tracking-tight text-ink-900">{title}</h2>

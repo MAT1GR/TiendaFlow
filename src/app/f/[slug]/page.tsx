@@ -98,7 +98,13 @@ export default async function PublicLandingPage({
         </div>
       ) : null}
 
-      <main className="pb-24" style={themeVars(theme)}>
+      {/*
+        `@container` es lo que hace que los bloques se adapten de verdad.
+        Miden el ancho de ESTA caja, no el de la ventana, así que la misma
+        página se ve bien acá a pantalla completa y adentro de la vista previa
+        del editor, que es apenas una columna de 390px.
+      */}
+      <main className="@container pb-24" style={themeVars(theme)}>
         {sections.length === 0 ? (
           <FallbackLanding
             title={offer?.headline ?? product?.name ?? funnel.name}

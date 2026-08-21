@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { Icon } from "@/components/ui/icon";
+import { withFlow } from "@/lib/product-flow";
 import type { JourneyStep, ProductJourney } from "@/lib/product-workspace";
 import { cn } from "@/lib/utils";
 
@@ -65,8 +66,10 @@ function StepRow({ step }: { step: JourneyStep }) {
 
   return (
     <li>
+      {/* El paso que sigue retoma el paso a paso: la persona confirma y la app
+          la lleva sola hasta el final, sin volver acá entre paso y paso. */}
       <Link
-        href={step.href}
+        href={withFlow(step.href, step.next)}
         className={cn(
           "group flex items-center gap-3 px-5 py-3.5 transition-colors",
           step.next ? "bg-brand-50/50 hover:bg-brand-50" : "hover:bg-ink-50",

@@ -80,6 +80,8 @@ export interface Workspace {
   country: string;
   currency: string;
   tax_id: string | null;
+  /** JSON con los colores de la tienda (mismo formato que `LandingTheme`). */
+  theme: string | null;
   is_demo: number;
   created_at: string;
   updated_at: string;
@@ -475,6 +477,10 @@ export interface AiGeneration {
 
 export interface OnboardingAnswers {
   productSource?: string;
+  /**
+   * Cuentas viejas. El alta preguntaba de dónde venía el tráfico y qué quería
+   * hacer primero; ninguna de las dos se pregunta más.
+   */
   channel?: string;
   goal?: string;
 }

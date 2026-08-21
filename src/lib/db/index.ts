@@ -50,6 +50,7 @@ function migrate(database: DatabaseSync) {
     { table: "orders", column: "commission_rate", definition: "REAL NOT NULL DEFAULT 0" },
     { table: "orders", column: "commission_amount", definition: "REAL NOT NULL DEFAULT 0" },
     { table: "orders", column: "paid_at", definition: "TEXT" },
+    { table: "workspaces", column: "theme", definition: "TEXT" },
   ];
 
   for (const { table, column, definition } of ADDITIONS) {

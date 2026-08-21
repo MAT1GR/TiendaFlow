@@ -1,6 +1,6 @@
 import "server-only";
 
-import { BASE_STRUCTURE } from "@/components/landing/blocks";
+import { DEFAULT_LAYOUT, type LandingLayout } from "@/components/landing/estructuras";
 import { conformToShape, sanitizeContent } from "@/lib/ai/sanitize";
 import { formatMoney, toLines } from "@/lib/utils";
 import type { Bonus, Offer, Product } from "@/lib/types";
@@ -38,6 +38,8 @@ export interface TemplateInput {
   bonuses: Array<Pick<Bonus, "name" | "description">>;
   /** Nombre del negocio, para la marca del pie. */
   workspaceName: string;
+  /** El estilo de página. Define qué bloques salen y en qué orden. */
+  layout?: LandingLayout;
 }
 
 /** Primer valor con contenido real; si no hay ninguno, el último (el ejemplo). */
@@ -69,14 +71,25 @@ export function landingTemplate(input: TemplateInput): TemplateSection[] {
 
   const cta = pick(offer?.cta_text, "Quiero mi acceso");
 
+  /*
+   * Las pastillas del hero y las etiquetas son piezas cortas.
+   *
+   * Un beneficio puede venir escrito como una oración entera y está bien que
+   * así sea en la lista de "qué recibís". Pero metido en una pastilla al lado
+   * del botón queda un bloque de tres renglones que rompe el hero. Los que no
+   * entran no se cortan a la mitad: se descartan, y si no queda ninguno van los
+   * textos por defecto.
+   */
+  const cortos = benefits.filter((benefit) => benefit.length <= 42);
+
   const content: Record<string, Record<string, unknown>> = {
     hero: {
       eyebrow: audience ? audience.toUpperCase() : "PARA QUIENES QUIEREN EMPEZAR HOY",
       headline: pick(offer?.headline, transformation, productName),
       subheadline: pick(offer?.promise, product?.subtitle, product?.description),
       cta,
-      pills: benefits.slice(0, 3).length
-        ? benefits.slice(0, 3)
+      pills: cortos.slice(0, 3).length
+        ? cortos.slice(0, 3)
         : ["Acceso inmediato", "Pago único", "Desde cero"],
       social: "Material digital para consultar y volver a usar siempre",
       trust: offer?.guarantee
@@ -113,11 +126,13 @@ export function landingTemplate(input: TemplateInput): TemplateSection[] {
     problems: {
       title: transformation ? `Querés ${lower(transformation)}.` : "Querés lograrlo.",
       subtitle: problem ? `Pero ${lower(problem)}` : "Pero no sabés por dónde empezar.",
+      // El problema ya se dijo en el subtítulo: repetirlo textual en el primer
+      // ítem se lee como un error, no como énfasis.
       items: problem
         ? [
-            problem,
             "Empezás, lo dejás a la mitad y volvés a arrancar de cero cada vez.",
             "Juntás información suelta pero nunca terminás de armar algo que funcione.",
+            "Probás lo que ves por ahí y no sabés si te sirve a vos.",
           ]
         : [
             "Guardás ideas por todos lados y cuando llega el momento no sabés cuál usar.",
@@ -145,7 +160,7 @@ export function landingTemplate(input: TemplateInput): TemplateSection[] {
         product?.description,
         "Todo lo que necesitás para pasar de “no sé por dónde empezar” a tener algo claro adelante.",
       ),
-      tags: benefits.slice(0, 4),
+      tags: cortos.slice(0, 4),
       highlight: "No necesitás experiencia previa.",
       stats: [
         { value: String(benefits.length || 6), label: "beneficios" },
@@ -278,6 +293,72 @@ export function landingTemplate(input: TemplateInput): TemplateSection[] {
       ],
     },
 
+    /* --- Bloques que usan los estilos "Lanzamiento" y "Express" --- */
+
+    countdown: {
+      title: transformation ? `Empezá hoy a ${lower(transformation)}` : "Precio de lanzamiento",
+      text: "Poné acá la fecha real de cierre de tu promo. Si no tenés una, sacá este bloque: un contador que nunca termina se nota.",
+    },
+
+    benefits: {
+      title: "Con esto vas a poder",
+      items: benefits.length
+        ? benefits.slice(0, 6)
+        : [
+            "El primer resultado concreto que se lleva",
+            "El segundo, con el mismo nivel de detalle",
+            "El tercero, para cerrar",
+          ],
+    },
+
+    features: {
+      title: "Cómo funciona",
+      items: [
+        {
+          title: "1. Pagás y accedés al toque",
+          description:
+            "Apenas se confirma el pago te llega el acceso por mail. Sin esperas ni envíos.",
+        },
+        {
+          title: "2. Entrás al material",
+          description: pick(
+            product?.subtitle,
+            "Está todo ordenado adentro, para que sepas por dónde empezar.",
+          ),
+        },
+        {
+          title: "3. Lo aplícás",
+          description: transformation
+            ? `Vas siguiendo el paso a paso hasta ${lower(transformation)}.`
+            : "Vas siguiendo el paso a paso a tu ritmo.",
+        },
+      ],
+    },
+
+    comparison: {
+      title: "La diferencia entre seguir probando y tenerlo resuelto",
+      without_title: "Por tu cuenta",
+      with_title: `Con ${productName}`,
+      without_items: problem
+        ? [
+            problem,
+            "Juntás información suelta y nunca terminás de armar algo que funcione.",
+            "Empezás, lo dejás a la mitad y volvés a arrancar de cero.",
+          ]
+        : [
+            "Probás cosas sueltas sin saber si van a funcionar.",
+            "Improvisás sobre la marcha.",
+            "Seguís “probando” en vez de tener algo armado.",
+          ],
+      with_items: benefits.length
+        ? benefits.slice(0, 4)
+        : [
+            "Tenés un paso a paso probado.",
+            "Sabés exactamente qué hacer primero.",
+            "Aplicás desde el primer día.",
+          ],
+    },
+
     footer: {
       brand: workspaceName.toUpperCase(),
       text: `© ${new Date().getFullYear()} ${workspaceName}. Todos los derechos reservados.`,
@@ -285,7 +366,10 @@ export function landingTemplate(input: TemplateInput): TemplateSection[] {
     },
   };
 
-  return BASE_STRUCTURE.map((type) => ({ type, content: content[type] ?? {} }));
+  return (input.layout ?? DEFAULT_LAYOUT).structure.map((type) => ({
+    type,
+    content: content[type] ?? {},
+  }));
 }
 
 /** "Bajar de peso" → "bajar de peso", para poder encadenar frases. */

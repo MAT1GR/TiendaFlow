@@ -19,6 +19,7 @@ import {
   useToast,
 } from "@/components/ui/primitives";
 import type { OfferDraft } from "@/lib/ai/tasks";
+import { withFlow } from "@/lib/product-flow";
 import { formatMoney } from "@/lib/utils";
 
 interface ProductOption {
@@ -35,11 +36,14 @@ export function NewOfferForm({
   currency,
   initialProductId,
   autoAi,
+  enFlujo,
 }: {
   products: ProductOption[];
   currency: string;
   initialProductId?: string;
   autoAi?: boolean;
+  /** La persona está creando su producto de punta a punta: al guardar, sigue. */
+  enFlujo?: boolean;
 }) {
   const router = useRouter();
   const toast = useToast();
@@ -108,6 +112,9 @@ export function NewOfferForm({
         benefits: (data.benefits ?? []).join("\n") || current.benefits,
         cta_text: data.cta_text ?? current.cta_text,
         guarantee: data.guarantee ?? current.guarantee,
+        // El precio sugerido solo entra si el campo está vacío: si el vendedor
+        // ya escribió un número, ese número manda.
+        price: current.price || (data.suggested_price ? String(data.suggested_price) : ""),
       }));
     });
   }
@@ -150,10 +157,16 @@ export function NewOfferForm({
         }
       }
 
-      // Volvemos al producto: el usuario nunca se entera de que existe una
-      // pantalla de "ofertas" aparte.
-      toast.success("Listo, ya tiene precio", "Ahora podés sumarle bonos.");
-      router.push(`/app/productos/${productId}/oferta`);
+      // En el paso a paso seguimos derecho a armar la página; fuera de él
+      // volvemos al producto, que es de donde vino. El usuario nunca se entera
+      // de que existe una pantalla de "ofertas" aparte.
+      if (enFlujo) {
+        toast.success("Listo, ya tiene precio", "Seguimos con la página de venta.");
+        router.push(withFlow(`/app/funnels/nuevo?oferta=${result.data.id}`));
+      } else {
+        toast.success("Listo, ya tiene precio", "Ahora podés sumarle bonos.");
+        router.push(`/app/productos/${productId}/oferta`);
+      }
     });
   }
 
@@ -247,7 +260,15 @@ export function NewOfferForm({
 
       <Card className="flex flex-col gap-4 p-5">
         <h2 className="text-[15px] font-semibold text-ink-900">El precio</h2>
-        <Field label={`Precio (${currency})`} required>
+        <Field
+          label={`Precio (${currency})`}
+          hint={
+            draft?.suggested_price
+              ? "Es una sugerencia de la IA, no un cálculo: cambiala por el precio que quieras cobrar."
+              : "Lo que cobrás por el producto principal."
+          }
+          required
+        >
           <Input
             type="number"
             min={0}

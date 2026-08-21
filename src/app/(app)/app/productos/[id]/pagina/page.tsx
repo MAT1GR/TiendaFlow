@@ -2,10 +2,12 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
 import { LandingEditor } from "@/app/(app)/app/landings/[id]/editor";
-import { SectionIntro } from "@/components/app/section-intro";
+import { ExperienceSteps, stepBlurb } from "@/components/app/experience-steps";
 import { Card, LinkButton } from "@/components/ui/primitives";
 import { requireSession } from "@/lib/auth";
-import { productContext, sectionBlurb } from "@/lib/product-workspace";
+import { isFlowActive, withFlow } from "@/lib/product-flow";
+import { productContext } from "@/lib/product-workspace";
+import { publishChecklist } from "@/lib/publish-checklist";
 import {
   getLandingPage,
   getLandingPageByStep,
@@ -17,18 +19,26 @@ import { formatMoney, parseJson } from "@/lib/utils";
 export const metadata: Metadata = { title: "Página de venta" };
 
 /**
- * Página de venta: el armador.
+ * El constructor de la experiencia de compra, parado en la página de venta.
  *
- * Es el mismo editor visual que vive en `/app/landings/[id]`, pero traído
- * adentro del producto. Antes había que salir del producto para editar la
- * página, que es justo el salto de contexto que estamos sacando.
- *
- * Los bloques quedan a la izquierda, la vista previa al medio y las propiedades
- * del bloque elegido a la derecha.
+ * Arriba de todo va el recorrido completo —página de venta, checkout, después
+ * de comprar, gracias— porque esa es la pregunta que se hace el vendedor
+ * ("¿qué ve mi cliente?"), no "¿en qué paso del funnel estoy?". Debajo, el
+ * editor visual: bloques a la izquierda, la página al medio, lo que está
+ * editando a la derecha.
  */
-export default async function SalesPageTab({ params }: { params: Promise<{ id: string }> }) {
+export default async function SalesPageTab({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ guia?: string }>;
+}) {
   const { workspace } = await requireSession();
   const { id } = await params;
+  // Si viene del paso a paso, las puertas de esta pantalla mandan al lugar
+  // que falta sin cortar la cadena.
+  const enFlujo = isFlowActive((await searchParams).guia);
 
   const context = productContext(workspace.id, id);
   if (!context) notFound();
@@ -38,10 +48,11 @@ export default async function SalesPageTab({ params }: { params: Promise<{ id: s
   if (!offer) {
     return (
       <Gate
+        productId={id}
         emoji="🔒"
         title="Primero necesitás ponerle precio"
         body="La página de venta se arma alrededor del precio y la promesa de tu producto."
-        href={`/app/productos/${id}/oferta`}
+        href={withFlow(`/app/productos/${id}/oferta`, enFlujo)}
         cta="Ir a mi oferta"
       />
     );
@@ -50,10 +61,11 @@ export default async function SalesPageTab({ params }: { params: Promise<{ id: s
   if (!funnel) {
     return (
       <Gate
+        productId={id}
         emoji="🛍️"
         title="Todavía no tenés página de venta"
         body="Es la página donde contás tu producto y desde donde te compran. La podés armar bloque por bloque o dejar que la IA la escriba por vos."
-        href={`/app/funnels/nuevo?oferta=${offer.id}`}
+        href={withFlow(`/app/funnels/nuevo?oferta=${offer.id}`, enFlujo)}
         cta="Armar mi página"
       />
     );
@@ -67,6 +79,7 @@ export default async function SalesPageTab({ params }: { params: Promise<{ id: s
   if (!page) {
     return (
       <Gate
+        productId={id}
         emoji="🧱"
         title="A tu página le falta el contenido"
         body="La página existe pero todavía no hay nada adentro para mostrarle a la gente."
@@ -80,8 +93,8 @@ export default async function SalesPageTab({ params }: { params: Promise<{ id: s
   const theme = parseJson<unknown>(page.theme, {});
 
   return (
-    <div className="flex flex-col gap-5">
-      <SectionIntro emoji="🛍️" title="Página de venta" blurb={sectionBlurb("pagina")} />
+    <div className="flex flex-col gap-4">
+      <Recorrido productId={id} step="venta" />
 
       <LandingEditor
         page={{
@@ -92,6 +105,7 @@ export default async function SalesPageTab({ params }: { params: Promise<{ id: s
           seoTitle: page.seo_title,
           seoDescription: page.seo_description,
         }}
+        blockers={publishChecklist(workspace.id, funnel.id, id)}
         sections={sections.map((section) => ({
           id: section.id,
           type: section.type,
@@ -110,13 +124,31 @@ export default async function SalesPageTab({ params }: { params: Promise<{ id: s
   );
 }
 
+/**
+ * El recorrido de compra, con la frase que explica dónde está parado.
+ *
+ * Se repite en las cuatro pantallas del recorrido y también en las puertas
+ * ("todavía no tenés precio"): estar bloqueado no es motivo para esconderle a
+ * alguien el mapa de lo que está armando.
+ */
+function Recorrido({ productId, step }: { productId: string; step: "venta" }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <ExperienceSteps productId={productId} current={step} />
+      <p className="text-[13px] text-ink-500">{stepBlurb(step)}</p>
+    </div>
+  );
+}
+
 function Gate({
+  productId,
   emoji,
   title,
   body,
   href,
   cta,
 }: {
+  productId: string;
   emoji: string;
   title: string;
   body: string;
@@ -125,7 +157,7 @@ function Gate({
 }) {
   return (
     <div className="flex flex-col gap-5">
-      <SectionIntro emoji="🛍️" title="Página de venta" blurb={sectionBlurb("pagina")} />
+      <Recorrido productId={productId} step="venta" />
 
       <Card className="p-10 text-center">
         <p className="tf-emoji !inline-flex text-[32px]" aria-hidden="true">

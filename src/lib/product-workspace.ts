@@ -1,7 +1,10 @@
 import "server-only";
 
-import { all } from "@/lib/db";
+import { cache } from "react";
+
+import { all, get } from "@/lib/db";
 import { funnelPublishBlockers } from "@/lib/launch";
+import { withFlow } from "@/lib/product-flow";
 import * as repo from "@/lib/repo";
 import {
   PRODUCT_SECTIONS,
@@ -86,19 +89,42 @@ function statsFor(workspaceId: string, productId: string, funnelId: string | nul
   };
 }
 
-/** Devuelve `null` si el producto no existe o no es de este workspace. */
-export function productContext(workspaceId: string, productId: string): ProductContext | null {
+/**
+ * Devuelve `null` si el producto no existe o no es de este workspace.
+ *
+ * Va memoizado por request con `cache()`. No es un detalle: en una sola
+ * navegación al espacio de trabajo del producto, esta función se llama tres
+ * veces —el layout la pide, el `productJourney` la pide de nuevo por dentro, y
+ * la pantalla la vuelve a pedir— y cada llamada disparaba las mismas ocho
+ * consultas. `cache()` las deja en una.
+ */
+export const productContext = cache(function productContext(
+  workspaceId: string,
+  productId: string,
+): ProductContext | null {
   const product = repo.getProduct(workspaceId, productId);
   if (!product) return null;
 
-  const offers = repo
-    .listOffers(workspaceId)
-    .filter((offer) => offer.product_id === productId)
-    .sort((a, b) => a.created_at.localeCompare(b.created_at));
+  /*
+   * Las ofertas y el funnel se buscan por su clave, no filtrando en memoria.
+   *
+   * Antes esto traía TODAS las ofertas y TODOS los funnels del workspace para
+   * quedarse con uno. Con tres productos da igual; con doscientos, cada click
+   * en el panel arrastra el catálogo entero.
+   */
+  const offers = all<Offer>(
+    `SELECT * FROM offers WHERE workspace_id = ? AND product_id = ? ORDER BY created_at`,
+    workspaceId,
+    productId,
+  );
 
   const offer = offers[0] ?? null;
   const funnel = offer
-    ? (repo.listFunnels(workspaceId).find((item) => item.offer_id === offer.id) ?? null)
+    ? get<Funnel>(
+        `SELECT * FROM funnels WHERE workspace_id = ? AND offer_id = ? LIMIT 1`,
+        workspaceId,
+        offer.id,
+      )
     : null;
 
   const stats = statsFor(workspaceId, productId, funnel?.id ?? null);
@@ -159,7 +185,7 @@ export function productContext(workspaceId: string, productId: string): ProductC
     nextStep,
     publicUrl: funnel && published ? `/f/${repo.publicSlug(funnel)}` : null,
   };
-}
+});
 
 /* -------------------------------------------------------------------------- */
 /* El GPS del producto                                                         */
@@ -210,7 +236,10 @@ export interface ProductJourney {
  * producto que ya vende perfecto nunca llegaría al 100% y la barra pasaría de
  * ser una guía a ser un reproche.
  */
-export function productJourney(workspaceId: string, productId: string): ProductJourney | null {
+export const productJourney = cache(function productJourney(
+  workspaceId: string,
+  productId: string,
+): ProductJourney | null {
   const context = productContext(workspaceId, productId);
   if (!context) return null;
 
@@ -338,7 +367,7 @@ export function productJourney(workspaceId: string, productId: string): ProductJ
     live: published && canCharge,
     nextStep: steps.find((step) => step.next) ?? null,
   };
-}
+});
 
 /* -------------------------------------------------------------------------- */
 /* Qué te conviene hacer ahora                                                 */
@@ -380,7 +409,8 @@ export function productAdvice(workspaceId: string, productId: string): ProductAd
             ? `Solo falta un paso. ${journey.nextStep.status}.`
             : `${journey.nextStep.status}. Es lo próximo del camino.`,
         ctaLabel: "Continuar",
-        ctaHref: journey.nextStep.href,
+        // Retoma el paso a paso donde quedó: confirma y sigue hasta publicar.
+        ctaHref: withFlow(journey.nextStep.href),
       };
     }
 
@@ -389,7 +419,7 @@ export function productAdvice(workspaceId: string, productId: string): ProductAd
       title: "Está todo listo",
       body: "Ya configuraste todo lo necesario. Falta publicarlo para tener tu link de venta.",
       ctaLabel: "Publicar mi producto",
-      ctaHref: `${base}/publicar`,
+      ctaHref: withFlow(`${base}/publicar`),
     };
   }
 

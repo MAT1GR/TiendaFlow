@@ -6,9 +6,12 @@ import { requireSession } from "@/lib/auth";
 import { aiStatus } from "@/lib/ai/provider";
 import * as tasks from "@/lib/ai/tasks";
 import { getFunnelMetrics, getTakeRates, resolveRange } from "@/lib/analytics";
+import { findLayout } from "@/components/landing/estructuras";
+import { readTheme } from "@/components/landing/theme";
 import { landingTemplate, mergeLandingDraft } from "@/lib/landing-template";
 import * as repo from "@/lib/repo";
-import { toLines } from "@/lib/utils";
+import { parseJson, toLines } from "@/lib/utils";
+import { checkAiQuota } from "@/lib/quota";
 import { fail, guarded, ok, type ActionResult } from "@/app/actions/shared";
 
 /**
@@ -35,8 +38,12 @@ export async function generateProductDraftAction(
 ): Promise<ActionResult<AiResponse<tasks.ProductDraft>>> {
   return guarded(async () => {
     const { workspace, user } = await requireSession();
+
+    // El cupo del plan se mira antes de gastar un pedido al proveedor.
+    const cupo = checkAiQuota(workspace.id);
+    if (!cupo.ok) return fail(cupo.reason!);
     if (!input.topic?.trim()) {
-      return fail("Contanos sobre qué querés crear tu producto.", { topic: "Requerido" });
+      return fail("Contanos qué es tu producto y a quién ayuda.", { topic: "Requerido" });
     }
 
     const result = await tasks.generateProductDraft(input);
@@ -65,6 +72,10 @@ export async function generateOfferDraftAction(
 ): Promise<ActionResult<AiResponse<tasks.OfferDraft>>> {
   return guarded(async () => {
     const { workspace, user } = await requireSession();
+
+    // El cupo del plan se mira antes de gastar un pedido al proveedor.
+    const cupo = checkAiQuota(workspace.id);
+    if (!cupo.ok) return fail(cupo.reason!);
     const product = repo.getProduct(workspace.id, productId);
     if (!product) return fail("No encontramos ese producto en tu workspace.");
 
@@ -103,12 +114,20 @@ export async function generateLandingDraftAction(
 ): Promise<ActionResult<AiResponse<tasks.LandingDraft>>> {
   return guarded(async () => {
     const { workspace, user } = await requireSession();
+
+    // El cupo del plan se mira antes de gastar un pedido al proveedor.
+    const cupo = checkAiQuota(workspace.id);
+    if (!cupo.ok) return fail(cupo.reason!);
     const page = repo.getLandingPage(workspace.id, pageId);
     if (!page) return fail("No encontramos esa landing en tu workspace.");
 
     const offer = page.offer_id ? repo.getOffer(workspace.id, page.offer_id) : null;
     const product = offer?.product_id ? repo.getProduct(workspace.id, offer.product_id) : null;
     const bonuses = offer ? repo.listBonuses(workspace.id, offer.id) : [];
+
+    // El estilo que el vendedor eligió para ESTA página manda: la IA escribe
+    // los bloques que la página tiene, no los de una estructura fija.
+    const layout = findLayout(readTheme(parseJson<unknown>(page.theme, {})).layout);
 
     const result = await tasks.generateLandingDraft({
       productName: product?.name ?? page.name,
@@ -122,6 +141,7 @@ export async function generateLandingDraftAction(
       guarantee: offer?.guarantee ?? null,
       bonuses: bonuses.map((bonus) => ({ name: bonus.name, description: bonus.description })),
       tone,
+      layout,
     });
 
     // Lo que devuelve el modelo NO se usa tal cual: se fusiona sobre la
@@ -134,6 +154,7 @@ export async function generateLandingDraftAction(
         offer: offer ?? null,
         bonuses,
         workspaceName: workspace.name,
+        layout,
       }),
     );
 
@@ -164,6 +185,10 @@ export async function analyzeFunnelAction(
 ): Promise<ActionResult<AiResponse<tasks.FunnelDiagnosis>>> {
   return guarded(async () => {
     const { workspace, user } = await requireSession();
+
+    // El cupo del plan se mira antes de gastar un pedido al proveedor.
+    const cupo = checkAiQuota(workspace.id);
+    if (!cupo.ok) return fail(cupo.reason!);
     const funnel = repo.getFunnel(workspace.id, funnelId);
     if (!funnel) return fail("No encontramos ese funnel en tu workspace.");
 
@@ -213,6 +238,10 @@ export async function generateAdCopyAction(
 ): Promise<ActionResult<AiResponse<tasks.AdCopyDraft>>> {
   return guarded(async () => {
     const { workspace, user } = await requireSession();
+
+    // El cupo del plan se mira antes de gastar un pedido al proveedor.
+    const cupo = checkAiQuota(workspace.id);
+    if (!cupo.ok) return fail(cupo.reason!);
     const offer = repo.getOffer(workspace.id, offerId);
     if (!offer) return fail("No encontramos esa oferta en tu workspace.");
     const product = offer.product_id ? repo.getProduct(workspace.id, offer.product_id) : null;
@@ -255,6 +284,10 @@ export async function rewriteTextAction(input: {
 }): Promise<ActionResult<AiResponse<{ text: string }>>> {
   return guarded(async () => {
     const { workspace, user } = await requireSession();
+
+    // El cupo del plan se mira antes de gastar un pedido al proveedor.
+    const cupo = checkAiQuota(workspace.id);
+    if (!cupo.ok) return fail(cupo.reason!);
     if (!input.text?.trim()) return fail("No hay texto para reescribir.");
 
     const result = await tasks.rewriteText(input);
@@ -351,16 +384,24 @@ export async function applyProductDraftAction(
   return guarded(async () => {
     const { workspace } = await requireSession();
 
+    /*
+     * El avatar, el dolor y la transformación salen del borrador, no del brief.
+     *
+     * Ahora es la IA la que los deduce de la descripción que escribió el
+     * vendedor, y en la pantalla de revisión él puede corregirlos: lo que llega
+     * acá en `draft` ya pasó por sus manos. El `brief` queda como respaldo para
+     * las llamadas que todavía mandan esos campos por separado.
+     */
     const product = repo.createProduct(workspace.id, {
-      name: chosenTitle || draft.titles?.[0] || brief.topic,
+      name: chosenTitle || draft.titles?.[0] || brief.productName || "Producto sin nombre",
       subtitle: draft.subtitle ?? null,
       description: draft.description ?? null,
       short_description: draft.short_description ?? null,
       type: "ebook",
       status: "draft",
-      audience: brief.audience ?? null,
-      main_problem: brief.problem ?? null,
-      transformation: brief.outcome ?? null,
+      audience: draft.audience?.trim() || brief.audience || null,
+      main_problem: draft.main_problem?.trim() || brief.problem || null,
+      transformation: draft.transformation?.trim() || brief.outcome || null,
       benefits: draft.benefits ?? [],
       outline: { chapters: draft.outline ?? [], faq: draft.faq ?? [] },
       source: "ai",

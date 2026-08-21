@@ -3,7 +3,7 @@ import "server-only";
 import crypto from "node:crypto";
 
 import { all, get, nowIso, run, transaction } from "@/lib/db";
-import { DEFAULT_PRESET } from "@/components/landing/theme";
+import { readTheme, type LandingTheme } from "@/components/landing/theme";
 import { decryptSecret, encryptSecret } from "@/lib/crypto";
 import { commissionFor } from "@/lib/plans";
 import { parseJson, slugify } from "@/lib/utils";
@@ -879,10 +879,10 @@ export function createLandingPage(
     input.offer_id ?? null,
     input.name,
     uniqueSlug(workspaceId, "landing_pages", input.name),
-    // El tema por defecto de las páginas nuevas. Se guarda entero —y no solo
-    // el acento— para que la página nazca con el estilo completo y el vendedor
-    // solo tenga que retocar lo que no le guste.
-    JSON.stringify(DEFAULT_PRESET),
+    // Los colores de la tienda, los que eligió el vendedor al crear la cuenta.
+    // Se guardan enteros —y no solo el acento— para que la página nazca con el
+    // estilo completo y solo tenga que retocar lo que no le guste.
+    JSON.stringify(workspaceTheme(workspaceId)),
     now,
     now,
   );
@@ -1723,8 +1723,33 @@ export function resolvePublicFunnel(slug: string, tienda?: string | null) {
 
 /** El workspace de una tienda, por su slug de subdominio. */
 export function getWorkspaceBySlug(slug: string) {
-  return get<{ id: string; name: string; slug: string }>(
-    `SELECT id, name, slug FROM workspaces WHERE slug = ?`,
+  return get<{ id: string; name: string; slug: string; theme: string | null }>(
+    `SELECT id, name, slug, theme FROM workspaces WHERE slug = ?`,
     slug,
+  );
+}
+
+/**
+ * Los colores de la tienda.
+ *
+ * Los elige el vendedor cuando crea la cuenta y son el punto de partida de
+ * todo lo que la app dibuja después: la portada de la tienda y cada página de
+ * venta nueva. Si todavía no eligió nada, cae al preset por defecto.
+ */
+export function workspaceTheme(workspaceId: string): LandingTheme {
+  const row = get<{ theme: string | null }>(
+    `SELECT theme FROM workspaces WHERE id = ?`,
+    workspaceId,
+  );
+  return readTheme(parseJson<unknown>(row?.theme ?? null, {}));
+}
+
+/** Guarda los colores de la tienda, normalizados. */
+export function saveWorkspaceTheme(workspaceId: string, theme: unknown) {
+  run(
+    `UPDATE workspaces SET theme = ?, updated_at = ? WHERE id = ?`,
+    JSON.stringify(readTheme(theme)),
+    ts(),
+    workspaceId,
   );
 }

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ProductTabs, type WorkspaceTab } from "@/app/(app)/app/productos/[id]/tabs";
+import { ProductFlowBar } from "@/components/app/flow-bar";
 import { Badge, LinkButton } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/icon";
 import { requireSession } from "@/lib/auth";
@@ -120,6 +121,13 @@ export default async function ProductWorkspaceLayout({
       {/* En desktop la navegación del producto vive en el sidebar. Estas
           pestañas son para móvil, donde el sidebar está oculto. */}
       <ProductTabs productId={product.id} tabs={tabs} className="lg:hidden" />
+
+      {/* Solo aparece si la persona viene encadenando los pasos de la creación.
+          Va acá y no en cada pantalla para que ninguna se quede afuera. */}
+      <ProductFlowBar
+        productId={product.id}
+        cobroListo={journey.steps.some((step) => step.code === "cobro" && step.state === "done")}
+      />
 
       {children}
     </div>

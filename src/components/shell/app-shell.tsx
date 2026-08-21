@@ -45,7 +45,15 @@ export function AppShell({
             onOpenMenu={() => setMenuOpen(true)}
             onOpenCopilot={() => setCopilotOpen(true)}
           />
-          <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 lg:px-8">
+          {/*
+            Casi todas las pantallas viven dentro de una columna centrada de
+            1400px. El editor de landings no: ahí la vista previa y los dos
+            paneles tienen que llegar hasta los bordes de la ventana, porque
+            cada píxel que se va en margen es píxel que no ve el vendedor de su
+            propia página. Una página pide ese trato marcando su raíz con
+            `data-fullbleed` y el contenedor se corre solo.
+          */}
+          <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 has-[[data-fullbleed]]:max-w-none has-[[data-fullbleed]]:p-0 sm:px-6 lg:px-8">
             {children}
           </main>
         </div>

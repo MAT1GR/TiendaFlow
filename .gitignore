@@ -13,3 +13,5 @@ tsconfig.tsbuildinfo
 *.sqlite
 *.sqlite-journal
 *.db
+
+/.next-*/

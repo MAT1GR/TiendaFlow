@@ -96,7 +96,44 @@ export function Sidebar({
         </div>
 
         {/* Selector de producto: mientras estás adentro de uno, el sidebar
-            entero pasa a hablar de ese producto y no perdés el contexto. */}
+            entero pasa a hablar de ese producto y no perdés el contexto.
+            Es también la única puerta a la biblioteca —"Mis productos" ya no
+            está en el menú—, así que se muestra aunque no haya ninguno: sin
+            productos, lleva derecho a crear el primero. */}
+        {!collapsed && products.length === 0 ? (
+          <Link
+            href="/app/productos/nuevo"
+            className="mx-3 mb-3 flex items-center gap-2.5 rounded-xl border border-dashed border-brand-300 bg-brand-50/60 px-3 py-2.5 text-left transition-colors hover:bg-brand-50"
+          >
+            <span className="tf-emoji" aria-hidden="true">
+              📦
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[13px] font-semibold text-brand-700">
+                Crear mi primer producto
+              </span>
+              <span className="block truncate text-[11.5px] text-ink-500">
+                Es por donde empieza todo
+              </span>
+            </span>
+            <Icon name="plus" size={15} className="shrink-0 text-brand-600" />
+          </Link>
+        ) : null}
+
+        {/* Plegado no entra el selector, pero la puerta a los productos no
+            puede desaparecer: queda el ícono. */}
+        {collapsed ? (
+          <Link
+            href="/app/productos"
+            title="Mis productos"
+            className="mx-3 mb-3 grid h-10 place-items-center rounded-xl border border-ink-200 bg-ink-50/70 transition-colors hover:bg-ink-100"
+          >
+            <span className="tf-emoji" aria-hidden="true">
+              📦
+            </span>
+          </Link>
+        ) : null}
+
         {!collapsed && products.length > 0 ? (
           <div className="relative mx-3 mb-3">
             <button
@@ -145,13 +182,22 @@ export function Sidebar({
                     ) : null}
                   </Link>
                 ))}
-                <Link
-                  href="/app/productos"
-                  className="mt-1 flex items-center gap-2 border-t border-ink-100 px-2.5 py-2 text-[12.5px] font-medium text-ink-600 hover:text-ink-900"
-                >
-                  <Icon name="grip" size={14} className="text-ink-400" />
-                  Ver todos
-                </Link>
+                <div className="mt-1 flex flex-col border-t border-ink-100 pt-1">
+                  <Link
+                    href="/app/productos/nuevo"
+                    className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-[12.5px] font-semibold text-brand-700 hover:bg-brand-50"
+                  >
+                    <Icon name="plus" size={14} className="text-brand-600" />
+                    Crear producto
+                  </Link>
+                  <Link
+                    href="/app/productos"
+                    className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-[12.5px] font-medium text-ink-600 hover:bg-ink-100 hover:text-ink-900"
+                  >
+                    <Icon name="grip" size={14} className="text-ink-400" />
+                    Ver todos
+                  </Link>
+                </div>
               </div>
             ) : null}
           </div>

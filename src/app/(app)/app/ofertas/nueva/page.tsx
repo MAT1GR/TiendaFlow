@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 
 import { NewOfferForm } from "@/app/(app)/app/ofertas/nueva/form";
+import { FlowBar } from "@/components/app/flow-bar";
 import { PageHeader } from "@/components/ui/data";
 import { EmptyState, LinkButton } from "@/components/ui/primitives";
 import { requireSession } from "@/lib/auth";
+import { isFlowActive } from "@/lib/product-flow";
 import { listProducts } from "@/lib/repo";
 
 export const metadata: Metadata = { title: "Ponerle precio" };
@@ -11,12 +13,13 @@ export const metadata: Metadata = { title: "Ponerle precio" };
 export default async function NewOfferPage({
   searchParams,
 }: {
-  searchParams: Promise<{ producto?: string; ia?: string }>;
+  searchParams: Promise<{ producto?: string; ia?: string; guia?: string }>;
 }) {
   const { workspace } = await requireSession();
-  const { producto, ia } = await searchParams;
+  const { producto, ia, guia } = await searchParams;
 
   const products = listProducts(workspace.id, false);
+  const enFlujo = isFlowActive(guia);
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
@@ -24,6 +27,8 @@ export default async function NewOfferPage({
         title="💰 Armemos tu oferta"
         subtitle="Lo que compra la gente no es un archivo: es una promesa, a un precio, con lo que la acompaña."
       />
+
+      <FlowBar step="oferta" />
 
       {products.length === 0 ? (
         <EmptyState
@@ -49,6 +54,7 @@ export default async function NewOfferPage({
           currency={workspace.currency}
           initialProductId={producto}
           autoAi={ia === "1"}
+          enFlujo={enFlujo}
         />
       )}
     </div>
