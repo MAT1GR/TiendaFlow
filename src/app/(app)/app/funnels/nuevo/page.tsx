@@ -6,7 +6,7 @@ import { EmptyState, LinkButton } from "@/components/ui/primitives";
 import { requireSession } from "@/lib/auth";
 import { listOffers, listProducts } from "@/lib/repo";
 
-export const metadata: Metadata = { title: "Crear funnel" };
+export const metadata: Metadata = { title: "Armar mi página" };
 
 export default async function NewFunnelPage({
   searchParams,
@@ -22,16 +22,15 @@ export default async function NewFunnelPage({
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
       <PageHeader
-        title="Armá tu funnel"
-        subtitle="Creamos landing, checkout, upsell y página de gracias. Después editás cada paso."
-        breadcrumb={[{ label: "Funnels", href: "/app/funnels" }, { label: "Nuevo" }]}
+        title="🛍️ Armemos tu página de venta"
+        subtitle="Preparamos la página donde lo contás, la página donde te pagan y la de gracias. Después editás lo que quieras."
       />
 
       {offers.length === 0 ? (
         <EmptyState
           icon="tag"
           title="Primero necesitás una oferta"
-          description="El funnel vende una oferta: precio, promesa y bonos. Creá una y volvemos acá."
+          description="La página vende una oferta: precio, promesa y bonos. Armá una y volvemos acá."
           action={
             <LinkButton href="/app/ofertas/nueva" icon="plus">
               Crear oferta

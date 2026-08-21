@@ -35,13 +35,61 @@ export const STAGE_TONE: Record<ProductStage, "neutral" | "warning" | "success" 
   vendiendo: "success",
 };
 
-/** Secciones de un producto. Es la navegación real del espacio de trabajo. */
+/**
+ * Secciones de un producto. Es la navegación real del espacio de trabajo.
+ *
+ * Cada sección responde **una sola pregunta**, y esa pregunta está escrita en el
+ * `blurb`: es la frase que aparece arriba de la pantalla explicando qué está
+ * haciendo la persona. No es decoración — es lo que reemplaza al tutorial.
+ */
 export const PRODUCT_SECTIONS = [
-  { segment: "", label: "Resumen", emoji: "🏠" },
-  { segment: "producto", label: "Mi producto", emoji: "📕" },
-  { segment: "oferta", label: "Mi oferta", emoji: "💰" },
-  { segment: "pagina", label: "Página de venta", emoji: "🛍️" },
-  { segment: "cobro", label: "Cómo cobro", emoji: "💳" },
-  { segment: "despues", label: "Después de comprar", emoji: "🎁" },
-  { segment: "resultados", label: "Resultados", emoji: "📊" },
+  {
+    segment: "",
+    label: "Resumen",
+    emoji: "🏠",
+    blurb: "Acá ves qué falta para que tu producto pueda venderse, y qué hacer ahora.",
+  },
+  {
+    segment: "producto",
+    label: "Mi producto",
+    emoji: "📕",
+    blurb: "Acá definís qué estás vendiendo y qué recibe tu cliente cuando compra.",
+  },
+  {
+    segment: "oferta",
+    label: "Mi oferta",
+    emoji: "💰",
+    blurb: "Acá definís cuánto sale y por qué alguien debería comprártelo.",
+  },
+  {
+    segment: "pagina",
+    label: "Página de venta",
+    emoji: "🛍️",
+    blurb: "Esta es la página que ve tu cliente antes de comprar.",
+  },
+  {
+    segment: "cobro",
+    label: "Cómo cobro",
+    emoji: "💳",
+    blurb: "Conectá una cuenta para poder recibir el dinero de tus ventas.",
+  },
+  {
+    segment: "despues",
+    label: "Después de comprar",
+    emoji: "🎁",
+    blurb: "Podés ofrecerle algo más a tu cliente justo después de que compre.",
+  },
+  {
+    segment: "resultados",
+    label: "Resultados",
+    emoji: "📊",
+    blurb: "Mirá qué está funcionando y dónde podés vender más.",
+  },
 ] as const;
+
+export type ProductSection = (typeof PRODUCT_SECTIONS)[number];
+
+/** El `blurb` de una sección, buscado por segmento. */
+export function sectionBlurb(segment: string): string {
+  return PRODUCT_SECTIONS.find((section) => section.segment === segment)?.blurb ?? "";
+}

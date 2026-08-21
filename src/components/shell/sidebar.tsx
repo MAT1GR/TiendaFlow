@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { Icon, Logo } from "@/components/ui/icon";
-import { ProgressBar } from "@/components/ui/primitives";
 import { NAV_GROUPS } from "@/components/shell/nav";
 import { PRODUCT_SECTIONS, STAGE_LABEL, type ProductNavEntry } from "@/lib/product-nav";
 import { cn } from "@/lib/utils";
@@ -13,14 +12,12 @@ import { cn } from "@/lib/utils";
 export function Sidebar({
   workspaceName,
   plan,
-  launchCompletion,
   products,
   open,
   onClose,
 }: {
   workspaceName: string;
   plan: string;
-  launchCompletion: number;
   products: ProductNavEntry[];
   open: boolean;
   onClose: () => void;
@@ -208,15 +205,17 @@ export function Sidebar({
             </div>
           ) : null}
 
-          {NAV_GROUPS.map((group) => (
-            <div key={group.label} className="mb-5">
-              {!collapsed ? (
+          {NAV_GROUPS.map((group, index) => (
+            <div key={group.label || index} className="mb-5">
+              {/* El primer grupo no lleva título: son los seis destinos
+                  principales y no necesitan que nadie los presente. */}
+              {group.label && !collapsed ? (
                 <p className="mb-1.5 px-2.5 text-[11px] font-semibold uppercase tracking-wider text-ink-400">
                   {group.label}
                 </p>
-              ) : (
+              ) : index > 0 ? (
                 <div className="mx-2 mb-2 border-t border-ink-100" />
-              )}
+              ) : null}
               <ul className="flex flex-col gap-0.5">
                 {group.items.map((item) => {
                   const active = item.exact
@@ -252,23 +251,15 @@ export function Sidebar({
           ))}
         </nav>
 
+        {/* El camino a la primera venta vive adentro de cada producto, no acá:
+            un porcentaje de "lanzamiento" del workspace entero no le dice a
+            nadie qué tiene que hacer ahora. */}
         {!collapsed ? (
-          <div className="mx-3 mb-3 rounded-2xl border border-ink-200 bg-ink-50/70 p-3.5">
-            <div className="flex items-center justify-between gap-2">
-              <p className="truncate text-[12.5px] font-semibold text-ink-800">{workspaceName}</p>
-              <span className="rounded-full bg-brand-100 px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-brand-700">
-                {plan}
-              </span>
-            </div>
-            <p className="mt-2 text-[11.5px] text-ink-500">Lanzamiento</p>
-            <ProgressBar value={launchCompletion} className="mt-1.5" showLabel />
-            <Link
-              href="/app/lanzamiento"
-              className="mt-2.5 flex items-center gap-1 text-[12px] font-semibold text-brand-700 hover:text-brand-800"
-            >
-              Continuar lanzamiento
-              <Icon name="arrowRight" size={13} />
-            </Link>
+          <div className="mx-3 mb-3 flex items-center justify-between gap-2 rounded-2xl border border-ink-200 bg-ink-50/70 px-3.5 py-3">
+            <p className="truncate text-[12.5px] font-semibold text-ink-800">{workspaceName}</p>
+            <span className="shrink-0 rounded-full bg-brand-100 px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-brand-700">
+              {plan}
+            </span>
           </div>
         ) : null}
 

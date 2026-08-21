@@ -6,6 +6,7 @@ import { requireSession } from "@/lib/auth";
 import { aiStatus } from "@/lib/ai/provider";
 import * as tasks from "@/lib/ai/tasks";
 import { getFunnelMetrics, getTakeRates, resolveRange } from "@/lib/analytics";
+import { landingTemplate, mergeLandingDraft } from "@/lib/landing-template";
 import * as repo from "@/lib/repo";
 import { toLines } from "@/lib/utils";
 import { fail, guarded, ok, type ActionResult } from "@/app/actions/shared";
@@ -21,6 +22,8 @@ export interface AiResponse<T> {
   isTemplate: boolean;
   provider: string;
   warning?: string;
+  /** Campos que hubo que limpiar por afirmar algo que nadie puede comprobar. */
+  cleaned?: number;
 }
 
 export async function getAiStatusAction() {
@@ -121,22 +124,36 @@ export async function generateLandingDraftAction(
       tone,
     });
 
+    // Lo que devuelve el modelo NO se usa tal cual: se fusiona sobre la
+    // estructura base. Esto corre acá y no al guardar porque el editor muestra
+    // la vista previa apenas termina de generar, y ahí ya tiene que estar sano.
+    const { sections, cleaned } = mergeLandingDraft(
+      result.data,
+      landingTemplate({
+        product: product ?? null,
+        offer: offer ?? null,
+        bonuses,
+        workspaceName: workspace.name,
+      }),
+    );
+
     repo.logAiGeneration(workspace.id, {
       user_id: user.id,
       task: "landing_draft",
       provider: result.provider,
       model: result.model,
       input: { pageId, tone },
-      output: result.data,
+      output: { sections },
       entity_type: "landing_page",
       entity_id: pageId,
     });
 
     return ok({
-      data: result.data,
+      data: { sections },
       isTemplate: result.isTemplate,
       provider: result.provider,
       warning: result.warning,
+      cleaned,
     });
   });
 }
@@ -326,28 +343,6 @@ export async function applyOfferDraftAction(
   });
 }
 
-export async function applyLandingDraftAction(
-  pageId: string,
-  draft: tasks.LandingDraft,
-): Promise<ActionResult<null>> {
-  return guarded(async () => {
-    const { workspace } = await requireSession();
-    if (!repo.getLandingPage(workspace.id, pageId)) {
-      return fail("No encontramos esa landing en tu workspace.");
-    }
-    if (!draft.sections?.length) return fail("La generación no devolvió secciones.");
-
-    repo.replaceLandingSections(
-      workspace.id,
-      pageId,
-      draft.sections.map((section) => ({ type: section.type, content: section.content })),
-    );
-
-    revalidatePath(`/app/landings/${pageId}`);
-    return ok(null, "Generamos la landing. Editá cada sección antes de publicar.");
-  });
-}
-
 export async function applyProductDraftAction(
   draft: tasks.ProductDraft,
   chosenTitle: string,
@@ -520,7 +515,7 @@ function contextLinks(module: string): Array<{ label: string; href: string }> {
     case "funnels":
       return [
         { label: "Ver funnels", href: "/app/funnels" },
-        { label: "Modo Lanzamiento", href: "/app/lanzamiento" },
+        { label: "Mis productos", href: "/app/productos" },
       ];
     case "analytics":
       return [
@@ -529,7 +524,7 @@ function contextLinks(module: string): Array<{ label: string; href: string }> {
       ];
     default:
       return [
-        { label: "Modo Lanzamiento", href: "/app/lanzamiento" },
+        { label: "Mis productos", href: "/app/productos" },
         { label: "Panel de IA", href: "/app/ia" },
       ];
   }

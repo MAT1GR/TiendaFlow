@@ -3,8 +3,9 @@ import type { Metadata } from "next";
 
 import { UpsellView } from "@/components/public/upsell-view";
 import { VisitTracker } from "@/components/public/visit-tracker";
+import { tiendaActual } from "@/lib/public-url";
 import {
-  getFunnelByPublicSlug,
+  resolvePublicFunnel,
   getOrder,
   getProduct,
   listUpsells,
@@ -25,7 +26,7 @@ export default async function UpsellPage({
   const { slug, stepId } = await params;
   const { pedido, t } = await searchParams;
 
-  const funnel = getFunnelByPublicSlug(slug);
+  const funnel = resolvePublicFunnel(slug, await tiendaActual());
   if (!funnel || !funnel.offer_id) notFound();
 
   const order = pedido ? getOrder(funnel.workspace_id, pedido) : null;

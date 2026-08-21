@@ -2,9 +2,10 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
 import { LandingEditor } from "@/app/(app)/app/landings/[id]/editor";
+import { SectionIntro } from "@/components/app/section-intro";
 import { Card, LinkButton } from "@/components/ui/primitives";
 import { requireSession } from "@/lib/auth";
-import { productContext } from "@/lib/product-workspace";
+import { productContext, sectionBlurb } from "@/lib/product-workspace";
 import {
   getLandingPage,
   getLandingPageByStep,
@@ -18,12 +19,12 @@ export const metadata: Metadata = { title: "Página de venta" };
 /**
  * Página de venta: el armador.
  *
- * Es el mismo editor visual que ya existía en `/app/landings/[id]`, pero traído
+ * Es el mismo editor visual que vive en `/app/landings/[id]`, pero traído
  * adentro del producto. Antes había que salir del producto para editar la
  * página, que es justo el salto de contexto que estamos sacando.
  *
- * Los bloques quedan a la izquierda, la vista previa en celular al medio y las
- * propiedades del bloque elegido a la derecha.
+ * Los bloques quedan a la izquierda, la vista previa al medio y las propiedades
+ * del bloque elegido a la derecha.
  */
 export default async function SalesPageTab({ params }: { params: Promise<{ id: string }> }) {
   const { workspace } = await requireSession();
@@ -68,40 +69,44 @@ export default async function SalesPageTab({ params }: { params: Promise<{ id: s
       <Gate
         emoji="🧱"
         title="A tu página le falta el contenido"
-        body="El recorrido de venta existe, pero todavía no hay una página que mostrarle a la gente."
+        body="La página existe pero todavía no hay nada adentro para mostrarle a la gente."
         href={`/app/funnels/${funnel.id}`}
-        cta="Revisar el recorrido"
+        cta="Revisar la página"
       />
     );
   }
 
   const sections = listLandingSections(workspace.id, page.id);
-  const theme = parseJson<{ accent?: string }>(page.theme, {});
+  const theme = parseJson<unknown>(page.theme, {});
 
   return (
-    <LandingEditor
-      page={{
-        id: page.id,
-        name: page.name,
-        status: page.status,
-        accent: theme.accent ?? "#6D5DFB",
-        seoTitle: page.seo_title,
-        seoDescription: page.seo_description,
-      }}
-      sections={sections.map((section) => ({
-        id: section.id,
-        type: section.type,
-        content: parseJson<Record<string, unknown>>(section.content, {}),
-      }))}
-      offer={{
-        id: offer.id,
-        name: offer.name,
-        priceLabel: formatMoney(offer.price, offer.currency),
-        compareLabel: offer.compare_at_price
-          ? formatMoney(offer.compare_at_price, offer.currency)
-          : null,
-      }}
-    />
+    <div className="flex flex-col gap-5">
+      <SectionIntro emoji="🛍️" title="Página de venta" blurb={sectionBlurb("pagina")} />
+
+      <LandingEditor
+        page={{
+          id: page.id,
+          name: page.name,
+          status: page.status,
+          theme: theme,
+          seoTitle: page.seo_title,
+          seoDescription: page.seo_description,
+        }}
+        sections={sections.map((section) => ({
+          id: section.id,
+          type: section.type,
+          content: parseJson<Record<string, unknown>>(section.content, {}),
+        }))}
+        offer={{
+          id: offer.id,
+          name: offer.name,
+          priceLabel: formatMoney(offer.price, offer.currency),
+          compareLabel: offer.compare_at_price
+            ? formatMoney(offer.compare_at_price, offer.currency)
+            : null,
+        }}
+      />
+    </div>
   );
 }
 
@@ -119,17 +124,21 @@ function Gate({
   cta: string;
 }) {
   return (
-    <Card className="p-10 text-center">
-      <p className="tf-emoji !inline-flex text-[32px]" aria-hidden="true">
-        {emoji}
-      </p>
-      <h2 className="mt-4 text-[19px] font-semibold tracking-tight text-ink-900">{title}</h2>
-      <p className="mx-auto mt-2 max-w-md text-[14px] leading-relaxed text-ink-500">{body}</p>
-      <div className="mt-6 flex justify-center">
-        <LinkButton href={href} icon="arrowRight">
-          {cta}
-        </LinkButton>
-      </div>
-    </Card>
+    <div className="flex flex-col gap-5">
+      <SectionIntro emoji="🛍️" title="Página de venta" blurb={sectionBlurb("pagina")} />
+
+      <Card className="p-10 text-center">
+        <p className="tf-emoji !inline-flex text-[32px]" aria-hidden="true">
+          {emoji}
+        </p>
+        <h2 className="mt-4 text-[19px] font-semibold tracking-tight text-ink-900">{title}</h2>
+        <p className="mx-auto mt-2 max-w-md text-[14px] leading-relaxed text-ink-500">{body}</p>
+        <div className="mt-6 flex justify-center">
+          <LinkButton href={href} icon="arrowRight">
+            {cta}
+          </LinkButton>
+        </div>
+      </Card>
+    </div>
   );
 }

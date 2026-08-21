@@ -1,6 +1,8 @@
 import "server-only";
 
-import { getIntegration, readIntegrationSecret } from "@/lib/repo";
+import { freshAccessToken, publicConfig } from "@/lib/integrations/mercadopago-oauth";
+import { commissionFor } from "@/lib/plans";
+import { getIntegration, getSubscription, readIntegrationSecret } from "@/lib/repo";
 import { parseJson } from "@/lib/utils";
 
 /**
@@ -29,6 +31,12 @@ export interface ProviderStatus {
   lastError: string | null;
   /** `true` si además cargaron la clave para verificar la firma del webhook. */
   webhookVerified: boolean;
+  /** Cómo se conectó: apretando un botón (`oauth`) o pegando claves. */
+  connection: "oauth" | "manual" | null;
+  /** Con qué cuenta quedó conectado, cuando el proveedor nos lo dice. */
+  accountName: string | null;
+  /** Cuándo vence la conexión, si vence. */
+  expiresAt: number | null;
 }
 
 export interface CheckoutRequest {
@@ -211,6 +219,59 @@ const stripeProvider: PaymentProvider = {
 /* Mercado Pago                                                                */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Credenciales de Mercado Pago, con el token ya renovado si hacía falta.
+ *
+ * Es asíncrono a propósito y no puede reemplazarse por `credentials()`: los
+ * tokens de OAuth vencen, y renovar es un pedido de red. Preferimos que la
+ * demora la pague la creación del checkout —donde ya estamos esperando a
+ * Mercado Pago— antes que devolverle un error a alguien que quiere comprar.
+ */
+async function mercadoPagoCredentials(workspaceId: string): Promise<{
+  accessToken: string;
+  mode: string;
+  connection: "oauth" | "manual";
+} | null> {
+  const integration = getIntegration(workspaceId, "mercadopago");
+  if (!integration || integration.status !== "connected") return null;
+
+  const accessToken = await freshAccessToken(workspaceId);
+  if (!accessToken) return null;
+
+  const config = publicConfig(workspaceId);
+  return {
+    accessToken,
+    mode: config.mode ?? "test",
+    connection: config.connection === "oauth" ? "oauth" : "manual",
+  };
+}
+
+/**
+ * La comisión de TiendaFlow sobre una venta.
+ *
+ * Solo se puede cobrar cuando el vendedor conectó su cuenta por OAuth: ahí el
+ * token lo emitió nuestra aplicación y Mercado Pago sabe a quién depositarle la
+ * parte que nos toca. Con un token cargado a mano, la cuenta del vendedor no
+ * tiene nada que ver con nosotros y `marketplace_fee` no aplica.
+ *
+ * Devuelve `0` cuando no corresponde cobrar nada.
+ */
+function marketplaceFee(
+  workspaceId: string,
+  connection: "oauth" | "manual",
+  amount: number,
+): number {
+  if (connection !== "oauth") return 0;
+
+  const plan = getSubscription(workspaceId)?.plan ?? "free";
+  const { amount: fee } = commissionFor(plan, amount);
+
+  // Una comisión que se come toda la venta sería un error de configuración, no
+  // un cobro: en ese caso preferimos no cobrar nada antes que romper la compra.
+  if (!Number.isFinite(fee) || fee <= 0 || fee >= amount) return 0;
+  return fee;
+}
+
 /** Estados de Mercado Pago que cuentan como cobro efectivo. */
 const MP_APPROVED = new Set(["approved", "authorized"]);
 const MP_PENDING = new Set(["pending", "in_process", "in_mediation"]);
@@ -220,45 +281,84 @@ const mercadoPagoProvider: PaymentProvider = {
   name: "Mercado Pago",
 
   async createCheckout(workspaceId, request) {
-    const creds = credentials(workspaceId, "mercadopago");
+    const creds = await mercadoPagoCredentials(workspaceId);
     if (!creds) {
       return {
         status: "not_configured",
         reason:
-          "Mercado Pago no está conectado. Cargá tu access token en Pagos para poder cobrar con este proveedor.",
+          "Mercado Pago no está conectado. Conectá tu cuenta desde Pagos para poder cobrar.",
       };
     }
 
-    try {
-      const response = await fetch("https://api.mercadopago.com/checkout/preferences", {
+    const fee = marketplaceFee(workspaceId, creds.connection, request.amount);
+
+    /**
+     * `auto_return` devuelve al comprador a tu página apenas paga, sin que
+     * tenga que apretar "volver al sitio".
+     *
+     * Pero Mercado Pago solo lo acepta si la URL de vuelta es pública: con
+     * `localhost` rechaza la preferencia ENTERA con un mensaje que confunde
+     * ("back_url.success must be defined", aunque esté definida) y nadie puede
+     * comprar. En desarrollo preferimos perder la vuelta automática antes que
+     * el checkout.
+     */
+    const vueltaEsPublica =
+      /^https:\/\//i.test(request.successUrl) &&
+      !/\/\/([^/]*\.)?(localhost|127\.0\.0\.1)/i.test(request.successUrl);
+
+    const preference = (withFee: boolean) => ({
+      items: [
+        {
+          title: request.description,
+          quantity: 1,
+          unit_price: request.amount,
+          currency_id: request.currency,
+        },
+      ],
+      payer: { email: request.customerEmail },
+      external_reference: request.reference,
+      // Mercado Pago acepta la URL de aviso por preferencia, así que el
+      // vendedor no tiene que configurar nada en su panel.
+      notification_url: request.notifyUrl,
+      back_urls: {
+        success: request.successUrl,
+        pending: request.successUrl,
+        failure: request.cancelUrl,
+      },
+      ...(vueltaEsPublica ? { auto_return: "approved" } : {}),
+      metadata: { order_id: request.orderId },
+      ...(withFee && fee > 0 ? { marketplace_fee: fee } : {}),
+    });
+
+    const create = (withFee: boolean) =>
+      fetch("https://api.mercadopago.com/checkout/preferences", {
         method: "POST",
         headers: {
-          authorization: `Bearer ${creds.secretKey}`,
+          authorization: `Bearer ${creds.accessToken}`,
           "content-type": "application/json",
         },
-        body: JSON.stringify({
-          items: [
-            {
-              title: request.description,
-              quantity: 1,
-              unit_price: request.amount,
-              currency_id: request.currency,
-            },
-          ],
-          payer: { email: request.customerEmail },
-          external_reference: request.reference,
-          // Mercado Pago acepta la URL de aviso por preferencia, así que el
-          // vendedor no tiene que configurar nada en su panel.
-          notification_url: request.notifyUrl,
-          back_urls: {
-            success: request.successUrl,
-            pending: request.successUrl,
-            failure: request.cancelUrl,
-          },
-          auto_return: "approved",
-          metadata: { order_id: request.orderId },
-        }),
+        body: JSON.stringify(preference(withFee)),
       });
+
+    try {
+      let response = await create(fee > 0);
+
+      /**
+       * Si Mercado Pago rechaza la preferencia y le habíamos puesto comisión,
+       * reintentamos sin ella.
+       *
+       * El motivo más probable es que la aplicación de la plataforma no esté
+       * habilitada como marketplace. Eso es un problema nuestro, y hacer que un
+       * comprador se quede sin poder pagar por una configuración nuestra sería
+       * el peor error posible: una comisión perdida cuesta centavos, una venta
+       * perdida cuesta la venta entera y la confianza del vendedor.
+       */
+      if (!response.ok && fee > 0) {
+        console.error(
+          `[tiendaflow] Mercado Pago rechazó la preferencia con comisión (${response.status}). Reintentando sin comisión.`,
+        );
+        response = await create(false);
+      }
 
       const payload = (await response.json()) as {
         init_point?: string;
@@ -284,13 +384,13 @@ const mercadoPagoProvider: PaymentProvider = {
   },
 
   async fetchPayment(workspaceId, paymentId) {
-    const creds = credentials(workspaceId, "mercadopago");
+    const creds = await mercadoPagoCredentials(workspaceId);
     if (!creds) return { ok: false, reason: "Mercado Pago no está conectado en este workspace." };
 
     try {
       const response = await fetch(
         `https://api.mercadopago.com/v1/payments/${encodeURIComponent(paymentId)}`,
-        { headers: { authorization: `Bearer ${creds.secretKey}` } },
+        { headers: { authorization: `Bearer ${creds.accessToken}` } },
       );
 
       const payload = (await response.json()) as {
@@ -356,10 +456,14 @@ export function getProvider(id: ProviderId): PaymentProvider {
 export function listProviderStatus(workspaceId: string): ProviderStatus[] {
   return (Object.keys(PROVIDERS) as ProviderId[]).map((id) => {
     const integration = getIntegration(workspaceId, id);
-    const config = parseJson<{ public_key?: string; mode?: string }>(
-      integration?.public_config ?? null,
-      {},
-    );
+    const config = parseJson<{
+      public_key?: string;
+      mode?: string;
+      connection?: "oauth" | "manual";
+      nickname?: string;
+      expires_at?: number;
+    }>(integration?.public_config ?? null, {});
+
     return {
       id,
       name: PROVIDERS[id].name,
@@ -368,8 +472,25 @@ export function listProviderStatus(workspaceId: string): ProviderStatus[] {
       publicKey: config.public_key ?? null,
       lastError: integration?.last_error ?? null,
       webhookVerified: Boolean(webhookSecret(workspaceId, id)),
+      connection: config.connection ?? (integration?.status === "connected" ? "manual" : null),
+      accountName: config.nickname ?? null,
+      expiresAt: config.expires_at ?? null,
     };
   });
+}
+
+/**
+ * `true` si en este workspace la comisión de TiendaFlow se cobra de verdad.
+ *
+ * Hoy solo pasa con Mercado Pago conectado por OAuth, que es donde podemos
+ * mandar `marketplace_fee`. Con claves cargadas a mano, o con Stripe —que
+ * todavía no manda `application_fee`—, el 100% de la venta va al vendedor.
+ */
+export function collectsCommission(workspaceId: string, provider: string): boolean {
+  if (provider !== "mercadopago") return false;
+  const integration = getIntegration(workspaceId, "mercadopago");
+  if (integration?.status !== "connected") return false;
+  return publicConfig(workspaceId).connection === "oauth";
 }
 
 /** Primer proveedor conectado del workspace, o `null` si no hay ninguno. */

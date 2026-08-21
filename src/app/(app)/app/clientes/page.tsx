@@ -55,7 +55,7 @@ export default async function CustomersPage() {
           title="Todavía no tenés clientes"
           description="Apenas entre la primera venta vas a ver acá el historial completo de cada persona: qué compró, cuánto gastó y por qué funnel entró."
           action={
-            <LinkButton href="/app/lanzamiento" icon="rocket">
+            <LinkButton href="/app/productos" icon="box">
               Ir a Modo Lanzamiento
             </LinkButton>
           }

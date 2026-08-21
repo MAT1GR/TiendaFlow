@@ -5,10 +5,12 @@ import type { Metadata } from "next";
 import { MetaPixel } from "@/components/public/meta-pixel";
 import { VisitTracker } from "@/components/public/visit-tracker";
 import { LandingSectionView, type SectionData } from "@/components/landing/blocks";
+import { readTheme, themeVars } from "@/components/landing/theme";
 import { Icon } from "@/components/ui/icon";
 import { getMetaPublicConfig } from "@/lib/integrations/meta";
+import { tiendaActual } from "@/lib/public-url";
 import {
-  getFunnelByPublicSlug,
+  resolvePublicFunnel,
   getLandingPageByStep,
   getOffer,
   getProduct,
@@ -23,7 +25,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const funnel = getFunnelByPublicSlug(slug);
+  const funnel = resolvePublicFunnel(slug, await tiendaActual());
   if (!funnel) return { title: "Página no encontrada" };
 
   const steps = listFunnelSteps(funnel.workspace_id, funnel.id);
@@ -56,7 +58,7 @@ export default async function PublicLandingPage({
    * un PageView falso a Meta, que además usa esos eventos para optimizar.
    */
   const isPreview = preview === "1";
-  const funnel = getFunnelByPublicSlug(slug);
+  const funnel = resolvePublicFunnel(slug, await tiendaActual());
   if (!funnel) notFound();
 
   const steps = listFunnelSteps(funnel.workspace_id, funnel.id);
@@ -74,8 +76,7 @@ export default async function PublicLandingPage({
 
   const offer = funnel.offer_id ? getOffer(funnel.workspace_id, funnel.offer_id) : null;
   const product = offer?.product_id ? getProduct(funnel.workspace_id, offer.product_id) : null;
-  const theme = parseJson<{ accent?: string }>(page?.theme ?? null, {});
-  const accent = theme.accent ?? "#6D5DFB";
+  const theme = readTheme(parseJson<unknown>(page?.theme ?? null, {}));
   const checkoutHref = `/f/${slug}/checkout`;
   const pixel = getMetaPublicConfig(funnel.workspace_id);
 
@@ -97,7 +98,7 @@ export default async function PublicLandingPage({
         </div>
       ) : null}
 
-      <main className="pb-24">
+      <main className="pb-24" style={themeVars(theme)}>
         {sections.length === 0 ? (
           <FallbackLanding
             title={offer?.headline ?? product?.name ?? funnel.name}
@@ -106,15 +107,13 @@ export default async function PublicLandingPage({
             priceLabel={priceLabel}
             cta={offer?.cta_text ?? "Quiero mi acceso"}
             href={checkoutHref}
-            accent={accent}
           />
         ) : (
           sections.map((section) => (
             <LandingSectionView
               key={section.id}
               section={section}
-              accent={accent}
-              ctaHref={checkoutHref}
+                ctaHref={checkoutHref}
               priceLabel={priceLabel}
               compareLabel={compareLabel}
             />
@@ -124,11 +123,18 @@ export default async function PublicLandingPage({
 
       {/* CTA fijo en mobile: la mayor parte del tráfico de Meta llega desde el celular. */}
       {offer ? (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-ink-200 bg-white/95 p-3 backdrop-blur-md sm:hidden">
+        <div
+          className="fixed inset-x-0 bottom-0 z-40 border-t p-3 backdrop-blur-md sm:hidden"
+          style={{ ...themeVars(theme), borderColor: "var(--tf-line)" }}
+        >
           <Link
             href={checkoutHref}
-            className="flex items-center justify-center gap-2 rounded-2xl px-5 py-3.5 text-[15px] font-semibold text-white"
-            style={{ backgroundColor: accent }}
+            className="flex items-center justify-center gap-2 px-5 py-3.5 text-[15px] font-extrabold"
+            style={{
+              backgroundColor: "var(--tf-accent)",
+              color: "var(--tf-on-accent)",
+              borderRadius: "var(--tf-radius)",
+            }}
           >
             {offer.cta_text} · {formatMoney(offer.price, offer.currency)}
             <Icon name="arrowRight" size={17} />
@@ -146,7 +152,6 @@ function FallbackLanding({
   priceLabel,
   cta,
   href,
-  accent,
 }: {
   title: string;
   subtitle: string;
@@ -154,24 +159,23 @@ function FallbackLanding({
   priceLabel?: string;
   cta: string;
   href: string;
-  accent: string;
 }) {
   return (
     <section className="mx-auto w-full max-w-3xl px-5 py-16 sm:px-8">
-      <h1 className="text-[34px] font-semibold leading-[1.1] tracking-tight text-ink-900 sm:text-[46px]">
+      <h1 className="text-[34px] font-semibold leading-[1.1] tracking-tight text-[color:var(--tf-text)] sm:text-[46px]">
         {title}
       </h1>
       {subtitle ? (
-        <p className="mt-4 text-[17px] leading-relaxed text-ink-600">{subtitle}</p>
+        <p className="mt-4 text-[17px] leading-relaxed text-[color:var(--tf-muted)]">{subtitle}</p>
       ) : null}
 
       {benefits.length ? (
         <ul className="mt-8 flex flex-col gap-2.5">
           {benefits.map((benefit) => (
-            <li key={benefit} className="flex items-start gap-3 text-[15px] text-ink-700">
+            <li key={benefit} className="flex items-start gap-3 text-[15px] text-[color:var(--tf-text)]">
               <span
                 className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full text-white"
-                style={{ backgroundColor: accent }}
+                style={{ backgroundColor: "var(--tf-accent)", color: "var(--tf-on-accent)", borderRadius: "var(--tf-radius)" }}
               >
                 <Icon name="check" size={14} />
               </span>
@@ -183,19 +187,19 @@ function FallbackLanding({
 
       <div className="mt-10">
         {priceLabel ? (
-          <p className="text-[32px] font-semibold tracking-tight text-ink-900">{priceLabel}</p>
+          <p className="text-[32px] font-semibold tracking-tight text-[color:var(--tf-text)]">{priceLabel}</p>
         ) : null}
         <Link
           href={href}
           className="mt-4 inline-flex items-center gap-2 rounded-2xl px-7 py-4 text-[16px] font-semibold text-white"
-          style={{ backgroundColor: accent }}
+          style={{ backgroundColor: "var(--tf-accent)", color: "var(--tf-on-accent)", borderRadius: "var(--tf-radius)" }}
         >
           {cta}
           <Icon name="arrowRight" size={18} />
         </Link>
       </div>
 
-      <p className="mt-10 rounded-xl border border-dashed border-ink-300 bg-ink-50 px-4 py-3 text-[13px] text-ink-500">
+      <p className="mt-10 rounded-xl border border-dashed border-[color:var(--tf-line)] px-4 py-3 text-[13px] text-[color:var(--tf-muted)]">
         Esta landing todavía no tiene secciones armadas. Editala desde el panel de TiendaFlow para
         controlar cada bloque.
       </p>

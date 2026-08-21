@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { SettingsWorkspace } from "@/app/(app)/app/configuracion/workspace";
+import { MoreLink } from "@/components/app/more-link";
 import { PageHeader } from "@/components/ui/data";
 import { requireSession } from "@/lib/auth";
 import { ensureSubscription } from "@/lib/repo";
@@ -31,6 +32,13 @@ export default async function SettingsPage() {
           periodEnd: subscription.current_period_end,
         }}
         hasDemo={hasDemoData(workspace.id)}
+      />
+
+      <MoreLink
+        emoji="🌐"
+        title="Dominios"
+        blurb="Usá tu propio dominio en vez del link que te damos nosotros."
+        href="/app/dominios"
       />
     </div>
   );

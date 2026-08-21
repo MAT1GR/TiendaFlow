@@ -75,7 +75,7 @@ export default async function OrdersPage() {
           title="Todavía no entró ninguna venta"
           description="Cuando publiques tu funnel y llegue la primera compra vas a ver acá el detalle completo: cliente, producto, upsells y datos de campaña."
           action={
-            <LinkButton href="/app/lanzamiento" icon="rocket">
+            <LinkButton href="/app/productos" icon="box">
               Ir a Modo Lanzamiento
             </LinkButton>
           }

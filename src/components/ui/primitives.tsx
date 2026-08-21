@@ -3,9 +3,11 @@
 import Link from "next/link";
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState,
   type ButtonHTMLAttributes,
@@ -785,17 +787,32 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  function push(input: Omit<Toast, "id">) {
+  /**
+   * `push` y `value` tienen que ser estables entre renders.
+   *
+   * Sin esto, mostrar un toast provoca un render del provider, ese render crea
+   * un `value` nuevo, y cualquier `useEffect` que tenga `toast` entre sus
+   * dependencias se vuelve a disparar. Si ese efecto era justamente el que
+   * mostraba el toast —el caso típico de "guardado con éxito"— queda un bucle
+   * infinito y React tira la pantalla abajo con "Maximum update depth
+   * exceeded".
+   *
+   * Es un bug silencioso: no aparece hasta que alguien guarda algo.
+   */
+  const push = useCallback((input: Omit<Toast, "id">) => {
     const id = Date.now() + Math.random();
     setToasts((current) => [...current, { ...input, id }]);
     setTimeout(() => setToasts((current) => current.filter((t) => t.id !== id)), 5200);
-  }
+  }, []);
 
-  const value: ToastContextValue = {
-    toast: push,
-    success: (title, description) => push({ title, description, tone: "success" }),
-    error: (title, description) => push({ title, description, tone: "error" }),
-  };
+  const value: ToastContextValue = useMemo(
+    () => ({
+      toast: push,
+      success: (title, description) => push({ title, description, tone: "success" }),
+      error: (title, description) => push({ title, description, tone: "error" }),
+    }),
+    [push],
+  );
 
   return (
     <ToastContext.Provider value={value}>

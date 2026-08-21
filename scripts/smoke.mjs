@@ -81,6 +81,8 @@ await step("Onboarding en 3 pasos", async () => {
   await page.waitForURL("**/app/productos/nuevo**", { timeout: 20000 });
 });
 
+let productUrl = "";
+
 await step("Crear producto (flujo de 6 pasos)", async () => {
   await page.getByRole("button", { name: /^Siguiente$/ }).click(); // origen → info
   await page.fill('input[placeholder="Guía de Hábitos Saludables"]', "Guía Smoke Test");
@@ -95,24 +97,27 @@ await step("Crear producto (flujo de 6 pasos)", async () => {
   }
   await page.getByRole("button", { name: /^Crear producto$/ }).click();
   await page.waitForURL(/\/app\/productos\/[0-9a-f-]{36}/, { timeout: 20000 });
+  productUrl = page.url();
 });
 
 await step("Crear oferta con propuesta de IA", async () => {
-  await page.getByRole("link", { name: /Construyamos tu oferta/i }).first().click();
+  await page.goto(`${productUrl}/oferta`, { waitUntil: "domcontentloaded" });
+  await page.getByRole("link", { name: /Ponerle precio/i }).first().click();
   await page.waitForURL(/\/app\/ofertas\/nueva/, { timeout: 20000 });
   await page.getByRole("button", { name: /Crear oferta con IA/i }).click();
   await page.getByText(/Borrador local, no generado por IA/i).first().waitFor({ timeout: 20000 });
   await page.getByRole("button", { name: /^Crear oferta$/ }).click();
-  await page.waitForURL(/\/app\/ofertas\/[0-9a-f-]{36}/, { timeout: 20000 });
+  // Vuelve al producto: el usuario nunca ve una pantalla de "ofertas" suelta.
+  await page.waitForURL("**/app/productos/**/oferta", { timeout: 20000 });
 });
 
-await step("La oferta trae bonos, order bump y upsell aplicados", async () => {
+await step("La oferta trae bonos y ofertas extra aplicadas", async () => {
   const bonuses = await page.getByRole("tab", { name: /Bonos/ }).textContent();
   const bump = await page.getByRole("tab", { name: /Order bump/ }).textContent();
   const upsell = await page.getByRole("tab", { name: /Upsells/ }).textContent();
   if (!/[1-9]/.test(bonuses ?? "")) throw new Error(`Sin bonos: ${bonuses}`);
-  if (!/[1-9]/.test(bump ?? "")) throw new Error(`Sin order bump: ${bump}`);
-  if (!/[1-9]/.test(upsell ?? "")) throw new Error(`Sin upsell: ${upsell}`);
+  if (!/[1-9]/.test(bump ?? "")) throw new Error(`Sin oferta extra al pagar: ${bump}`);
+  if (!/[1-9]/.test(upsell ?? "")) throw new Error(`Sin oferta posterior: ${upsell}`);
 });
 
 await step("Publicar oferta", async () => {
@@ -120,30 +125,31 @@ await step("Publicar oferta", async () => {
   await page.getByText(/Oferta publicada/i).first().waitFor({ timeout: 15000 });
 });
 
-const offerUrl = page.url();
-
-await step("Crear funnel", async () => {
-  await page.goto(`${BASE}/app/funnels/nuevo`, { waitUntil: "domcontentloaded" });
-  await page.getByRole("button", { name: /^Crear funnel$/ }).click();
-  await page.waitForURL(/\/app\/funnels\/[0-9a-f-]{36}/, { timeout: 20000 });
-  await page.getByText("Landing page").first().waitFor({ timeout: 10000 });
+await step("Armar la página de venta desde el producto", async () => {
+  await page.goto(`${productUrl}/pagina`, { waitUntil: "domcontentloaded" });
+  await page.getByRole("link", { name: /Armar mi página/i }).first().click();
+  await page.waitForURL(/\/app\/funnels\/nuevo/, { timeout: 20000 });
+  await page.getByRole("button", { name: /Armar mi página/i }).click();
+  await page.waitForURL("**/app/productos/**/pagina", { timeout: 20000 });
 });
 
-const funnelUrl = page.url().split("?")[0];
-
-await step("Publicar sin proveedor de pago está bloqueado", async () => {
-  await page.getByRole("button", { name: /Publicar funnel/i }).click();
-  await page.getByText(/proveedor de pago conectado/i).first().waitFor({ timeout: 15000 });
+await step("Publicar sin medio de pago está bloqueado", async () => {
+  await page.goto(`${productUrl}/publicar`, { waitUntil: "domcontentloaded" });
+  await page.getByText(/Falta conectar un medio de pago/i).first().waitFor({ timeout: 15000 });
+  const button = page.getByRole("button", { name: /Publicar mi producto/i });
+  if (await button.isEnabled()) {
+    throw new Error("El botón de publicar tendría que estar bloqueado");
+  }
 });
 
-await step("Conectar proveedor de pago (Mercado Pago)", async () => {
+await step("Conectar medio de pago (Mercado Pago)", async () => {
   await page.goto(`${BASE}/app/pagos`, { waitUntil: "domcontentloaded" });
   await page
     .locator("div")
     .filter({ hasText: /^Mercado Pago/ })
     .first()
     .waitFor({ timeout: 10000 });
-  await page.getByRole("button", { name: /^Conectar$/ }).nth(1).click();
+  await page.getByRole("button", { name: /Conectar mi cuenta/i }).nth(1).click();
   await page.fill('input[name="public_key"]', "APP_USR-smoke-test-public-key");
   await page.fill('input[name="secret_key"]', "APP_USR-smoke-test-secret");
   await page.getByRole("button", { name: /Guardar credenciales/i }).click();
@@ -158,39 +164,43 @@ await step("Configurar Meta Pixel", async () => {
   await page.getByText(/Configuración guardada/i).first().waitFor({ timeout: 15000 });
 });
 
-await step("Generar landing con IA", async () => {
-  await page.goto(funnelUrl, { waitUntil: "domcontentloaded" });
-  await page.getByRole("link", { name: /Editar página/i }).first().click();
-  await page.waitForURL("**/app/landings/**", { timeout: 20000 });
+await step("Generar la página de venta con IA, sin salir del producto", async () => {
+  await page.goto(`${productUrl}/pagina`, { waitUntil: "domcontentloaded" });
   await page.getByRole("button", { name: /Generar landing con IA/i }).first().click();
   await page.getByRole("button", { name: /^Generar landing$/ }).click();
   await page.getByText(/Borrador local, no generado por IA/i).first().waitFor({ timeout: 25000 });
-  const sections = await page.locator('aside ol li').count();
+  const sections = await page.locator("aside ol li").count();
   if (sections < 5) throw new Error(`Se generaron solo ${sections} secciones`);
 });
 
-await step("Guardar y publicar la landing", async () => {
+await step("Guardar y publicar la página", async () => {
   await page.getByRole("button", { name: /^Publicar$/ }).click();
   await page.getByText(/Landing publicada/i).first().waitFor({ timeout: 20000 });
 });
 
 let publicUrl = "";
 
-await step("Publicar el funnel", async () => {
-  await page.goto(funnelUrl, { waitUntil: "domcontentloaded" });
-  await page.getByRole("button", { name: /Publicar funnel/i }).click();
-  const link = page.getByRole("link", { name: /Ver funnel publicado/i }).first();
-  await link.waitFor({ timeout: 20000 });
+await step("Publicar el producto", async () => {
+  await page.goto(`${productUrl}/publicar`, { waitUntil: "domcontentloaded" });
+  await page.getByRole("button", { name: /Publicar mi producto/i }).click();
+  await page.getByText(/Ya está/i).first().waitFor({ timeout: 25000 });
+  const link = page.getByRole("link", { name: /Ver página/i }).first();
+  await link.waitFor({ timeout: 15000 });
   publicUrl = (await link.getAttribute("href")) ?? "";
   if (!publicUrl.startsWith("/f/")) throw new Error(`URL pública inesperada: ${publicUrl}`);
 });
 
-await step("Modo Lanzamiento refleja el progreso", async () => {
-  await page.goto(`${BASE}/app/lanzamiento`, { waitUntil: "domcontentloaded" });
-  await page.getByText(/% listo/).first().waitFor({ timeout: 10000 });
-  const text = await page.getByText(/% listo/).first().textContent();
-  const value = Number((text ?? "").replace(/\D/g, ""));
-  if (value < 60) throw new Error(`Progreso demasiado bajo: ${text}`);
+await step("El resumen del producto refleja el progreso", async () => {
+  await page.goto(productUrl, { waitUntil: "domcontentloaded" });
+  const progress = page.getByText(/\d+\/\d+ pasos/).first();
+  await progress.waitFor({ timeout: 10000 });
+  const text = (await progress.textContent()) ?? "";
+  const [done, total] = text
+    .split("·")[0]
+    .trim()
+    .split("/")
+    .map((part) => Number(part.replace(/\D/g, "")));
+  if (!total || done / total < 0.8) throw new Error(`Progreso demasiado bajo: ${text}`);
 });
 
 /* --- Recorrido público, en una sesión limpia (como un visitante real) ---- */
@@ -256,7 +266,7 @@ const routes = [
   "/app/integraciones",
   "/app/dominios",
   "/app/configuracion",
-  "/app/lanzamiento",
+  "/app/crear/oferta",
 ];
 
 for (const route of routes) {

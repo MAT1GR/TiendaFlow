@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 
 import { requireSession } from "@/lib/auth";
+import { readTheme } from "@/components/landing/theme";
+import { landingTemplate } from "@/lib/landing-template";
 import { funnelPublishBlockers } from "@/lib/launch";
 import * as repo from "@/lib/repo";
 import { parseJson } from "@/lib/utils";
@@ -42,27 +44,44 @@ export async function createFunnelAction(
       traffic_source: String(formData.get("traffic_source") ?? "meta_ads"),
     });
 
-    // La landing del funnel arranca con una página vinculada al primer paso.
+    // La página de venta arranca con la estructura base completa, ya llena con
+    // los datos del producto y de la oferta. Una página en blanco deja a la
+    // persona frente a un editor vacío sin saber qué bloque poner primero:
+    // es mucho más fácil corregir un borrador que escribir desde cero.
     const steps = repo.listFunnelSteps(workspace.id, funnel.id);
     const landingStep = steps.find((step) => step.type === "landing");
     if (landingStep) {
-      repo.createLandingPage(workspace.id, {
+      const pageId = repo.createLandingPage(workspace.id, {
         name: `Landing ${name}`,
         offer_id: offerId,
         funnel_step_id: landingStep.id,
       });
+
+      const offer = offerId ? repo.getOffer(workspace.id, offerId) : null;
+      const product = productId ? repo.getProduct(workspace.id, productId) : null;
+
+      repo.replaceLandingSections(
+        workspace.id,
+        pageId,
+        landingTemplate({
+          product: product ?? null,
+          offer: offer ?? null,
+          bonuses: offerId ? repo.listBonuses(workspace.id, offerId) : [],
+          workspaceName: workspace.name,
+        }),
+      );
     }
 
     repo.createNotification(workspace.id, {
-      title: `Creaste el funnel "${funnel.name}"`,
-      body: "Editá los pasos y generá la landing con IA.",
-      href: `/app/funnels/${funnel.id}`,
+      title: "Tu página de venta está lista para editar",
+      body: "Te dejamos la estructura completa armada con los datos de tu producto.",
+      href: productId ? `/app/productos/${productId}/pagina` : `/app/funnels/${funnel.id}`,
       type: "success",
     });
 
     revalidatePath("/app/funnels");
     revalidatePath("/app");
-    return ok({ id: funnel.id }, "Funnel creado.");
+    return ok({ id: funnel.id }, "Tu página de venta está lista.");
   });
 }
 
@@ -227,8 +246,10 @@ export async function publishFunnelAction(funnelId: string): Promise<ActionResul
 
     revalidatePath(`/app/funnels/${funnelId}`);
     revalidatePath("/app/funnels");
-    revalidatePath("/app/lanzamiento");
-    return ok({ url }, "Funnel publicado.");
+    // El espacio de trabajo del producto vive en otro árbol de rutas y muestra
+    // el estado de publicación en todas sus pantallas.
+    revalidatePath("/app/productos", "layout");
+    return ok({ url }, "Tu producto está publicado.");
   });
 }
 
@@ -273,6 +294,8 @@ export interface EditorSection {
 export async function saveLandingSectionsAction(
   pageId: string,
   sections: EditorSection[],
+  /** El tema visual. Va junto con las secciones porque se editan a la vez. */
+  theme?: unknown,
 ): Promise<ActionResult<null>> {
   return guarded(async () => {
     const { workspace } = await requireSession();
@@ -286,7 +309,15 @@ export async function saveLandingSectionsAction(
       sections.map((section) => ({ type: section.type, content: section.content })),
     );
 
+    // `readTheme` normaliza del lado del servidor: nunca guardamos lo que el
+    // cliente mande sin pasarlo por la misma validación que usa el render.
+    if (theme) {
+      repo.updateLandingPage(workspace.id, pageId, { theme: readTheme(theme) });
+    }
+
     revalidatePath(`/app/landings/${pageId}`);
+    // El editor de la pagina tambien vive adentro del producto.
+    revalidatePath("/app/productos", "layout");
     return ok(null, "Guardamos la landing.");
   });
 }
@@ -308,6 +339,8 @@ export async function updateLandingMetaAction(
     });
 
     revalidatePath(`/app/landings/${pageId}`);
+    // El editor de la pagina tambien vive adentro del producto.
+    revalidatePath("/app/productos", "layout");
     return ok(null, "Guardamos los datos de la página.");
   });
 }
@@ -330,6 +363,8 @@ export async function publishLandingAction(pageId: string): Promise<ActionResult
 
     repo.updateLandingPage(workspace.id, pageId, { status: "published" });
     revalidatePath(`/app/landings/${pageId}`);
+    // El editor de la pagina tambien vive adentro del producto.
+    revalidatePath("/app/productos", "layout");
     return ok(null, "Landing publicada.");
   });
 }

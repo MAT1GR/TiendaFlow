@@ -30,7 +30,7 @@ export default async function LandingEditorPage({
 
   const sections = listLandingSections(workspace.id, id);
   const offer = page.offer_id ? getOffer(workspace.id, page.offer_id) : null;
-  const theme = parseJson<{ accent?: string }>(page.theme, {});
+  const theme = parseJson<unknown>(page.theme, {});
 
   return (
     <LandingEditor
@@ -38,7 +38,7 @@ export default async function LandingEditorPage({
         id: page.id,
         name: page.name,
         status: page.status,
-        accent: theme.accent ?? "#6D5DFB",
+        theme: theme,
         seoTitle: page.seo_title,
         seoDescription: page.seo_description,
       }}

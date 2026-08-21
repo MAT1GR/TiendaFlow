@@ -26,9 +26,9 @@ export function InsightsPanel({ insights }: { insights: Insight[] }) {
             <Icon name="sparkles" size={17} />
           </span>
           <div>
-            <h2 className="text-[15px] font-semibold text-white">Insights de TiendaFlow AI</h2>
+            <h2 className="text-[15px] font-semibold text-white">¿Qué está pasando?</h2>
             <p className="text-[12.5px] text-white/70">
-              Calculados con los datos reales de tu workspace
+              Lo que TiendaFlow ve en tus números de verdad
             </p>
           </div>
         </div>
@@ -36,7 +36,7 @@ export function InsightsPanel({ insights }: { insights: Insight[] }) {
           href="/app/ia"
           className="rounded-xl bg-white/15 px-3 py-1.5 text-[12.5px] font-semibold text-white ring-1 ring-inset ring-white/25 transition-colors hover:bg-white/25"
         >
-          Abrir panel de IA
+          Abrir la IA
         </Link>
       </div>
 
@@ -45,7 +45,7 @@ export function InsightsPanel({ insights }: { insights: Insight[] }) {
           <EmptyState
             icon="sparkles"
             title="No hay nada urgente para revisar"
-            description="Cuando detectemos una caída de conversión, un upsell flojo o una integración sin configurar, te lo vamos a decir acá."
+            description="Cuando veamos que se te está escapando gente, que algo dejó de funcionar o que falta configurar algo importante, te lo decimos acá."
             className="border-0 bg-transparent py-8"
           />
         ) : (
@@ -69,12 +69,6 @@ export function InsightsPanel({ insights }: { insights: Insight[] }) {
                     </div>
                   </div>
                   <div className="mt-3.5 flex flex-wrap items-center gap-2">
-                    <Link
-                      href={insight.analysisHref}
-                      className="rounded-lg bg-white px-2.5 py-1.5 text-[12.5px] font-semibold text-ink-800 ring-1 ring-inset ring-ink-200 transition-colors hover:bg-ink-50"
-                    >
-                      Ver análisis
-                    </Link>
                     <Link
                       href={insight.actionHref}
                       className="rounded-lg bg-ink-900 px-2.5 py-1.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-ink-800"

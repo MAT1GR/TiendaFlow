@@ -200,6 +200,65 @@
   animation: tf-rise 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+/**
+ * Microanimaciones.
+ *
+ * La regla: la animación confirma algo que acaba de pasar, nunca decora. Todas
+ * duran menos de medio segundo y ninguna mueve el layout, así que no hay que
+ * esperarlas para seguir trabajando. El bloque de `prefers-reduced-motion` de
+ * más abajo las apaga todas de una.
+ */
+
+/* Un tilde que aparece: se usa cuando algo pasa a "listo". */
+@keyframes tf-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.tf-pop {
+  animation: tf-pop 0.34s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* Brillo que recorre un bloque mientras la IA está trabajando. */
+@keyframes tf-sheen {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.tf-working {
+  background-image: linear-gradient(
+    100deg,
+    var(--color-brand-50) 0%,
+    var(--color-brand-100) 25%,
+    var(--color-brand-50) 50%,
+    var(--color-brand-100) 75%,
+    var(--color-brand-50) 100%
+  );
+  background-size: 200% 100%;
+  animation: tf-sheen 1.8s linear infinite;
+}
+
+/* Entrada escalonada de una grilla de tarjetas. El retardo lo pone el componente
+   con `--tf-delay`; sin variable entran todas juntas, que también está bien. */
+.tf-enter {
+  animation: tf-rise 0.36s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: var(--tf-delay, 0ms);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

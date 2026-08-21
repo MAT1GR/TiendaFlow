@@ -6,8 +6,9 @@ import { MetaPixel } from "@/components/public/meta-pixel";
 import { VisitTracker } from "@/components/public/visit-tracker";
 import { getMetaPublicConfig } from "@/lib/integrations/meta";
 import { listProviderStatus } from "@/lib/integrations/payments";
+import { tiendaActual } from "@/lib/public-url";
 import {
-  getFunnelByPublicSlug,
+  resolvePublicFunnel,
   getOffer,
   getProduct,
   listBonuses,
@@ -29,7 +30,7 @@ export default async function CheckoutPage({
   const { slug } = await params;
   const { cancelado } = await searchParams;
 
-  const funnel = getFunnelByPublicSlug(slug);
+  const funnel = resolvePublicFunnel(slug, await tiendaActual());
   if (!funnel) notFound();
 
   const offer = funnel.offer_id ? getOffer(funnel.workspace_id, funnel.offer_id) : null;

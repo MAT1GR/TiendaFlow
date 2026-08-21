@@ -22,25 +22,36 @@ export type FunnelStepType =
   | "thankyou"
   | "custom";
 
+/**
+ * Bloques de una página de venta.
+ *
+ * Los primeros son los de la estructura base —la que trae una página nueva, en
+ * este orden— y después vienen los sueltos que se pueden agregar a mano.
+ */
 export type LandingSectionType =
   | "hero"
+  | "stats"
+  | "problems"
+  | "gallery"
+  | "solution"
+  | "modules"
+  | "bonuses"
+  | "pricing"
+  | "testimonials"
+  | "guarantee"
+  | "faq"
+  | "cta"
+  | "footer"
   | "headline"
   | "subheadline"
-  | "cta"
   | "benefits"
   | "features"
   | "mockup"
-  | "testimonials"
-  | "faq"
-  | "guarantee"
-  | "bonuses"
-  | "pricing"
   | "comparison"
   | "countdown"
   | "social_proof"
   | "video"
-  | "image"
-  | "footer";
+  | "image";
 
 export type IntegrationProvider =
   | "meta"

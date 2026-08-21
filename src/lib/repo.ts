@@ -3,6 +3,7 @@ import "server-only";
 import crypto from "node:crypto";
 
 import { all, get, nowIso, run, transaction } from "@/lib/db";
+import { DEFAULT_PRESET } from "@/components/landing/theme";
 import { decryptSecret, encryptSecret } from "@/lib/crypto";
 import { commissionFor } from "@/lib/plans";
 import { parseJson, slugify } from "@/lib/utils";
@@ -878,7 +879,10 @@ export function createLandingPage(
     input.offer_id ?? null,
     input.name,
     uniqueSlug(workspaceId, "landing_pages", input.name),
-    JSON.stringify({ accent: "#6D5DFB" }),
+    // El tema por defecto de las páginas nuevas. Se guarda entero —y no solo
+    // el acento— para que la página nazca con el estilo completo y el vendedor
+    // solo tenga que retocar lo que no le guste.
+    JSON.stringify(DEFAULT_PRESET),
     now,
     now,
   );
@@ -1127,6 +1131,15 @@ export interface SettleOptions {
   providerPaymentId?: string | null;
   /** Payload crudo del proveedor, para poder auditar después. */
   rawPayload?: unknown;
+  /**
+   * `false` cuando la comisión no se cobró de verdad en esta venta.
+   *
+   * Anotar una comisión que nunca entró convierte el reporte de facturación en
+   * ficción: los números dirían que TiendaFlow ganó una plata que nadie le
+   * depositó. Solo se cobra cuando el vendedor conectó por OAuth y Mercado Pago
+   * retuvo la parte con `marketplace_fee`.
+   */
+  collectsCommission?: boolean;
 }
 
 export interface SettleResult {
@@ -1170,7 +1183,10 @@ export function markOrderPaid(
   }
 
   const plan = getSubscription(workspaceId)?.plan ?? "free";
-  const commission = commissionFor(plan, order.total);
+  const commission =
+    options.collectsCommission === false
+      ? { rate: 0, amount: 0 }
+      : commissionFor(plan, order.total);
   const now = ts();
 
   transaction(() => {
@@ -1663,5 +1679,52 @@ export function setPlan(workspaceId: string, plan: string) {
     plan,
     ts(),
     workspaceId,
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Resolución de páginas públicas                                              */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Encuentra la página pública a partir de la URL, venga por donde venga.
+ *
+ * Hay dos formas de llegar a la misma página:
+ *
+ *  · `tienda.tiendaflow.com/guia` — la linda, la que comparte el vendedor. El
+ *    subdominio identifica al workspace y el slug al producto.
+ *  · `/f/guia--a1b2c3` — la de respaldo, que funciona sin subdominio. Lleva el
+ *    sufijo del id porque dos vendedores distintos pueden llamar igual a su
+ *    producto y sin el sufijo colisionarían.
+ *
+ * Las dos tienen que seguir funcionando: los links que ya se compartieron no se
+ * pueden romper porque después hayamos agregado subdominios.
+ */
+export function resolvePublicFunnel(slug: string, tienda?: string | null) {
+  if (tienda) {
+    const workspace = get<{ id: string }>(
+      `SELECT id FROM workspaces WHERE slug = ?`,
+      tienda,
+    );
+    if (!workspace) return null;
+
+    const funnel = get<Funnel>(
+      `SELECT * FROM funnels WHERE workspace_id = ? AND slug = ? LIMIT 1`,
+      workspace.id,
+      slug,
+    );
+    if (funnel) return funnel;
+
+    // Puede llegar el slug largo por subdominio: lo aceptamos igual.
+  }
+
+  return getFunnelByPublicSlug(slug);
+}
+
+/** El workspace de una tienda, por su slug de subdominio. */
+export function getWorkspaceBySlug(slug: string) {
+  return get<{ id: string; name: string; slug: string }>(
+    `SELECT id, name, slug FROM workspaces WHERE slug = ?`,
+    slug,
   );
 }

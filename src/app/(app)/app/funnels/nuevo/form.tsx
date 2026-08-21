@@ -8,7 +8,7 @@ import { Alert } from "@/components/ui/feedback";
 import { Icon } from "@/components/ui/icon";
 import { Button, Card, Field, Input, Select, useToast } from "@/components/ui/primitives";
 
-const DEFAULT_STEPS = ["Landing page", "Checkout", "Upsell 1", "Gracias"];
+const DEFAULT_STEPS = ["Donde lo contás", "Donde te pagan", "Una oferta extra", "Gracias"];
 
 export function NewFunnelForm({
   offers,
@@ -44,8 +44,14 @@ export function NewFunnelForm({
     startTransition(async () => {
       const result = await createFunnelAction(null, data);
       if (result.ok) {
-        toast.success("Funnel creado", "Ahora generá la landing y publicá.");
-        router.push(`/app/funnels/${result.data.id}?nuevo=1`);
+        toast.success("Tu página de venta está lista", "Ahora escribí lo que va adentro.");
+        // Volvemos al producto si sabemos de cuál es; el armador suelto queda
+        // solo como pantalla de respaldo.
+        router.push(
+          offer?.productId
+            ? `/app/productos/${offer.productId}/pagina`
+            : `/app/funnels/${result.data.id}?nuevo=1`,
+        );
       } else {
         setError(result.error);
       }
@@ -109,8 +115,8 @@ export function NewFunnelForm({
       </Card>
 
       <div className="flex justify-end">
-        <Button type="submit" size="lg" loading={pending} icon="funnel">
-          Crear funnel
+        <Button type="submit" size="lg" loading={pending} icon="layers">
+          Armar mi página
         </Button>
       </div>
     </form>

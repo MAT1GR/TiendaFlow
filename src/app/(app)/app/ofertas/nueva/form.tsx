@@ -150,8 +150,10 @@ export function NewOfferForm({
         }
       }
 
-      toast.success("Oferta creada", "Ahora sumale bonos y armá el funnel.");
-      router.push(`/app/ofertas/${result.data.id}?nueva=1`);
+      // Volvemos al producto: el usuario nunca se entera de que existe una
+      // pantalla de "ofertas" aparte.
+      toast.success("Listo, ya tiene precio", "Ahora podés sumarle bonos.");
+      router.push(`/app/productos/${productId}/oferta`);
     });
   }
 

@@ -168,7 +168,7 @@ export default async function AnalyticsPage({
           title="Todavía no hay datos en este período"
           description="Publicá tu funnel y mandá tráfico. Apenas entren las primeras visitas y ventas, esta pantalla se llena sola."
           action={
-            <LinkButton href="/app/lanzamiento" icon="rocket">
+            <LinkButton href="/app/productos" icon="box">
               Ir a Modo Lanzamiento
             </LinkButton>
           }

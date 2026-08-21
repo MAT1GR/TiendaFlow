@@ -3,6 +3,7 @@ import "server-only";
 import crypto from "node:crypto";
 
 import { get, nowIso, run, transaction } from "@/lib/db";
+import { landingTemplate } from "@/lib/landing-template";
 import { id } from "@/lib/repo";
 import { slugify } from "@/lib/utils";
 
@@ -300,63 +301,34 @@ export function seedDemoWorkspace(workspaceId: string) {
       now,
     );
 
-    const sections: Array<{ type: string; content: unknown }> = [
-      {
-        type: "hero",
-        content: {
-          eyebrow: "Para quienes ya abandonaron mil veces",
-          headline: "Armá una rutina que puedas sostener",
-          subheadline:
-            "El sistema de 21 días que se adapta a tu semana real, no a una semana ideal.",
-          cta: "Quiero mi acceso ahora",
-        },
+    // La landing demo usa exactamente la misma plantilla base que recibe
+    // cualquier producto nuevo: si el demo mostrara otra cosa, estaríamos
+    // enseñando una estructura que después nadie encuentra.
+    const sections = landingTemplate({
+      product: {
+        name: mainProduct.name,
+        subtitle: mainProduct.subtitle,
+        description: null,
+        audience: mainProduct.audience,
+        main_problem: mainProduct.problem,
+        transformation: mainProduct.transformation,
+        benefits: JSON.stringify(mainProduct.benefits),
       },
-      {
-        type: "benefits",
-        content: { title: "Lo que te llevás", items: mainProduct.benefits },
+      offer: {
+        headline: "Armá una rutina que puedas sostener",
+        promise:
+          "El sistema de 21 días que se adapta a tu semana real, no a una semana ideal.",
+        benefits: JSON.stringify(mainProduct.benefits),
+        cta_text: "Quiero mi acceso ahora",
+        guarantee: "Garantía de 7 días",
+        price: 14900,
+        compare_at_price: 24900,
+        currency: "ARS",
       },
-      {
-        type: "features",
-        content: {
-          title: "Cómo funciona",
-          items: [
-            { title: "1. Diagnóstico", description: "Ves qué te hace abandonar en la semana 2." },
-            { title: "2. Rutina mínima", description: "Armás la versión más chica que sí sostenés." },
-            { title: "3. Escala", description: "Subís de a poco sin romper la racha." },
-          ],
-        },
-      },
-      {
-        type: "bonuses",
-        content: {
-          title: "Además te llevás estos bonos",
-          items: bonuses.map((b) => ({ name: b.name, description: b.description })),
-        },
-      },
-      {
-        type: "guarantee",
-        content: {
-          title: "Garantía de 7 días",
-          text: "Si no es para vos, escribinos dentro de los 7 días y te devolvemos el 100%.",
-        },
-      },
-      {
-        type: "faq",
-        content: {
-          title: "Preguntas frecuentes",
-          items: [
-            { question: "¿Cómo lo recibo?", answer: "Es digital: te llega por mail al confirmar el pago." },
-            { question: "¿Cuánto tiempo por día necesito?", answer: "Arranca con 10 minutos." },
-            { question: "¿Sirve si trabajo muchas horas?", answer: "Sí, está pensado para agendas cargadas." },
-          ],
-        },
-      },
-      {
-        type: "pricing",
-        content: { title: "Tu acceso hoy", price_label: "$14.900", compare_label: "$24.900", cta: "Quiero mi acceso ahora" },
-      },
-      { type: "cta", content: { headline: "Empezá hoy tus 21 días", cta: "Quiero mi acceso ahora" } },
-    ];
+      bonuses,
+      workspaceName: "Tienda Demo",
+    });
+
     sections.forEach((section, index) => {
       run(
         `INSERT INTO landing_sections (id, workspace_id, landing_page_id, type, position, content, visible, created_at, updated_at)

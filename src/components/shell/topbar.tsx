@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 
 import { logoutAction } from "@/app/actions/auth";
 import { markNotificationsReadAction } from "@/app/actions/settings";
 import { searchAction, type SearchHit } from "@/app/actions/search";
-import { CREATE_MENU } from "@/components/shell/nav";
+import { CREATE_MENU, CREATE_TARGET } from "@/components/shell/nav";
 import { Avatar } from "@/components/ui/data";
 import { Icon } from "@/components/ui/icon";
 import { Badge, Button, Dropdown, MenuItem, Spinner } from "@/components/ui/primitives";
@@ -132,7 +132,7 @@ function GlobalSearch() {
             setOpen(true);
           }}
           onFocus={() => setOpen(true)}
-          placeholder="Buscar productos, ofertas, funnels, ventas…"
+          placeholder="Buscar un producto, una venta, un cliente…"
           aria-label="Búsqueda global"
           className="h-9 w-full rounded-xl border border-ink-200 bg-ink-50/70 pl-9 pr-14 text-[13.5px] text-ink-900 placeholder:text-ink-400 transition-colors hover:bg-white focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10"
         />
@@ -184,7 +184,22 @@ function GlobalSearch() {
 
 /* -------------------------------------------------------------------------- */
 
+/**
+ * El botón ＋ Crear.
+ *
+ * Siempre visible, y siempre con el producto arriba de todo: es el camino
+ * recomendado. Lo de abajo —oferta, página, bono— pertenece a un producto, así
+ * que si ya estás parado en uno te lleva derecho ahí, y si no, primero
+ * pregunta para cuál en vez de crear algo suelto que después hay que atar.
+ */
 function CreateMenu() {
+  const pathname = usePathname();
+
+  // Producto sobre el que se está trabajando, sacado de la URL.
+  const segments = pathname.split("/");
+  const activeProductId =
+    segments[2] === "productos" && segments[3] && segments[3] !== "nuevo" ? segments[3] : null;
+
   return (
     <Dropdown
       trigger={(open) => (
@@ -198,35 +213,46 @@ function CreateMenu() {
           <span className="hidden sm:inline">Crear</span>
         </span>
       )}
-      className="w-72"
+      className="w-[19rem]"
     >
       {(close) => (
         <>
+          {CREATE_MENU.map((item) => {
+            const href = item.href
+              ? item.href
+              : activeProductId
+                ? `/app/productos/${activeProductId}/${CREATE_TARGET[item.needsProduct!].segment}`
+                : `/app/crear/${item.needsProduct}`;
+
+            return (
+              <Link
+                key={item.label}
+                href={href}
+                onClick={close}
+                role="menuitem"
+                className="flex items-start gap-2.5 rounded-xl px-3 py-2 text-left transition-colors hover:bg-ink-100"
+              >
+                <span className="tf-emoji mt-0.5" aria-hidden="true">
+                  {item.emoji}
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[13.5px] font-medium text-ink-900">{item.label}</span>
+                  <span className="block text-[12px] text-ink-500">{item.hint}</span>
+                </span>
+              </Link>
+            );
+          })}
+
           <Link
             href="/app/ia"
             onClick={close}
-            className="tf-gradient-ai mb-1.5 flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-[13.5px] font-semibold text-white"
+            className="tf-gradient-ai mt-1.5 flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-[13.5px] font-semibold text-white"
             role="menuitem"
           >
             <Icon name="sparkles" size={16} />
             Crear con IA
             <Icon name="arrowRight" size={14} className="ml-auto" />
           </Link>
-          {CREATE_MENU.map((item) => (
-            <Link
-              key={item.label}
-              href={item.href}
-              onClick={close}
-              role="menuitem"
-              className="flex items-start gap-2.5 rounded-xl px-3 py-2 text-left transition-colors hover:bg-ink-100"
-            >
-              <Icon name={item.icon} size={16} className="mt-0.5 text-ink-400" />
-              <span>
-                <span className="block text-[13.5px] font-medium text-ink-900">{item.label}</span>
-                <span className="block text-[12px] text-ink-500">{item.hint}</span>
-              </span>
-            </Link>
-          ))}
         </>
       )}
     </Dropdown>
@@ -339,9 +365,6 @@ function AccountMenu({ user }: { user: { full_name: string; email: string } }) {
         </MenuItem>
         <MenuItem icon="card" href="/app/pagos">
           Pagos
-        </MenuItem>
-        <MenuItem icon="rocket" href="/app/lanzamiento">
-          Modo Lanzamiento
         </MenuItem>
         <form action={logoutAction}>
           <button

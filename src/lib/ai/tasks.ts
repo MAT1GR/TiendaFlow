@@ -1,5 +1,6 @@
 import "server-only";
 
+import { landingTemplate } from "@/lib/landing-template";
 import { runAiTask, type AiResult } from "@/lib/ai/provider";
 import { formatMoney, formatPercent } from "@/lib/utils";
 
@@ -285,11 +286,42 @@ export function generateLandingDraft(input: LandingBriefInput): Promise<AiResult
   const problem = input.problem?.trim() || "el problema que resolvés";
   const transformation = input.transformation?.trim() || "el resultado que prometés";
 
+  /**
+   * El borrador local y el pedido a la IA comparten la misma estructura: la
+   * plantilla base. Así, haya o no proveedor conectado, la página siempre sale
+   * con los mismos bloques en el mismo orden, y lo único que cambia es qué tan
+   * buenos son los textos.
+   */
+  const base = () =>
+    landingTemplate({
+      product: {
+        name: input.productName,
+        subtitle: null,
+        description: null,
+        audience: input.audience ?? null,
+        main_problem: input.problem ?? null,
+        transformation: input.transformation ?? null,
+        benefits: JSON.stringify(input.benefits ?? []),
+      },
+      offer: {
+        headline: null,
+        promise: null,
+        benefits: JSON.stringify(input.benefits ?? []),
+        cta_text: "Quiero mi acceso",
+        guarantee: input.guarantee ?? null,
+        price: input.price,
+        compare_at_price: null,
+        currency: input.currency,
+      },
+      bonuses: input.bonuses ?? [],
+      workspaceName: input.productName,
+    });
+
   return runAiTask<LandingDraft>({
     task: "landing_draft",
     system: SYSTEM_BASE,
     schemaHint:
-      '{ sections: [{ type: "hero"|"benefits"|"features"|"bonuses"|"guarantee"|"faq"|"pricing"|"cta", content: object }] }',
+      '{ sections: [{ type: "hero"|"stats"|"problems"|"gallery"|"solution"|"modules"|"bonuses"|"pricing"|"testimonials"|"guarantee"|"faq"|"cta"|"footer", content: object }] }',
     maxTokens: 4000,
     prompt: `Escribí el copy completo de una landing page de venta directa para tráfico frío de Meta Ads.
 
@@ -301,100 +333,40 @@ Transformación: ${transformation}
 Precio: ${formatMoney(input.price, input.currency)}
 Tono: ${TONE_HINT[input.tone ?? "directo"] ?? TONE_HINT.directo}
 ${input.benefits?.length ? `Beneficios ya definidos: ${input.benefits.join(" | ")}` : ""}
+${input.bonuses?.length ? `Bonos ya definidos: ${input.bonuses.map((b) => b.name).join(" | ")}` : ""}
 
-Devolvé estas secciones en orden: hero (headline, subheadline, cta), benefits
-(title + items[]), features (title + items[{title, description}]), bonuses
-(title + items[{name, description}]), guarantee (title, text), faq (title +
-items[{question, answer}]), pricing (title, price_label, cta), cta (headline, cta).
-Cada headline debe ser específico y hablarle a la audiencia. Nada de testimonios inventados.`,
-    fallback: (): LandingDraft => ({
-      sections: [
-        {
-          type: "hero",
-          content: {
-            eyebrow: `Para ${audience}`,
-            headline: `${transformation}, sin dar mil vueltas`,
-            subheadline: `${input.productName} es la guía práctica para dejar atrás ${problem} y avanzar con un método claro.`,
-            cta: "Quiero mi acceso",
-          },
-        },
-        {
-          type: "benefits",
-          content: {
-            title: "Lo que te llevás",
-            items:
-              input.benefits?.length
-                ? input.benefits
-                : [
-                    "Un método paso a paso, no teoría suelta",
-                    "Ejercicios para aplicar desde el día uno",
-                    "Los errores más comunes, identificados",
-                    "Acceso inmediato después de la compra",
-                  ],
-          },
-        },
-        {
-          type: "features",
-          content: {
-            title: "Cómo funciona",
-            items: [
-              { title: "1. Comprás", description: "Checkout simple, sin pasos de más." },
-              { title: "2. Recibís el acceso", description: "Te llega al mail apenas se confirma el pago." },
-              { title: "3. Aplicás", description: "Empezás por el primer capítulo y avanzás a tu ritmo." },
-            ],
-          },
-        },
-        {
-          type: "bonuses",
-          content: {
-            title: "Además te llevás estos bonos",
-            items:
-              input.bonuses?.map((bonus) => ({
-                name: bonus.name,
-                description: bonus.description ?? "",
-              })) ?? [
-                { name: "Checklist de implementación", description: "El paso a paso en una hoja." },
-                { name: "Plantillas editables", description: "Para no arrancar de cero." },
-              ],
-          },
-        },
-        {
-          type: "guarantee",
-          content: {
-            title: "Garantía",
-            text:
-              input.guarantee ??
-              "Definí acá tu política de garantía. Escribí solo lo que puedas cumplir.",
-          },
-        },
-        {
-          type: "faq",
-          content: {
-            title: "Preguntas frecuentes",
-            items: [
-              { question: "¿Cómo lo recibo?", answer: "Es digital. Te llega por mail al confirmar el pago." },
-              { question: "¿Necesito experiencia previa?", answer: "No, está pensado desde cero." },
-              { question: "¿Puedo pagar en cuotas?", answer: "Depende del medio de pago que tengas configurado." },
-            ],
-          },
-        },
-        {
-          type: "pricing",
-          content: {
-            title: "Tu acceso hoy",
-            price_label: formatMoney(input.price, input.currency),
-            cta: "Quiero mi acceso",
-          },
-        },
-        {
-          type: "cta",
-          content: {
-            headline: `Empezá hoy con ${input.productName}`,
-            cta: "Quiero mi acceso",
-          },
-        },
-      ],
-    }),
+Devolvé EXACTAMENTE estos 13 bloques, en este orden y con estos campos:
+
+1. hero — eyebrow, headline, subheadline, cta, pills[] (3 frases cortas), social, trust
+2. stats — items[{value, label}] (4), highlights[{title, subtitle, text}] (3)
+3. problems — title, subtitle, items[] (5 dolores concretos, en segunda persona), closing
+4. gallery — kicker, title, subtitle, featured_alt, images[{alt}] (6), note
+5. solution — badge, title, subtitle, text, tags[] (4), highlight, stats[{value, label}] (3), features[] (4)
+6. modules — kicker, title, box_title, items[{title, description}] (6), metrics[{value, label}] (2)
+7. bonuses — kicker, title, items[{name, description, badge}], footer_note
+8. pricing — title, badge, product_name, subtitle, price_label, compare_label, note, includes[] (6), cta, trust[] (3)
+9. testimonials — kicker, title, subtitle, items[] vacío y placeholder true
+10. guarantee — title, text, seal, note
+11. faq — kicker, title, items[{question, answer}] (8 preguntas reales de objeción)
+12. cta — kicker, headline, subheadline, cta, micro, trust[] (3)
+13. footer — brand, text, links[] (3)
+
+Reglas:
+· Cada headline tiene que ser específico y hablarle a esa audiencia, no genérico.
+· En "problems" escribí dolores que la persona reconozca como propios, no categorías.
+· PROHIBIDO inventar cantidades de personas, alumnos, ventas, descargas, años de
+  experiencia o porcentajes de resultados. Nada de "+1.500 personas ya lo usan",
+  "el 97% lo logra" ni "miles de clientes". Si el dato no está más arriba, NO EXISTE
+  y no se escribe. Esto vale para TODOS los campos, incluido "social".
+· El campo "social" describe qué es el material (por ejemplo "Material digital para
+  consultar siempre"), nunca cuánta gente lo compró.
+· Los números de "stats" y "metrics" tienen que salir de los datos de arriba. Si no
+  tenés un número real, usá algo verificable como "100%" digital, "24/7" de acceso o
+  la cantidad de beneficios y bonos que te pasé.
+· NUNCA inventes testimonios: "testimonials" va con items vacío y placeholder en true.
+· No nombres medios de pago concretos: no sabés cuál tiene configurado.
+· Escribí en voseo rioplatense.`,
+    fallback: (): LandingDraft => ({ sections: base() }),
   });
 }
 

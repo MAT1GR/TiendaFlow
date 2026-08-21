@@ -1,9 +1,11 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
+import { AfterPurchaseWizard } from "@/app/(app)/app/productos/[id]/despues/wizard";
+import { SectionIntro } from "@/components/app/section-intro";
 import { LinkButton } from "@/components/ui/primitives";
 import { requireSession } from "@/lib/auth";
-import { productContext } from "@/lib/product-workspace";
+import { productContext, sectionBlurb } from "@/lib/product-workspace";
 import { listDownsells, listOrderBumps, listUpsells } from "@/lib/repo";
 import { formatMoney } from "@/lib/utils";
 
@@ -44,18 +46,27 @@ export default async function AfterPurchaseTab({ params }: { params: Promise<{ i
   const downsells = upsells.flatMap((upsell) => listDownsells(workspace.id, upsell.id));
   const editHref = `/app/productos/${id}/oferta`;
   const currency = offer.currency;
+  const base = `/app/productos/${id}/despues`;
 
   return (
     <div className="flex flex-col gap-5">
-      <header>
-        <h2 className="text-[18px] font-semibold tracking-tight text-ink-900">
-          El recorrido de tu comprador
-        </h2>
-        <p className="mt-1 max-w-2xl text-[14px] leading-relaxed text-ink-600">
-          Cada vez que alguien te compra pasa por estos momentos. En dos de ellos podés ofrecerle
-          algo más. No es obligatorio, pero es la forma más barata de que cada venta valga más.
-        </p>
-      </header>
+      <SectionIntro
+        emoji="🎁"
+        title="Después de comprar"
+        blurb={sectionBlurb("despues")}
+        actions={
+          <AfterPurchaseWizard
+            offerId={offer.id}
+            currency={currency}
+            productName={context.product.name}
+          />
+        }
+      />
+
+      <p className="max-w-2xl text-[13.5px] leading-relaxed text-ink-600">
+        Cada vez que alguien te compra pasa por estos momentos. En dos de ellos podés ofrecerle algo
+        más. No es obligatorio, pero es la forma más barata de que cada venta valga más.
+      </p>
 
       <ol className="flex flex-col">
         <Moment
@@ -79,6 +90,7 @@ export default async function AfterPurchaseTab({ params }: { params: Promise<{ i
           emptyBody="Todavía no ofrecés nada acá. Suele funcionar algo chico y complementario, entre el 20% y el 30% del precio principal."
           currency={currency}
           href={editHref}
+          addHref={`${base}?agregar=pago`}
         />
 
         <Moment emoji="✅" title="Pagó" body="La compra se confirmó y ya es tu cliente." fixed />
@@ -97,6 +109,7 @@ export default async function AfterPurchaseTab({ params }: { params: Promise<{ i
           emptyBody="Todavía no ofrecés nada después de la compra. Podés proponer una versión más completa, un acompañamiento o un producto relacionado."
           currency={currency}
           href={editHref}
+          addHref={`${base}?agregar=despues`}
         />
 
         <Moment
@@ -150,6 +163,7 @@ function Moment({
   emptyBody,
   currency,
   href,
+  addHref,
   fixed,
   disabled,
   last,
@@ -162,6 +176,8 @@ function Moment({
   emptyBody?: string;
   currency?: string;
   href?: string;
+  /** Adónde va el botón cuando todavía no hay nada configurado. */
+  addHref?: string;
   /** Momentos que siempre ocurren y no se configuran. */
   fixed?: boolean;
   disabled?: boolean;
@@ -207,8 +223,13 @@ function Moment({
                 </p>
                 <p className="mt-1 max-w-xl text-[13.5px] leading-relaxed text-ink-600">{body}</p>
               </div>
-              {href && !disabled ? (
-                <LinkButton href={href} variant="secondary" size="sm" icon={configured ? "edit" : "plus"}>
+              {!disabled && (configured ? href : addHref) ? (
+                <LinkButton
+                  href={(configured ? href : addHref)!}
+                  variant="secondary"
+                  size="sm"
+                  icon={configured ? "edit" : "plus"}
+                >
                   {configured ? "Editar" : "Agregar"}
                 </LinkButton>
               ) : null}
@@ -256,13 +277,17 @@ function EmptyGate({
   cta: string;
 }) {
   return (
-    <div className="rounded-2xl border border-ink-200 bg-white p-8 text-center">
-      <h2 className="text-[19px] font-semibold tracking-tight text-ink-900">{title}</h2>
-      <p className="mx-auto mt-2 max-w-md text-[14px] leading-relaxed text-ink-500">{body}</p>
-      <div className="mt-6 flex justify-center">
-        <LinkButton href={href} icon="arrowRight">
-          {cta}
-        </LinkButton>
+    <div className="flex flex-col gap-5">
+      <SectionIntro emoji="🎁" title="Después de comprar" blurb={sectionBlurb("despues")} />
+
+      <div className="rounded-2xl border border-ink-200 bg-white p-8 text-center">
+        <h2 className="text-[19px] font-semibold tracking-tight text-ink-900">{title}</h2>
+        <p className="mx-auto mt-2 max-w-md text-[14px] leading-relaxed text-ink-500">{body}</p>
+        <div className="mt-6 flex justify-center">
+          <LinkButton href={href} icon="arrowRight">
+            {cta}
+          </LinkButton>
+        </div>
       </div>
     </div>
   );

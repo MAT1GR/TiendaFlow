@@ -25,68 +25,76 @@ import {
 } from "@/components/ui/primitives";
 import type { AdCopyDraft } from "@/lib/ai/tasks";
 import type { CampaignPerformance } from "@/lib/analytics";
-import { formatMoney, formatNumber } from "@/lib/utils";
+import { cn, formatMoney, formatNumber } from "@/lib/utils";
 
+/**
+ * Marketing.
+ *
+ * Cuatro herramientas y no cuarenta, en el orden en que se usan: primero el
+ * link para pegar en tus redes, después el anuncio, después la campaña para
+ * saber qué trajo cada venta, y al final los emails.
+ */
 export function MarketingWorkspace({
   campaigns,
-  funnels,
+  destinations,
   offers,
   currency,
   metaConnected,
 }: {
   campaigns: CampaignPerformance[];
-  funnels: Array<{ id: string; name: string; status: string; publicUrl: string }>;
+  destinations: Destination[];
   offers: Array<{ id: string; name: string }>;
   currency: string;
   metaConnected: boolean;
 }) {
-  const [tab, setTab] = useState("campanas");
+  const [tab, setTab] = useState("links");
 
   return (
     <div className="flex flex-col gap-5">
+      {!metaConnected ? (
+        <Alert
+          tone="warning"
+          title="Todavía no sabemos de dónde vienen tus ventas"
+          action={
+            <LinkButton href="/app/integraciones/meta" size="sm" variant="secondary">
+              Conectar Meta
+            </LinkButton>
+          }
+        >
+          Conectá tu cuenta de Meta y vamos a poder decirte qué anuncio trajo cada compra y cuánto
+          te costó conseguirla.
+        </Alert>
+      ) : null}
+
       <Tabs
         value={tab}
         onChange={setTab}
         tabs={[
-          { value: "campanas", label: "Campañas", count: campaigns.length },
-          { value: "copy", label: "Copy de anuncios" },
-          { value: "creativos", label: "Creativos" },
-          { value: "emails", label: "Emails" },
-          { value: "tracking", label: "Tracking" },
+          { value: "links", label: "🔗 Links" },
+          { value: "anuncios", label: "✍️ Anuncios" },
+          { value: "campanas", label: "📣 Campañas", count: campaigns.length },
+          { value: "emails", label: "📧 Emails" },
         ]}
       />
 
+      {tab === "links" ? <LinksPanel destinations={destinations} campaigns={campaigns} /> : null}
+
+      {tab === "anuncios" ? <AdCopyPanel offers={offers} /> : null}
+
       {tab === "campanas" ? (
-        <CampaignsPanel campaigns={campaigns} funnels={funnels} currency={currency} />
-      ) : null}
-
-      {tab === "copy" ? <AdCopyPanel offers={offers} /> : null}
-
-      {tab === "creativos" ? (
-        <Card className="p-5">
-          <CardHeader
-            title="Creativos"
-            subtitle="Los archivos de tus anuncios"
-            className="px-0 pt-0"
-          />
-          <Alert tone="warning" className="mt-4">
-            La biblioteca de creativos necesita almacenamiento de archivos, que todavía no está
-            conectado. Cuando lo configures vas a poder subir imágenes y videos acá y asociarlos a
-            cada campaña.
-          </Alert>
-        </Card>
+        <CampaignsPanel campaigns={campaigns} destinations={destinations} currency={currency} />
       ) : null}
 
       {tab === "emails" ? (
         <Card className="p-5">
           <CardHeader
-            title="Emails"
-            subtitle="Secuencias post-compra y recuperación de carrito"
+            title="Recuperar compradores"
+            subtitle="Escribirle a quien dejó una compra sin terminar"
             className="px-0 pt-0"
           />
           <Alert tone="warning" className="mt-4">
-            No hay proveedor de email conectado. Sin eso no podemos enviar nada: conectá uno en
-            Integraciones para habilitar las secuencias.
+            Todavía no hay un proveedor de email conectado, así que no podemos enviar nada. Conectá
+            uno y vamos a poder avisarte cuántas personas dejaron la compra a medias y escribirles.
           </Alert>
           <div className="mt-4">
             <LinkButton href="/app/integraciones" variant="secondary" size="sm">
@@ -95,23 +103,26 @@ export function MarketingWorkspace({
           </div>
         </Card>
       ) : null}
-
-      {tab === "tracking" ? (
-        <TrackingPanel funnels={funnels} campaigns={campaigns} metaConnected={metaConnected} />
-      ) : null}
     </div>
   );
+}
+
+/** Un producto al que se le puede mandar tráfico. */
+interface Destination {
+  id: string;
+  name: string;
+  publicUrl: string;
 }
 
 /* -------------------------------------------------------------------------- */
 
 function CampaignsPanel({
   campaigns,
-  funnels,
+  destinations,
   currency,
 }: {
   campaigns: CampaignPerformance[];
-  funnels: Array<{ id: string; name: string }>;
+  destinations: Destination[];
   currency: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -121,7 +132,7 @@ function CampaignsPanel({
       <Card>
         <CardHeader
           title={<TermLabel term="campana">Campañas</TermLabel>}
-          subtitle="Cargalas acá para saber qué ventas trajo cada una. La campaña real se crea en el Administrador de Anuncios de Meta."
+          subtitle="Anotá acá cada campaña para saber qué ventas trajo. La campaña real la seguís creando en el Administrador de Anuncios de Meta."
           action={
             <Button size="sm" icon="plus" onClick={() => setOpen(true)}>
               Crear campaña
@@ -134,7 +145,7 @@ function CampaignsPanel({
               <EmptyState
                 icon="megaphone"
                 title="Todavía no cargaste campañas"
-                description="Creá la campaña acá para generar sus UTMs y poder atribuir ventas. La campaña real la seguís creando en el Administrador de Anuncios de Meta."
+                description="Anotá acá tu campaña y te damos el link para usar en el anuncio. Con ese link sabemos qué venta trajo cada campaña."
                 action={
                   <Button icon="plus" onClick={() => setOpen(true)}>
                     Crear campaña
@@ -150,7 +161,7 @@ function CampaignsPanel({
                 { key: "spend", label: "Inversión", align: "right" },
                 { key: "orders", label: "Ventas", align: "right" },
                 { key: "revenue", label: "Facturación", align: "right" },
-                { key: "roas", label: "ROAS", align: "right" },
+                { key: "roas", label: "Por cada $1", align: "right" },
               ]}
             >
               {campaigns.map((campaign) => (
@@ -169,7 +180,7 @@ function CampaignsPanel({
                     {formatMoney(campaign.revenue, currency, true)}
                   </Td>
                   <Td align="right" className="font-semibold text-ink-900">
-                    {campaign.roas ? `${campaign.roas.toFixed(2)}x` : "—"}
+                    {campaign.roas ? `$${campaign.roas.toFixed(2)}` : "—"}
                   </Td>
                 </Tr>
               ))}
@@ -178,7 +189,12 @@ function CampaignsPanel({
         </div>
       </Card>
 
-      <CampaignModal open={open} onClose={() => setOpen(false)} funnels={funnels} currency={currency} />
+      <CampaignModal
+        open={open}
+        onClose={() => setOpen(false)}
+        destinations={destinations}
+        currency={currency}
+      />
     </>
   );
 }
@@ -186,12 +202,12 @@ function CampaignsPanel({
 function CampaignModal({
   open,
   onClose,
-  funnels,
+  destinations,
   currency,
 }: {
   open: boolean;
   onClose: () => void;
-  funnels: Array<{ id: string; name: string }>;
+  destinations: Destination[];
   currency: string;
 }) {
   const router = useRouter();
@@ -230,12 +246,12 @@ function CampaignModal({
         <Field label="Nombre" required>
           <Input name="name" required placeholder="Hábitos — Tráfico frío" />
         </Field>
-        <Field label="Funnel al que manda el tráfico">
+        <Field label="¿A qué producto manda la gente?">
           <Select name="funnel_id" defaultValue="">
-            <option value="">Sin funnel asociado</option>
-            {funnels.map((funnel) => (
-              <option key={funnel.id} value={funnel.id}>
-                {funnel.name}
+            <option value="">Todavía no lo sé</option>
+            {destinations.map((destination) => (
+              <option key={destination.id} value={destination.id}>
+                {destination.name}
               </option>
             ))}
           </Select>
@@ -253,7 +269,10 @@ function CampaignModal({
             <Input name="daily_budget" type="number" min={0} step="any" defaultValue={0} />
           </Field>
         </div>
-        <Field label="utm_campaign" hint="Se usa para atribuir cada venta a esta campaña.">
+        <Field
+          label="Nombre corto para el link"
+          hint="Es lo que va en el link del anuncio. Con eso sabemos qué venta trajo esta campaña."
+        >
           <Input name="utm_campaign" placeholder="habitos-frio-01" />
         </Field>
       </form>
@@ -304,7 +323,7 @@ function AdCopyPanel({ offers }: { offers: Array<{ id: string; name: string }> }
     return (
       <EmptyState
         icon="tag"
-        title="Necesitás una oferta primero"
+        title="Primero necesitás un producto con precio"
         description="El copy de los anuncios se genera a partir de tu oferta: producto, promesa y precio."
         action={
           <LinkButton href="/app/ofertas/nueva" icon="plus">
@@ -318,8 +337,13 @@ function AdCopyPanel({ offers }: { offers: Array<{ id: string; name: string }> }
   return (
     <div className="flex flex-col gap-5">
       <Card className="p-5">
-        <div className="flex flex-wrap items-end gap-3">
-          <Field label="Oferta" className="min-w-56 flex-1">
+        <CardHeader
+          title="✍️ Escribí tu anuncio con IA"
+          subtitle="Con los datos de tu producto arma los textos, los títulos y los ganchos. Después copiás lo que te sirva."
+          className="px-0 pt-0"
+        />
+        <div className="mt-4 flex flex-wrap items-end gap-3">
+          <Field label="¿Qué vas a anunciar?" className="min-w-56 flex-1">
             <Select value={offerId} onChange={(event) => setOfferId(event.target.value)}>
               {offers.map((offer) => (
                 <option key={offer.id} value={offer.id}>
@@ -360,11 +384,11 @@ function AdCopyPanel({ offers }: { offers: Array<{ id: string; name: string }> }
             <CopyBlock title="Textos principales" items={draft.primary_texts} onCopy={copy} />
             <CopyBlock title="Títulos" items={draft.headlines} onCopy={copy} />
             <CopyBlock title="Descripciones" items={draft.descriptions} onCopy={copy} />
-            <CopyBlock title="Hooks (primeros 3 segundos)" items={draft.hooks} onCopy={copy} />
-            <CopyBlock title="Variantes de CTA" items={draft.ctas} onCopy={copy} />
+            <CopyBlock title="Ganchos: los primeros 3 segundos" items={draft.hooks} onCopy={copy} />
+            <CopyBlock title="Frases para el botón" items={draft.ctas} onCopy={copy} />
 
             <Card>
-              <CardHeader title="Ángulos" />
+              <CardHeader title="Ángulos" subtitle="Distintas maneras de contar lo mismo" />
               <ul className="flex flex-col gap-2 p-5 pt-4">
                 {draft.angles?.map((angle) => (
                   <li key={angle.name} className="rounded-xl border border-ink-200 p-3.5">
@@ -420,144 +444,165 @@ function CopyBlock({
 
 /* -------------------------------------------------------------------------- */
 
-function TrackingPanel({
-  funnels,
+/**
+ * Los links para pegar en cada red.
+ *
+ * Por debajo esto son UTMs, pero nadie tiene por qué saberlo: elegís de dónde
+ * va a venir la gente y te damos el link listo para copiar. Los parámetros
+ * crudos quedan en un desplegable para quien ya sabe lo que está haciendo.
+ */
+
+const CHANNELS: Array<{
+  id: string;
+  emoji: string;
+  label: string;
+  source: string;
+  medium: string;
+}> = [
+  { id: "instagram", emoji: "📸", label: "Instagram", source: "instagram", medium: "social" },
+  { id: "tiktok", emoji: "🎵", label: "TikTok", source: "tiktok", medium: "social" },
+  { id: "whatsapp", emoji: "💬", label: "WhatsApp", source: "whatsapp", medium: "mensaje" },
+  { id: "facebook", emoji: "👍", label: "Facebook", source: "facebook", medium: "social" },
+  { id: "anuncio", emoji: "📣", label: "Un anuncio pago", source: "facebook", medium: "cpc" },
+];
+
+function LinksPanel({
+  destinations,
   campaigns,
-  metaConnected,
 }: {
-  funnels: Array<{ id: string; name: string; publicUrl: string }>;
+  destinations: Destination[];
   campaigns: CampaignPerformance[];
-  metaConnected: boolean;
 }) {
   const toast = useToast();
-  const [funnelId, setFunnelId] = useState(funnels[0]?.id ?? "");
-  const [utm, setUtm] = useState({
-    utm_source: "facebook",
-    utm_medium: "cpc",
-    utm_campaign: campaigns[0]?.name ? slug(campaigns[0].name) : "",
-    utm_content: "",
-    utm_term: "",
-  });
-
-  const funnel = funnels.find((item) => item.id === funnelId);
-  const params = new URLSearchParams(
-    Object.entries(utm).filter(([, value]) => Boolean(value)) as Array<[string, string]>,
+  const [destinationId, setDestinationId] = useState(destinations[0]?.id ?? "");
+  const [channel, setChannel] = useState(CHANNELS[0]);
+  const [campaign, setCampaign] = useState(
+    campaigns[0]?.name ? slug(campaigns[0].name) : "",
   );
-  const link = funnel ? `${funnel.publicUrl}${params.toString() ? `?${params}` : ""}` : "";
+  const [copied, setCopied] = useState(false);
 
-  return (
-    <div className="flex flex-col gap-5">
-      {!metaConnected ? (
-        <Alert
-          tone="warning"
-          title="Meta todavía no está conectado"
+  const destination = destinations.find((item) => item.id === destinationId);
+
+  const params = new URLSearchParams({
+    utm_source: channel.source,
+    utm_medium: channel.medium,
+  });
+  if (campaign) params.set("utm_campaign", campaign);
+
+  const link = destination ? `${destination.publicUrl}?${params}` : "";
+
+  useEffect(() => {
+    if (!copied) return;
+    const timeout = setTimeout(() => setCopied(false), 2000);
+    return () => clearTimeout(timeout);
+  }, [copied]);
+
+  if (destinations.length === 0) {
+    return (
+      <Card className="p-5">
+        <EmptyState
+          icon="link"
+          title="Todavía no tenés una página adónde mandar gente"
+          description="Los links se arman sobre la página de venta de un producto. Preparate uno y volvemos acá."
           action={
-            <LinkButton href="/app/integraciones/meta" size="sm" variant="secondary">
-              Configurar
+            <LinkButton href="/app/productos" icon="box">
+              Ir a mis productos
             </LinkButton>
           }
-        >
-          El Pixel y la API de Conversiones son lo que permite medir cada venta desde el anuncio.
-        </Alert>
-      ) : null}
-
-      <Card>
-        <CardHeader
-          title={<TermLabel term="utm">Generador de links con UTM</TermLabel>}
-          subtitle="Copiá el link de abajo y usalo en tu anuncio. Es lo que nos permite saber qué campaña trajo cada venta."
+          className="border-0 bg-transparent"
         />
-        <div className="flex flex-col gap-4 p-5 pt-4">
-          {funnels.length === 0 ? (
-            <p className="text-[13.5px] text-ink-500">
-              Creá un funnel para generar sus links de campaña.
-            </p>
-          ) : (
-            <>
-              <Field label="Funnel de destino">
-                <Select value={funnelId} onChange={(event) => setFunnelId(event.target.value)}>
-                  {funnels.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                {(
-                  [
-                    ["utm_source", "Fuente"],
-                    ["utm_medium", "Medio"],
-                    ["utm_campaign", "Campaña"],
-                    ["utm_content", "Contenido"],
-                    ["utm_term", "Término"],
-                  ] as const
-                ).map(([key, label]) => (
-                  <Field key={key} label={`${label} (${key})`}>
-                    <Input
-                      value={utm[key]}
-                      onChange={(event) => setUtm((current) => ({ ...current, [key]: event.target.value }))}
-                    />
-                  </Field>
-                ))}
-              </div>
-
-              <div className="rounded-2xl bg-ink-900 p-4">
-                <p className="text-[11.5px] font-semibold uppercase tracking-wider text-white/50">
-                  Link listo para usar
-                </p>
-                <p className="mt-1.5 break-all font-mono text-[12.5px] text-white/90">{link}</p>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  icon="copy"
-                  className="mt-3"
-                  onClick={async () => {
-                    try {
-                      await navigator.clipboard.writeText(
-                        `${window.location.origin}${link}`,
-                      );
-                      toast.success("Link copiado.");
-                    } catch {
-                      toast.error("No pudimos copiar el link");
-                    }
-                  }}
-                >
-                  Copiar link
-                </Button>
-              </div>
-            </>
-          )}
-        </div>
       </Card>
+    );
+  }
 
-      <Card>
-        <CardHeader
-          title="Cómo se lee la atribución"
-          subtitle="Cada venta guarda los UTMs con los que llegó el visitante."
-        />
-        <div className="p-5 pt-4">
-          <ol className="tf-scroll flex items-center gap-2 overflow-x-auto">
-            {["Campaña", "Landing", "Checkout", "Compra", "Facturación", "ROAS"].map(
-              (step, index, list) => (
-                <li key={step} className="flex shrink-0 items-center gap-2">
-                  <span className="rounded-xl bg-brand-50 px-3 py-2 text-[12.5px] font-semibold text-brand-700 ring-1 ring-inset ring-brand-200">
-                    {step}
-                  </span>
-                  {index < list.length - 1 ? (
-                    <Icon name="arrowRight" size={15} className="text-ink-300" />
-                  ) : null}
-                </li>
-              ),
-            )}
-          </ol>
-          <p className="mt-4 text-[13px] leading-relaxed text-ink-600">
-            El ROAS solo se puede calcular con la inversión real de Meta. Hasta que conectes la
-            integración, esa columna aparece vacía en vez de mostrar un número inventado.
+  return (
+    <Card>
+      <CardHeader
+        title="🔗 Creá el link para compartir"
+        subtitle="Usá un link distinto en cada lugar y vas a saber de dónde viene cada venta."
+      />
+
+      <div className="flex flex-col gap-5 p-5 pt-4">
+        <Field label="¿Qué producto querés vender?">
+          <Select
+            value={destinationId}
+            onChange={(event) => setDestinationId(event.target.value)}
+          >
+            {destinations.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
+            ))}
+          </Select>
+        </Field>
+
+        <div>
+          <p className="mb-2 text-[13px] font-medium text-ink-700">¿Dónde lo vas a compartir?</p>
+          <div className="flex flex-wrap gap-2">
+            {CHANNELS.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setChannel(item)}
+                aria-pressed={channel.id === item.id}
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-[13px] font-medium transition-colors",
+                  channel.id === item.id
+                    ? "border-brand-300 bg-brand-50 text-brand-700"
+                    : "border-ink-200 bg-white text-ink-600 hover:bg-ink-50",
+                )}
+              >
+                <span className="tf-emoji" aria-hidden="true">
+                  {item.emoji}
+                </span>
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-2xl bg-ink-900 p-4">
+          <p className="text-[11.5px] font-semibold uppercase tracking-wider text-white/50">
+            Tu link, listo para copiar
           </p>
+          <p className="mt-1.5 break-all font-mono text-[12.5px] text-white/90">{link}</p>
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={copied ? "check" : "copy"}
+            className="mt-3"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(`${window.location.origin}${link}`);
+                setCopied(true);
+              } catch {
+                toast.error("No pudimos copiar el link");
+              }
+            }}
+          >
+            {copied ? "Copiado" : "Copiar link"}
+          </Button>
         </div>
-      </Card>
-    </div>
+
+        <details className="border-t border-ink-100 pt-4">
+          <summary className="cursor-pointer list-none text-[12.5px] font-medium text-ink-500 transition-colors hover:text-ink-700">
+            Opciones avanzadas
+          </summary>
+          <div className="mt-3">
+            <Field
+              label={<TermLabel term="utm">Nombre de la campaña</TermLabel>}
+              hint="Si estás corriendo varias campañas, poné acá el mismo nombre corto que cargaste en Campañas."
+            >
+              <Input
+                value={campaign}
+                onChange={(event) => setCampaign(event.target.value)}
+                placeholder="habitos-frio-01"
+              />
+            </Field>
+          </div>
+        </details>
+      </div>
+    </Card>
   );
 }
 

@@ -13,7 +13,6 @@ export function AppShell({
   user,
   workspaceName,
   plan,
-  launchCompletion,
   notifications,
   products,
   children,
@@ -21,7 +20,6 @@ export function AppShell({
   user: { full_name: string; email: string };
   workspaceName: string;
   plan: string;
-  launchCompletion: number;
   notifications: Notification[];
   products: ProductNavEntry[];
   children: ReactNode;
@@ -35,7 +33,6 @@ export function AppShell({
         <Sidebar
           workspaceName={workspaceName}
           plan={plan}
-          launchCompletion={launchCompletion}
           products={products}
           open={menuOpen}
           onClose={() => setMenuOpen(false)}

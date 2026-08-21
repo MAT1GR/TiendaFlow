@@ -2,7 +2,9 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
 import { ProductEditor } from "@/app/(app)/app/productos/[id]/editor";
+import { SectionIntro } from "@/components/app/section-intro";
 import { requireSession } from "@/lib/auth";
+import { sectionBlurb } from "@/lib/product-nav";
 import { getProduct, listOffers, listProductFiles } from "@/lib/repo";
 import { parseJson, toLines } from "@/lib/utils";
 
@@ -37,13 +39,17 @@ export default async function ProductContentTab({ params }: { params: Promise<{ 
   }>(product.outline, {});
 
   return (
-    <ProductEditor
-      product={product}
-      files={files}
-      benefits={toLines(product.benefits)}
-      outline={outline}
-      offers={offers.map((offer) => ({ id: offer.id, name: offer.name, status: offer.status }))}
-      currency={workspace.currency}
-    />
+    <div className="flex flex-col gap-5">
+      <SectionIntro emoji="📕" title="Mi producto" blurb={sectionBlurb("producto")} />
+
+      <ProductEditor
+        product={product}
+        files={files}
+        benefits={toLines(product.benefits)}
+        outline={outline}
+        offers={offers.map((offer) => ({ id: offer.id, name: offer.name, status: offer.status }))}
+        currency={workspace.currency}
+      />
+    </div>
   );
 }

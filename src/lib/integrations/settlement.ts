@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sendConversionEvent } from "@/lib/integrations/meta";
+import { collectsCommission } from "@/lib/integrations/payments";
 import * as repo from "@/lib/repo";
 import { formatMoney } from "@/lib/utils";
 
@@ -43,6 +44,7 @@ export async function settleOrder(
     provider: context.provider,
     providerPaymentId: context.providerPaymentId,
     rawPayload: context.rawPayload,
+    collectsCommission: collectsCommission(workspaceId, context.provider),
   });
 
   if (!result.order) {

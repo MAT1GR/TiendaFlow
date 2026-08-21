@@ -7,8 +7,9 @@ import { VisitTracker } from "@/components/public/visit-tracker";
 import { Icon } from "@/components/ui/icon";
 import { getMetaPublicConfig } from "@/lib/integrations/meta";
 import { activeProvider } from "@/lib/integrations/payments";
+import { tiendaActual } from "@/lib/public-url";
 import {
-  getFunnelByPublicSlug,
+  resolvePublicFunnel,
   getOffer,
   getOrder,
   getProduct,
@@ -33,7 +34,7 @@ export default async function ThankYouPage({
   const { slug } = await params;
   const { pedido, t } = await searchParams;
 
-  const funnel = getFunnelByPublicSlug(slug);
+  const funnel = resolvePublicFunnel(slug, await tiendaActual());
   if (!funnel) notFound();
 
   const order = pedido ? getOrder(funnel.workspace_id, pedido) : null;

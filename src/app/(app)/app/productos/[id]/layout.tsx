@@ -5,7 +5,13 @@ import { ProductTabs, type WorkspaceTab } from "@/app/(app)/app/productos/[id]/t
 import { Badge, LinkButton } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/icon";
 import { requireSession } from "@/lib/auth";
-import { productContext, STAGE_LABEL, STAGE_TONE } from "@/lib/product-workspace";
+import {
+  PRODUCT_SECTIONS,
+  productContext,
+  productJourney,
+  STAGE_LABEL,
+  STAGE_TONE,
+} from "@/lib/product-workspace";
 import { formatMoney } from "@/lib/utils";
 
 /**
@@ -26,24 +32,25 @@ export default async function ProductWorkspaceLayout({
   const { id } = await params;
 
   const context = productContext(workspace.id, id);
-  if (!context) notFound();
+  const journey = productJourney(workspace.id, id);
+  if (!context || !journey) notFound();
 
-  const { product, offer, funnel, stats, stage, blockers, publicUrl } = context;
+  const { product, offer, stats, stage, publicUrl } = context;
 
-  const tabs: WorkspaceTab[] = [
-    { segment: "", label: "Resumen", emoji: "🏠" },
-    { segment: "producto", label: "Mi producto", emoji: "📕" },
-    { segment: "oferta", label: "Mi oferta", emoji: "💰", attention: !offer },
-    {
-      segment: "pagina",
-      label: "Página de venta",
-      emoji: "🛍️",
-      attention: Boolean(offer) && (!funnel || blockers.length > 0),
-    },
-    { segment: "cobro", label: "Cómo cobro", emoji: "💳" },
-    { segment: "despues", label: "Después de comprar", emoji: "🎁" },
-    { segment: "resultados", label: "Resultados", emoji: "📊" },
-  ];
+  // Las pestañas salen de la misma lista que el sidebar: una sola fuente de
+  // verdad para el vocabulario del producto. El aviso ámbar lo pone el GPS.
+  const attention = new Map(
+    journey.steps.map((step) => [step.code, step.required && step.state === "todo"]),
+  );
+
+  const tabs: WorkspaceTab[] = PRODUCT_SECTIONS.map((section) => ({
+    segment: section.segment,
+    label: section.label,
+    emoji: section.emoji,
+    attention: attention.get(section.segment === "" ? "resumen" : section.segment) ?? false,
+  }));
+
+  const readyToPublish = journey.nextStep === null && !publicUrl;
 
   return (
     <div className="flex flex-col gap-6">
@@ -53,7 +60,7 @@ export default async function ProductWorkspaceLayout({
           className="inline-flex w-fit items-center gap-1.5 text-[13px] font-medium text-ink-500 transition-colors hover:text-ink-800"
         >
           <Icon name="chevronLeft" size={15} />
-          Productos
+          Mis productos
         </Link>
 
         <div className="flex flex-wrap items-start justify-between gap-4">
@@ -63,7 +70,7 @@ export default async function ProductWorkspaceLayout({
             </h1>
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[13.5px] text-ink-500">
               <Badge tone={STAGE_TONE[stage]}>{STAGE_LABEL[stage]}</Badge>
-              {offer ? (
+              {offer && offer.price > 0 ? (
                 <span className="font-medium text-ink-800">
                   {formatMoney(offer.price, offer.currency)}
                 </span>
@@ -88,13 +95,24 @@ export default async function ProductWorkspaceLayout({
 
           <div className="flex shrink-0 flex-wrap gap-2">
             {publicUrl ? (
-              <LinkButton href={publicUrl} variant="secondary" size="sm" icon="arrowUpRight">
-                Ver página
+              <>
+                <LinkButton href={publicUrl} variant="secondary" size="sm" icon="eye">
+                  Vista previa
+                </LinkButton>
+                <LinkButton
+                  href={`/app/productos/${product.id}/publicar`}
+                  variant="secondary"
+                  size="sm"
+                  icon="link"
+                >
+                  Compartir
+                </LinkButton>
+              </>
+            ) : readyToPublish ? (
+              <LinkButton href={`/app/productos/${product.id}/publicar`} size="sm" icon="rocket">
+                Publicar
               </LinkButton>
             ) : null}
-            {/* El botón de "Optimizar con IA" va acá cuando el copiloto sepa
-                sobre qué producto está trabajando. Hasta entonces no lo
-                mostramos: sería un botón que promete algo que no hace. */}
           </div>
         </div>
       </div>

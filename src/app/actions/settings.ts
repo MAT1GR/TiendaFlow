@@ -81,7 +81,6 @@ export async function saveMetaIntegrationAction(
     });
 
     revalidatePath("/app/integraciones/meta");
-    revalidatePath("/app/lanzamiento");
     revalidatePath("/app");
 
     return ok(
@@ -98,8 +97,12 @@ export async function disconnectIntegrationAction(
 ): Promise<ActionResult<null>> {
   return guarded(async () => {
     const { workspace } = await requireSession();
+    // Se borra también `public_config`: ahí quedan el apodo de la cuenta, el
+    // vencimiento y cómo se había conectado. Si no lo limpiamos, una reconexión
+    // arranca mostrando datos de la conexión anterior.
     run(
-      `UPDATE integrations SET status = 'disconnected', secret_config = NULL, last_error = NULL, updated_at = ?
+      `UPDATE integrations SET status = 'disconnected', secret_config = NULL, public_config = NULL,
+         last_error = NULL, updated_at = ?
        WHERE workspace_id = ? AND provider = ?`,
       nowIso(),
       workspace.id,
@@ -173,7 +176,6 @@ export async function savePaymentProviderAction(
     });
 
     revalidatePath("/app/pagos");
-    revalidatePath("/app/lanzamiento");
 
     const note =
       provider === "mercadopago"

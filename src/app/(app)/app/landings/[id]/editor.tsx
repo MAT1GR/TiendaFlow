@@ -6,6 +6,14 @@ import { useMemo, useState, useTransition } from "react";
 import { generateLandingDraftAction } from "@/app/actions/ai";
 import { publishLandingAction, saveLandingSectionsAction } from "@/app/actions/funnels";
 import { LandingSectionView, SECTION_LIBRARY, type SectionData } from "@/components/landing/blocks";
+import {
+  DISPLAY_FONTS,
+  PRESETS,
+  readTheme,
+  themeVars,
+  type DisplayFont,
+  type LandingTheme,
+} from "@/components/landing/theme";
 import { Alert, TemplateNotice } from "@/components/ui/feedback";
 import { Icon, type IconName } from "@/components/ui/icon";
 import {
@@ -44,7 +52,7 @@ export function LandingEditor({
     id: string;
     name: string;
     status: string;
-    accent: string;
+    theme: unknown;
     seoTitle: string | null;
     seoDescription: string | null;
   };
@@ -63,7 +71,16 @@ export function LandingEditor({
   const [dirty, setDirty] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
-  const [aiNotice, setAiNotice] = useState<{ isTemplate: boolean; warning?: string } | null>(null);
+  const [aiNotice, setAiNotice] = useState<{
+    isTemplate: boolean;
+    warning?: string;
+    cleaned?: number;
+  } | null>(null);
+
+  // El tema se edita en vivo: cambiar un color repinta la vista previa entera
+  // sin guardar ni recargar, que es la única forma de elegir bien un color.
+  const [theme, setTheme] = useState<LandingTheme>(() => readTheme(page.theme));
+  const [panel, setPanel] = useState<"contenido" | "diseno">("contenido");
 
   const selected = sections.find((section) => section.id === selectedId) ?? null;
 
@@ -140,6 +157,7 @@ export function LandingEditor({
           type: section.type as LandingSectionType,
           content: section.content,
         })),
+        theme,
       );
       if (result.ok) {
         setDirty(false);
@@ -161,6 +179,7 @@ export function LandingEditor({
             type: section.type as LandingSectionType,
             content: section.content,
           })),
+          theme,
         );
         if (!saved.ok) {
           toast.error("No pudimos guardar antes de publicar", saved.error);
@@ -192,7 +211,11 @@ export function LandingEditor({
       }));
       mutate(generated);
       setSelectedId(generated[0]?.id ?? null);
-      setAiNotice({ isTemplate: result.data.isTemplate, warning: result.data.warning });
+      setAiNotice({
+        isTemplate: result.data.isTemplate,
+        warning: result.data.warning,
+        cleaned: result.data.cleaned,
+      });
       setAiOpen(false);
     });
   }
@@ -264,6 +287,19 @@ export function LandingEditor({
       {aiNotice?.isTemplate ? (
         <div className="border-b border-ink-200 bg-white px-4 py-3">
           <TemplateNotice warning={aiNotice.warning} />
+        </div>
+      ) : null}
+
+      {/* Si la IA afirmó algo que nadie puede comprobar, lo decimos en vez de
+          arreglarlo a escondidas: el vendedor tiene que saber qué se sacó. */}
+      {aiNotice?.cleaned ? (
+        <div className="border-b border-ink-200 bg-white px-4 py-3">
+          <Alert tone="warning" title="Sacamos algunas frases">
+            La IA escribió {aiNotice.cleaned}{" "}
+            {aiNotice.cleaned === 1 ? "frase que afirmaba" : "frases que afirmaban"} algo que no
+            podemos comprobar (cantidad de clientes, porcentajes de éxito). Las reemplazamos por
+            texto neutro. Si tenés los números reales, escribilos vos.
+          </Alert>
         </div>
       ) : null}
 
@@ -360,8 +396,8 @@ export function LandingEditor({
         {/* Preview */}
         <div className="tf-scroll min-h-0 flex-1 overflow-y-auto bg-ink-100 p-4 sm:p-6">
           <div
-            className="mx-auto overflow-hidden rounded-2xl bg-white shadow-[0_20px_60px_-30px_rgba(15,23,42,.5)] transition-[max-width] duration-300"
-            style={{ maxWidth: DEVICE_WIDTH[device] }}
+            className="mx-auto overflow-hidden rounded-2xl shadow-[0_20px_60px_-30px_rgba(15,23,42,.5)] transition-[max-width] duration-300"
+            style={{ ...themeVars(theme), maxWidth: DEVICE_WIDTH[device] }}
           >
             {sections.length === 0 ? (
               <div className="grid min-h-64 place-items-center px-6 py-16 text-center">
@@ -391,7 +427,6 @@ export function LandingEditor({
                 >
                   <LandingSectionView
                     section={section}
-                    accent={page.accent}
                     priceLabel={offer?.priceLabel}
                     compareLabel={offer?.compareLabel ?? undefined}
                   />
@@ -401,21 +436,53 @@ export function LandingEditor({
           </div>
         </div>
 
-        {/* Panel derecho: propiedades */}
+        {/* Panel derecho: el contenido del bloque, o el diseño de toda la página */}
         <aside className="w-full shrink-0 border-t border-ink-200 bg-white lg:w-80 lg:border-l lg:border-t-0">
-          <div className="flex items-center justify-between px-4 py-3">
-            <p className="text-[12px] font-semibold uppercase tracking-wider text-ink-400">
-              Propiedades
-            </p>
-            {selected ? (
-              <Button variant="ghost" size="sm" icon="refresh" onClick={regenerateSection}>
-                Regenerar sección
+          <div className="flex items-center gap-1 border-b border-ink-100 px-3 py-2.5">
+            {(
+              [
+                ["contenido", "Contenido"],
+                ["diseno", "Diseño"],
+              ] as const
+            ).map(([valor, etiqueta]) => (
+              <button
+                key={valor}
+                type="button"
+                onClick={() => setPanel(valor)}
+                className={cn(
+                  "rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors",
+                  panel === valor
+                    ? "bg-brand-50 text-brand-700"
+                    : "text-ink-500 hover:bg-ink-100 hover:text-ink-800",
+                )}
+              >
+                {etiqueta}
+              </button>
+            ))}
+
+            {panel === "contenido" && selected ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                icon="refresh"
+                className="ml-auto"
+                onClick={regenerateSection}
+              >
+                Restablecer
               </Button>
             ) : null}
           </div>
 
-          <div className="tf-scroll max-h-[60vh] overflow-y-auto px-4 pb-5 lg:max-h-[calc(100dvh-10rem)]">
-            {!selected ? (
+          <div className="tf-scroll max-h-[60vh] overflow-y-auto px-4 py-4 lg:max-h-[calc(100dvh-10rem)]">
+            {panel === "diseno" ? (
+              <DesignPanel
+                theme={theme}
+                onChange={(next) => {
+                  setTheme(next);
+                  setDirty(true);
+                }}
+              />
+            ) : !selected ? (
               <p className="text-[13px] text-ink-500">
                 Elegí una sección en el panel izquierdo o en la vista previa para editarla.
               </p>
@@ -462,6 +529,408 @@ export function LandingEditor({
 
 /* -------------------------------------------------------------------------- */
 
+
+/* -------------------------------------------------------------------------- */
+/* Diseño                                                                      */
+/* -------------------------------------------------------------------------- */
+
+/** Los colores que el vendedor puede tocar, en el orden en que importan. */
+const COLORES: Array<{ key: keyof LandingTheme; label: string; hint?: string }> = [
+  { key: "accent", label: "Color principal", hint: "Botones, números y etiquetas." },
+  { key: "bg", label: "Fondo de la página" },
+  { key: "surface", label: "Fondo de las tarjetas" },
+  { key: "text", label: "Texto" },
+  { key: "muted", label: "Texto secundario" },
+];
+
+/**
+ * El panel de diseño.
+ *
+ * Arriba los presets, porque el 90% de las veces alcanza con elegir uno. Abajo,
+ * para quien quiera, cada color por separado.
+ *
+ * Tocar cualquier cosa acá repinta la vista previa al instante: elegir un color
+ * mirando un cuadradito no sirve, hay que verlo aplicado sobre la página real.
+ */
+function DesignPanel({
+  theme,
+  onChange,
+}: {
+  theme: LandingTheme;
+  onChange: (theme: LandingTheme) => void;
+}) {
+  const set = (patch: Partial<LandingTheme>) =>
+    // Cualquier retoque manual desengancha el preset: ya no es "Terracota",
+    // es la versión de esta persona.
+    onChange({ ...theme, ...patch, preset: patch.preset ?? "custom" });
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div>
+        <p className="mb-2 text-[13px] font-medium text-ink-700">Estilo</p>
+        <div className="grid grid-cols-2 gap-2">
+          {PRESETS.map((preset) => (
+            <button
+              key={preset.preset}
+              type="button"
+              onClick={() => onChange({ ...preset })}
+              className={cn(
+                "flex items-center gap-2 rounded-xl border px-2.5 py-2 text-left transition-colors",
+                theme.preset === preset.preset
+                  ? "border-brand-400 bg-brand-50"
+                  : "border-ink-200 hover:bg-ink-50",
+              )}
+            >
+              <span className="flex shrink-0 overflow-hidden rounded-md">
+                {preset.swatch.map((color) => (
+                  <span key={color} className="size-4" style={{ backgroundColor: color }} />
+                ))}
+              </span>
+              <span className="truncate text-[12.5px] font-medium text-ink-800">
+                {preset.label}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <Field label="Tipografía del nombre del producto">
+        <Select
+          value={theme.display}
+          onChange={(event) => set({ display: event.target.value as DisplayFont })}
+        >
+          {Object.entries(DISPLAY_FONTS).map(([value, font]) => (
+            <option key={value} value={value}>
+              {font.label}
+            </option>
+          ))}
+        </Select>
+      </Field>
+
+      <Field label="Esquinas" hint={`${theme.radius}px`}>
+        <input
+          type="range"
+          min={0}
+          max={28}
+          step={2}
+          value={theme.radius}
+          onChange={(event) => set({ radius: Number(event.target.value) })}
+          className="w-full accent-brand-600"
+        />
+      </Field>
+
+      <div>
+        <p className="mb-2 text-[13px] font-medium text-ink-700">Colores</p>
+        <div className="flex flex-col gap-3">
+          {COLORES.map((color) => (
+            <div key={color.key} className="flex items-center gap-3">
+              <input
+                type="color"
+                value={normalizarColor(theme[color.key] as string)}
+                onChange={(event) => set({ [color.key]: event.target.value } as Partial<LandingTheme>)}
+                className="size-9 shrink-0 cursor-pointer rounded-lg border border-ink-200 bg-white p-0.5"
+                aria-label={color.label}
+              />
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-medium text-ink-800">{color.label}</p>
+                {color.hint ? <p className="text-[11.5px] text-ink-400">{color.hint}</p> : null}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <label className="flex items-start gap-2.5 rounded-xl border border-ink-200 p-3">
+        <input
+          type="checkbox"
+          checked={theme.dark}
+          onChange={(event) => set({ dark: event.target.checked })}
+          className="mt-0.5 size-4 accent-brand-600"
+        />
+        <span>
+          <span className="block text-[13px] font-medium text-ink-800">Fondo oscuro</span>
+          <span className="block text-[11.5px] text-ink-500">
+            Avisá si tu fondo es oscuro para que los detalles se sigan leyendo.
+          </span>
+        </span>
+      </label>
+
+      <p className="rounded-xl bg-ink-50 px-3 py-2.5 text-[12px] leading-relaxed text-ink-500">
+        Los cambios se ven al instante acá al lado, pero recién quedan guardados cuando apretás
+        <strong className="text-ink-700"> Guardar</strong>.
+      </p>
+    </div>
+  );
+}
+
+/**
+ * `<input type="color">` solo entiende `#rrggbb`.
+ *
+ * El tema puede traer `rgba(...)` —los bordes, por ejemplo— y en ese caso el
+ * navegador muestra negro sin avisar. Devolvemos un gris neutro para que al
+ * menos no mienta sobre el color actual.
+ */
+function normalizarColor(valor: string): string {
+  return /^#[0-9a-f]{6}$/i.test(valor) ? valor : "#888888";
+}
+
+/**
+ * Los campos de cada bloque.
+ *
+ * Están declarados como datos y no como JSX repetido: sumar un campo a un
+ * bloque es agregar una línea acá. Así no hay forma de que un bloque termine
+ * con texto que solo se pueda cambiar tocando el código.
+ */
+
+interface TextField {
+  key: string;
+  label: string;
+  multiline?: boolean;
+  hint?: string;
+}
+
+const TEXT_FIELDS: Record<string, TextField[]> = {
+  hero: [
+    { key: "eyebrow", label: "Etiqueta de arriba", hint: "Para quién es, en mayúsculas." },
+    { key: "headline", label: "Titular", multiline: true, hint: "Enter corta la línea." },
+    { key: "subheadline", label: "Subtítulo", multiline: true },
+    { key: "cta", label: "Texto del botón" },
+    { key: "social", label: "Frase de respaldo" },
+    { key: "trust", label: "Línea de confianza", hint: "Garantía, forma de pago, entrega." },
+  ],
+  problems: [
+    { key: "title", label: "Título" },
+    { key: "subtitle", label: "Segunda línea del título" },
+    { key: "closing", label: "Cierre", multiline: true },
+  ],
+  gallery: [
+    { key: "kicker", label: "Etiqueta de arriba" },
+    { key: "title", label: "Título", multiline: true },
+    { key: "subtitle", label: "Subtítulo", multiline: true },
+    { key: "featured_alt", label: "Qué muestra la imagen principal" },
+    { key: "video_url", label: "URL del video", hint: "Opcional. Vacío = no se muestra." },
+    { key: "note", label: "Nota al pie" },
+  ],
+  solution: [
+    { key: "badge", label: "Etiqueta de arriba" },
+    { key: "title", label: "Nombre del producto" },
+    { key: "subtitle", label: "La promesa en una línea" },
+    { key: "text", label: "Descripción", multiline: true },
+    { key: "highlight", label: "Frase destacada" },
+  ],
+  modules: [
+    { key: "kicker", label: "Etiqueta de arriba" },
+    { key: "title", label: "Título", multiline: true },
+    { key: "box_title", label: "Título de la caja" },
+  ],
+  bonuses: [
+    { key: "kicker", label: "Etiqueta de arriba" },
+    { key: "title", label: "Título" },
+    { key: "footer_note", label: "Nota al pie" },
+  ],
+  pricing: [
+    { key: "title", label: "Título de la sección", multiline: true },
+    { key: "badge", label: "Etiqueta de la tarjeta" },
+    { key: "product_name", label: "Nombre del producto" },
+    { key: "subtitle", label: "Qué incluye, en una línea" },
+    { key: "price_label", label: "Precio mostrado" },
+    { key: "compare_label", label: "Precio tachado" },
+    { key: "note", label: "Nota debajo del precio" },
+    { key: "cta", label: "Texto del botón" },
+  ],
+  testimonials: [
+    { key: "kicker", label: "Etiqueta de arriba" },
+    { key: "title", label: "Título", multiline: true },
+    { key: "subtitle", label: "Subtítulo", multiline: true },
+  ],
+  guarantee: [
+    { key: "title", label: "Título", multiline: true },
+    { key: "text", label: "Texto", multiline: true },
+    { key: "seal", label: "Sello" },
+    { key: "note", label: "Nota al pie" },
+  ],
+  faq: [
+    { key: "kicker", label: "Etiqueta de arriba" },
+    { key: "title", label: "Título", multiline: true },
+  ],
+  cta: [
+    { key: "kicker", label: "Etiqueta de arriba" },
+    { key: "headline", label: "Titular", multiline: true },
+    { key: "subheadline", label: "Subtítulo", multiline: true },
+    { key: "cta", label: "Texto del botón" },
+    { key: "micro", label: "Línea chica debajo del botón" },
+  ],
+  footer: [
+    { key: "brand", label: "Nombre de tu marca" },
+    { key: "text", label: "Texto legal", multiline: true },
+  ],
+  headline: [{ key: "text", label: "Texto", multiline: true }],
+  subheadline: [{ key: "text", label: "Texto", multiline: true }],
+  benefits: [{ key: "title", label: "Título" }],
+  features: [{ key: "title", label: "Título" }],
+  comparison: [
+    { key: "title", label: "Título" },
+    { key: "without_title", label: "Columna sin tu producto — título" },
+    { key: "with_title", label: "Columna con tu producto — título" },
+  ],
+  countdown: [
+    { key: "title", label: "Título" },
+    { key: "text", label: "Texto", multiline: true },
+  ],
+  social_proof: [{ key: "text", label: "Texto", multiline: true }],
+  video: [
+    { key: "title", label: "Título" },
+    { key: "url", label: "URL del video" },
+  ],
+  image: [
+    { key: "alt", label: "Qué muestra la imagen" },
+    { key: "url", label: "URL de la imagen" },
+  ],
+  mockup: [
+    { key: "title", label: "Título" },
+    { key: "caption", label: "Epígrafe" },
+  ],
+  stats: [],
+};
+
+/** Campos que son una lista simple: un item por línea. */
+const LINE_FIELDS: Record<string, Array<{ key: string; label: string; hint?: string }>> = {
+  hero: [{ key: "pills", label: "Etiquetas cortas", hint: "Una por línea." }],
+  problems: [{ key: "items", label: "Los problemas", hint: "Uno por línea." }],
+  solution: [
+    { key: "tags", label: "Etiquetas", hint: "Una por línea." },
+    { key: "features", label: "Características", hint: "Una por línea." },
+  ],
+  pricing: [
+    { key: "includes", label: "Qué incluye", hint: "Uno por línea." },
+    { key: "trust", label: "Sellos de confianza", hint: "Uno por línea." },
+  ],
+  cta: [{ key: "trust", label: "Sellos de confianza", hint: "Uno por línea." }],
+  footer: [{ key: "links", label: "Links del pie", hint: "Uno por línea." }],
+  benefits: [{ key: "items", label: "Beneficios", hint: "Uno por línea." }],
+  comparison: [
+    { key: "without_items", label: "Columna sin tu producto", hint: "Uno por línea." },
+    { key: "with_items", label: "Columna con tu producto", hint: "Uno por línea." },
+  ],
+};
+
+/** Listas de tarjetas, cada una con sus propios campos. */
+interface ObjectList {
+  key: string;
+  label: string;
+  fields: Array<{ key: string; label: string; multiline?: boolean }>;
+  empty: Record<string, string>;
+}
+
+const OBJECT_LISTS: Record<string, ObjectList[]> = {
+  stats: [
+    {
+      key: "items",
+      label: "Los números",
+      fields: [
+        { key: "value", label: "Número" },
+        { key: "label", label: "Qué es" },
+      ],
+      empty: { value: "", label: "" },
+    },
+    {
+      key: "highlights",
+      label: "Puntos destacados",
+      fields: [
+        { key: "title", label: "Título" },
+        { key: "subtitle", label: "Subtítulo" },
+        { key: "text", label: "Texto", multiline: true },
+      ],
+      empty: { title: "", subtitle: "", text: "" },
+    },
+  ],
+  gallery: [
+    {
+      key: "images",
+      label: "Los ejemplos",
+      fields: [{ key: "alt", label: "Qué muestra" }],
+      empty: { alt: "" },
+    },
+  ],
+  solution: [
+    {
+      key: "stats",
+      label: "Los números",
+      fields: [
+        { key: "value", label: "Número" },
+        { key: "label", label: "Qué es" },
+      ],
+      empty: { value: "", label: "" },
+    },
+  ],
+  modules: [
+    {
+      key: "items",
+      label: "Los módulos",
+      fields: [
+        { key: "title", label: "Título" },
+        { key: "description", label: "Descripción", multiline: true },
+      ],
+      empty: { title: "", description: "" },
+    },
+    {
+      key: "metrics",
+      label: "Los números del final",
+      fields: [
+        { key: "value", label: "Número" },
+        { key: "label", label: "Qué es" },
+      ],
+      empty: { value: "", label: "" },
+    },
+  ],
+  bonuses: [
+    {
+      key: "items",
+      label: "Los bonos",
+      fields: [
+        { key: "name", label: "Nombre" },
+        { key: "description", label: "Descripción", multiline: true },
+        { key: "badge", label: "Etiqueta" },
+      ],
+      empty: { name: "", description: "", badge: "INCLUIDO" },
+    },
+  ],
+  testimonials: [
+    {
+      key: "items",
+      label: "Los testimonios",
+      fields: [
+        { key: "name", label: "Nombre" },
+        { key: "location", label: "De dónde es" },
+        { key: "text", label: "Testimonio", multiline: true },
+      ],
+      empty: { name: "", location: "", text: "" },
+    },
+  ],
+  faq: [
+    {
+      key: "items",
+      label: "Las preguntas",
+      fields: [
+        { key: "question", label: "Pregunta" },
+        { key: "answer", label: "Respuesta", multiline: true },
+      ],
+      empty: { question: "", answer: "" },
+    },
+  ],
+  features: [
+    {
+      key: "items",
+      label: "Los pasos",
+      fields: [
+        { key: "title", label: "Título" },
+        { key: "description", label: "Descripción", multiline: true },
+      ],
+      empty: { title: "", description: "" },
+    },
+  ],
+};
+
 function SectionProperties({
   section,
   onChange,
@@ -474,53 +943,29 @@ function SectionProperties({
   const text = (key: string) => (typeof c[key] === "string" ? (c[key] as string) : "");
   const arr = <T,>(key: string): T[] => (Array.isArray(c[key]) ? (c[key] as T[]) : []);
 
-  const simpleFields: Record<string, Array<{ key: string; label: string; multiline?: boolean }>> = {
-    hero: [
-      { key: "eyebrow", label: "Etiqueta superior" },
-      { key: "headline", label: "Titular", multiline: true },
-      { key: "subheadline", label: "Subtítulo", multiline: true },
-      { key: "cta", label: "Texto del botón" },
-    ],
-    headline: [{ key: "text", label: "Texto", multiline: true }],
-    subheadline: [{ key: "text", label: "Texto", multiline: true }],
-    guarantee: [
-      { key: "title", label: "Título" },
-      { key: "text", label: "Texto", multiline: true },
-    ],
-    pricing: [
-      { key: "title", label: "Título" },
-      { key: "price_label", label: "Precio mostrado" },
-      { key: "compare_label", label: "Precio tachado" },
-      { key: "cta", label: "Texto del botón" },
-    ],
-    cta: [
-      { key: "headline", label: "Titular" },
-      { key: "cta", label: "Texto del botón" },
-    ],
-    countdown: [
-      { key: "title", label: "Título" },
-      { key: "text", label: "Texto", multiline: true },
-    ],
-    footer: [{ key: "text", label: "Texto", multiline: true }],
-    video: [
-      { key: "title", label: "Título" },
-      { key: "url", label: "URL del video" },
-    ],
-    image: [
-      { key: "alt", label: "Texto alternativo" },
-      { key: "url", label: "URL de la imagen" },
-    ],
-    mockup: [
-      { key: "title", label: "Título" },
-      { key: "caption", label: "Epígrafe" },
-    ],
-    social_proof: [{ key: "text", label: "Texto", multiline: true }],
-  };
+  /**
+   * Los controles leen contenido que puede venir de una generación con IA o de
+   * una versión anterior de la app, así que nunca asumen la forma: si donde
+   * esperábamos un texto hay un objeto, sacamos el texto que se pueda en lugar
+   * de mostrar "[object Object]".
+   */
+  const lines = (key: string) => arr<unknown>(key).map(asText).filter(Boolean).join("\n");
+  const toLines = (value: string) => value.split("\n").filter((line) => line.trim());
+  const cards = (key: string) =>
+    arr<unknown>(key).map((item) => {
+      if (!item || typeof item !== "object") return { title: asText(item) };
+      return Object.fromEntries(
+        Object.entries(item as Record<string, unknown>).map(([field, value]) => [
+          field,
+          asText(value),
+        ]),
+      );
+    });
 
   return (
     <div className="flex flex-col gap-4">
-      {(simpleFields[section.type] ?? []).map((field) => (
-        <Field key={field.key} label={field.label}>
+      {(TEXT_FIELDS[section.type] ?? []).map((field) => (
+        <Field key={field.key} label={field.label} hint={field.hint}>
           {field.multiline ? (
             <Textarea
               rows={3}
@@ -536,132 +981,39 @@ function SectionProperties({
         </Field>
       ))}
 
-      {section.type === "benefits" ? (
-        <>
-          <Field label="Título">
-            <Input value={text("title")} onChange={(event) => onChange({ title: event.target.value })} />
-          </Field>
-          <Field label="Beneficios" hint="Uno por línea.">
-            <Textarea
-              rows={7}
-              value={arr<string>("items").join("\n")}
-              onChange={(event) =>
-                onChange({ items: event.target.value.split("\n").filter((line) => line.trim()) })
-              }
-            />
-          </Field>
-        </>
-      ) : null}
-
-      {section.type === "features" ? (
-        <>
-          <Field label="Título">
-            <Input value={text("title")} onChange={(event) => onChange({ title: event.target.value })} />
-          </Field>
-          <ListEditor
-            items={arr<{ title: string; description: string }>("items")}
-            fields={[
-              { key: "title", label: "Título" },
-              { key: "description", label: "Descripción", multiline: true },
-            ]}
-            empty={{ title: "", description: "" }}
-            onChange={(items) => onChange({ items })}
+      {(LINE_FIELDS[section.type] ?? []).map((field) => (
+        <Field key={field.key} label={field.label} hint={field.hint}>
+          <Textarea
+            rows={5}
+            value={lines(field.key)}
+            onChange={(event) => onChange({ [field.key]: toLines(event.target.value) })}
           />
-        </>
-      ) : null}
-
-      {section.type === "bonuses" ? (
-        <>
-          <Field label="Título">
-            <Input value={text("title")} onChange={(event) => onChange({ title: event.target.value })} />
-          </Field>
-          <ListEditor
-            items={arr<{ name: string; description: string }>("items")}
-            fields={[
-              { key: "name", label: "Nombre" },
-              { key: "description", label: "Descripción", multiline: true },
-            ]}
-            empty={{ name: "", description: "" }}
-            onChange={(items) => onChange({ items })}
-          />
-        </>
-      ) : null}
-
-      {section.type === "faq" ? (
-        <>
-          <Field label="Título">
-            <Input value={text("title")} onChange={(event) => onChange({ title: event.target.value })} />
-          </Field>
-          <ListEditor
-            items={arr<{ question: string; answer: string }>("items")}
-            fields={[
-              { key: "question", label: "Pregunta" },
-              { key: "answer", label: "Respuesta", multiline: true },
-            ]}
-            empty={{ question: "", answer: "" }}
-            onChange={(items) => onChange({ items })}
-          />
-        </>
-      ) : null}
+        </Field>
+      ))}
 
       {section.type === "testimonials" ? (
-        <>
-          <Field label="Título">
-            <Input value={text("title")} onChange={(event) => onChange({ title: event.target.value })} />
-          </Field>
-          <Alert tone="warning">
-            Cargá solo testimonios reales de tus clientes. Inventarlos puede costarte la cuenta
-            publicitaria y es ilegal en varios países.
-          </Alert>
-          <ListEditor
-            items={arr<{ name: string; text: string }>("items")}
-            fields={[
-              { key: "name", label: "Nombre" },
-              { key: "text", label: "Testimonio", multiline: true },
-            ]}
-            empty={{ name: "", text: "" }}
-            onChange={(items) => onChange({ items, placeholder: false })}
-          />
-        </>
+        <Alert tone="warning">
+          Cargá solo testimonios reales de tus clientes. Inventarlos puede costarte la cuenta
+          publicitaria y es ilegal en varios países.
+        </Alert>
       ) : null}
 
-      {section.type === "comparison" ? (
-        <>
-          <Field label="Título">
-            <Input value={text("title")} onChange={(event) => onChange({ title: event.target.value })} />
-          </Field>
-          <Field label="Columna con tu producto — título">
-            <Input
-              value={text("with_title")}
-              onChange={(event) => onChange({ with_title: event.target.value })}
-            />
-          </Field>
-          <Field label="Columna con tu producto — items" hint="Uno por línea.">
-            <Textarea
-              rows={4}
-              value={arr<string>("with_items").join("\n")}
-              onChange={(event) =>
-                onChange({ with_items: event.target.value.split("\n").filter((l) => l.trim()) })
-              }
-            />
-          </Field>
-          <Field label="Columna sin tu producto — título">
-            <Input
-              value={text("without_title")}
-              onChange={(event) => onChange({ without_title: event.target.value })}
-            />
-          </Field>
-          <Field label="Columna sin tu producto — items" hint="Uno por línea.">
-            <Textarea
-              rows={4}
-              value={arr<string>("without_items").join("\n")}
-              onChange={(event) =>
-                onChange({ without_items: event.target.value.split("\n").filter((l) => l.trim()) })
-              }
-            />
-          </Field>
-        </>
-      ) : null}
+      {(OBJECT_LISTS[section.type] ?? []).map((group) => (
+        <Field key={group.key} label={group.label}>
+          <ListEditor
+            items={cards(group.key)}
+            fields={group.fields}
+            empty={group.empty}
+            onChange={(items) =>
+              onChange(
+                section.type === "testimonials"
+                  ? { [group.key]: items, placeholder: false }
+                  : { [group.key]: items },
+              )
+            }
+          />
+        </Field>
+      ))}
     </div>
   );
 }
@@ -795,4 +1147,17 @@ function AiModal({
       </div>
     </Modal>
   );
+}
+
+/** Cualquier valor, convertido al texto mas razonable que se pueda. */
+function asText(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (typeof value === "number") return String(value);
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    for (const key of ["text", "label", "title", "name", "value", "alt"]) {
+      if (typeof record[key] === "string") return record[key];
+    }
+  }
+  return "";
 }

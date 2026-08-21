@@ -6,6 +6,7 @@ import crypto from "node:crypto";
 import { get } from "@/lib/db";
 import { activeProvider, getProvider } from "@/lib/integrations/payments";
 import { settleOrder } from "@/lib/integrations/settlement";
+import { tiendaActual } from "@/lib/public-url";
 import * as repo from "@/lib/repo";
 import { fail, guarded, ok, type ActionResult } from "@/app/actions/shared";
 import type { Funnel } from "@/lib/types";
@@ -35,8 +36,8 @@ async function visitorSession(): Promise<string> {
   return key;
 }
 
-function funnelBySlugOrThrow(slug: string): Funnel {
-  const funnel = repo.getFunnelByPublicSlug(slug);
+async function funnelBySlugOrThrow(slug: string): Promise<Funnel> {
+  const funnel = repo.resolvePublicFunnel(slug, await tiendaActual());
   if (!funnel) throw new Error("FUNNEL_NOT_FOUND");
   return funnel;
 }
@@ -50,7 +51,7 @@ export async function trackVisitAction(input: {
   path?: string;
 }): Promise<{ ok: boolean }> {
   try {
-    const funnel = funnelBySlugOrThrow(input.slug);
+    const funnel = await funnelBySlugOrThrow(input.slug);
     const sessionKey = await visitorSession();
 
     const step = get<{ id: string }>(
@@ -112,7 +113,7 @@ export async function submitCheckoutAction(input: {
   utm?: Record<string, string>;
 }): Promise<ActionResult<CheckoutOutcome>> {
   return guarded<CheckoutOutcome>(async () => {
-    const funnel = repo.getFunnelByPublicSlug(input.slug);
+    const funnel = repo.resolvePublicFunnel(input.slug, await tiendaActual());
     if (!funnel) return fail("No encontramos este funnel.");
     if (funnel.status !== "published") {
       return fail("Este funnel no está publicado todavía.");
@@ -181,9 +182,25 @@ export async function submitCheckoutAction(input: {
     });
 
     const headerList = await headers();
+
+    /**
+     * Dos URLs distintas, a propósito.
+     *
+     * `origin` es por dónde entró el comprador: ahí lo devolvemos después de
+     * pagar, para que no salte de `mitienda.com` a otro dominio a mitad de la
+     * compra.
+     *
+     * `publicOrigin` es la dirección por la que el mundo puede llegar a esta
+     * app, y es la que necesita el aviso de cobro. Mercado Pago llama a esa URL
+     * desde SUS servidores: si le pasáramos `localhost`, o el host interno de
+     * un proxy, el aviso nunca llegaría y la venta quedaría pendiente para
+     * siempre aunque el comprador haya pagado.
+     */
     const origin =
       headerList.get("origin") ??
       `${headerList.get("x-forwarded-proto") ?? "http"}://${headerList.get("host") ?? "localhost:3000"}`;
+
+    const publicOrigin = process.env.TIENDAFLOW_SITE_URL?.replace(/\/$/, "") ?? origin;
 
     const nextUrl = await nextStepUrl(funnel, order.id, order.access_token ?? "");
     const providerId = activeProvider(funnel.workspace_id);
@@ -210,7 +227,7 @@ export async function submitCheckoutAction(input: {
       cancelUrl: `${origin}/f/${input.slug}/checkout?cancelado=1`,
       // El workspace viaja en la URL para que el webhook sepa de quién es la
       // venta antes de tener que confiar en nada del cuerpo del aviso.
-      notifyUrl: `${origin}/api/webhooks/${providerId}/${funnel.workspace_id}`,
+      notifyUrl: `${publicOrigin}/api/webhooks/${providerId}/${funnel.workspace_id}`,
     });
 
     if (result.status === "redirect") {
@@ -254,7 +271,7 @@ export async function acceptUpsellAction(input: {
   token: string;
 }): Promise<ActionResult<{ nextUrl: string }>> {
   return guarded(async () => {
-    const funnel = repo.getFunnelByPublicSlug(input.slug);
+    const funnel = repo.resolvePublicFunnel(input.slug, await tiendaActual());
     if (!funnel) return fail("No encontramos este funnel.");
 
     const order = repo.getOrder(funnel.workspace_id, input.orderId);
@@ -287,7 +304,7 @@ export async function declineUpsellAction(input: {
   token: string;
 }): Promise<ActionResult<{ nextUrl: string }>> {
   return guarded(async () => {
-    const funnel = repo.getFunnelByPublicSlug(input.slug);
+    const funnel = repo.resolvePublicFunnel(input.slug, await tiendaActual());
     if (!funnel) return fail("No encontramos este funnel.");
 
     const order = repo.getOrder(funnel.workspace_id, input.orderId);
@@ -335,7 +352,7 @@ export async function confirmManualPaymentAction(input: {
   token: string;
 }): Promise<ActionResult<null>> {
   return guarded(async () => {
-    const funnel = repo.getFunnelByPublicSlug(input.slug);
+    const funnel = repo.resolvePublicFunnel(input.slug, await tiendaActual());
     if (!funnel) return fail("No encontramos este funnel.");
 
     if (activeProvider(funnel.workspace_id)) {

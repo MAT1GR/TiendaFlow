@@ -6,7 +6,7 @@ import { EmptyState, LinkButton } from "@/components/ui/primitives";
 import { requireSession } from "@/lib/auth";
 import { listProducts } from "@/lib/repo";
 
-export const metadata: Metadata = { title: "Crear oferta" };
+export const metadata: Metadata = { title: "Ponerle precio" };
 
 export default async function NewOfferPage({
   searchParams,
@@ -21,16 +21,15 @@ export default async function NewOfferPage({
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
       <PageHeader
-        title="Construyamos tu oferta"
-        subtitle="La oferta es lo que realmente compra la gente: producto + promesa + precio + bonos."
-        breadcrumb={[{ label: "Ofertas", href: "/app/ofertas" }, { label: "Nueva" }]}
+        title="💰 Armemos tu oferta"
+        subtitle="Lo que compra la gente no es un archivo: es una promesa, a un precio, con lo que la acompaña."
       />
 
       {products.length === 0 ? (
         <EmptyState
           icon="box"
           title="Primero necesitás un producto"
-          description="La oferta se arma sobre un producto. Creá o importá uno y volvemos acá."
+          description="Todo empieza por el producto: es lo que vendés. Creá uno y volvemos acá."
           action={
             <LinkButton href="/app/productos/nuevo" icon="plus">
               Crear producto
