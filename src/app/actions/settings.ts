@@ -329,20 +329,3 @@ export async function markNotificationsReadAction(): Promise<ActionResult<null>>
   });
 }
 
-export async function changePlanAction(plan: string): Promise<ActionResult<null>> {
-  return guarded(async () => {
-    const { workspace } = await requireSession();
-    if (!isPlanId(plan)) return fail("Ese plan no existe.");
-
-    repo.ensureSubscription(workspace.id);
-    repo.setPlan(workspace.id, plan);
-    revalidatePath("/app/configuracion");
-
-    const next = PLANS[plan];
-    return ok(
-      null,
-      `Pasaste al plan ${next.name}: la comisión de tus próximas ventas es ${Math.round(next.commissionRate * 100)}%. ` +
-        "No se cobró el abono: todavía no hay un proveedor de facturación conectado.",
-    );
-  });
-}

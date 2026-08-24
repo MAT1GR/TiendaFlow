@@ -16,6 +16,7 @@ import {
   type ActionResult,
 } from "@/app/actions/shared";
 import type { Product } from "@/lib/types";
+import { parseJson } from "@/lib/utils";
 
 /* -------------------------------------------------------------------------- */
 /* Productos                                                                   */
@@ -44,6 +45,7 @@ export async function createProductAction(
       main_problem: optionalText(formData.get("main_problem")),
       transformation: optionalText(formData.get("transformation")),
       benefits: listField(formData.get("benefits")),
+      cover_url: optionalText(formData.get("cover_url")),
       base_price: price,
       currency: workspace.currency,
       delivery_type: String(formData.get("delivery_type") ?? "download"),
@@ -94,6 +96,8 @@ export async function updateProductAction(
       main_problem: optionalText(formData.get("main_problem")),
       transformation: optionalText(formData.get("transformation")),
       benefits: listField(formData.get("benefits")),
+      // La portada alimenta la página de venta: si cambia acá, se regenera allá.
+      cover_url: optionalText(formData.get("cover_url")),
       base_price: numberField(formData.get("base_price"), existing.base_price),
       delivery_type: String(formData.get("delivery_type") ?? existing.delivery_type),
       delivery_message: optionalText(formData.get("delivery_message")),
@@ -101,10 +105,67 @@ export async function updateProductAction(
 
     repo.updateProduct(workspace.id, productId, patch);
 
+    if (patch.cover_url !== existing.cover_url) {
+      syncCoverIntoLanding(workspace.id, productId, {
+        anterior: existing.cover_url,
+        nueva: (patch.cover_url as string | null) ?? null,
+      });
+    }
+
     revalidatePath("/app/productos");
     revalidatePath(`/app/productos/${productId}`);
+    revalidatePath(`/app/productos/${productId}/pagina`);
     return ok(null, "Guardamos los cambios.");
   });
+}
+
+/**
+ * La portada nueva baja sola a la página de venta.
+ *
+ * La página se escribe una vez, cuando se crea el funnel, y después vive por su
+ * cuenta. Sin esto, alguien que carga su portada después de haber armado la
+ * página la sube, va a mirar y no ve nada: la única forma de que apareciera
+ * sería volver a generar la página entera con IA y perder todo lo que escribió.
+ *
+ * Solo se pisan los campos que siguen apuntando a la portada anterior (o que
+ * están vacíos). Si en un bloque puso otra imagen a mano, esa queda: la decisión
+ * manual siempre le gana a la automática.
+ */
+function syncCoverIntoLanding(
+  workspaceId: string,
+  productId: string,
+  { anterior, nueva }: { anterior: string | null; nueva: string | null },
+) {
+  const offerIds = new Set(
+    repo
+      .listOffers(workspaceId)
+      .filter((offer) => offer.product_id === productId)
+      .map((offer) => offer.id),
+  );
+  if (!offerIds.size) return;
+
+  const pages = repo
+    .listLandingPages(workspaceId)
+    .filter((page) => page.offer_id && offerIds.has(page.offer_id));
+
+  const reemplazable = (valor: unknown) =>
+    typeof valor === "string" && (!valor.trim() || valor === anterior);
+
+  for (const page of pages) {
+    for (const section of repo.listLandingSections(workspaceId, page.id)) {
+      const content = parseJson<Record<string, unknown>>(section.content, {});
+      let tocado = false;
+
+      for (const campo of ["image", "featured_url"]) {
+        if (campo in content && reemplazable(content[campo])) {
+          content[campo] = nueva ?? "";
+          tocado = true;
+        }
+      }
+
+      if (tocado) repo.updateLandingSectionContent(workspaceId, section.id, content);
+    }
+  }
 }
 
 export async function productStatusAction(

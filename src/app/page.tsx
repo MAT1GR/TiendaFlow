@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 
-import { Icon, Wordmark, type IconName } from "@/components/ui/icon";
+import { SiteFooter, SiteHeader, type SiteLink } from "@/components/public/site-chrome";
+import { Icon, type IconName } from "@/components/ui/icon";
 import { currentUser } from "@/lib/auth";
 
 export const metadata: Metadata = {
@@ -9,6 +10,14 @@ export const metadata: Metadata = {
   description:
     "Creá tu producto digital, armá la oferta, el funnel, el checkout, los upsells y el tracking desde una sola plataforma.",
 };
+
+/** El menú del sitio público. Precios es una página, el resto son anclas. */
+const NAV: SiteLink[] = [
+  { label: "Cómo funciona", href: "/#como-funciona" },
+  { label: "Funciones", href: "/#funciones" },
+  { label: "Precios", href: "/precios" },
+  { label: "Preguntas", href: "/#faq" },
+];
 
 const WORKFLOW = [
   { step: "01", title: "Creás el producto", text: "Subís tu ebook o lo generás con IA." },
@@ -102,57 +111,7 @@ export default async function MarketingPage() {
 
   return (
     <div className="min-h-dvh bg-white">
-      <header className="sticky top-0 z-40 border-b border-ink-200 bg-white/85 backdrop-blur-md">
-        <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-4 px-5 sm:px-8">
-          <Link href="/" className="flex items-center">
-            <Wordmark />
-          </Link>
-
-          <nav className="ml-6 hidden items-center gap-6 md:flex">
-            {[
-              ["Cómo funciona", "#como-funciona"],
-              ["Funciones", "#funciones"],
-              ["IA", "#ia"],
-              ["Preguntas", "#faq"],
-            ].map(([label, href]) => (
-              <a
-                key={href}
-                href={href}
-                className="text-[13.5px] font-medium text-ink-600 transition-colors hover:text-ink-900"
-              >
-                {label}
-              </a>
-            ))}
-          </nav>
-
-          <div className="ml-auto flex items-center gap-2">
-            {user ? (
-              <Link
-                href="/app"
-                className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-brand-600 px-4 text-[13.5px] font-medium text-white transition-colors hover:bg-brand-700"
-              >
-                Ir a mi panel
-                <Icon name="arrowRight" size={15} />
-              </Link>
-            ) : (
-              <>
-                <Link
-                  href="/ingresar"
-                  className="hidden h-9 items-center rounded-xl px-3 text-[13.5px] font-medium text-ink-700 transition-colors hover:bg-ink-100 sm:inline-flex"
-                >
-                  Ingresar
-                </Link>
-                <Link
-                  href="/crear-cuenta"
-                  className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-brand-600 px-4 text-[13.5px] font-medium text-white transition-colors hover:bg-brand-700"
-                >
-                  Empezar gratis
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-      </header>
+      <SiteHeader user={user} nav={NAV} />
 
       <main>
         {/* Hero */}
@@ -524,38 +483,7 @@ export default async function MarketingPage() {
         </section>
       </main>
 
-      <footer className="border-t border-ink-200">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-5 py-10 sm:px-8 md:flex-row md:items-center md:justify-between">
-          <div>
-            <Link href="/" className="flex w-fit items-center">
-              <Wordmark size="sm" />
-            </Link>
-            <p className="mt-2 text-[13px] text-ink-500">
-              De una idea a una oferta lista para vender.
-            </p>
-          </div>
-
-          <nav className="flex flex-wrap gap-x-6 gap-y-2 text-[13.5px] text-ink-600">
-            <a href="#como-funciona" className="hover:text-ink-900">
-              Cómo funciona
-            </a>
-            <a href="#funciones" className="hover:text-ink-900">
-              Funciones
-            </a>
-            <a href="#faq" className="hover:text-ink-900">
-              Preguntas
-            </a>
-            <Link href="/ingresar" className="hover:text-ink-900">
-              Ingresar
-            </Link>
-          </nav>
-        </div>
-        <div className="border-t border-ink-100 py-5">
-          <p className="text-center text-[12.5px] text-ink-400">
-            © {new Date().getFullYear()} TiendaFlow
-          </p>
-        </div>
-      </footer>
+      <SiteFooter nav={NAV} />
     </div>
   );
 }

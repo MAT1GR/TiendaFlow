@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import { SettingsWorkspace } from "@/app/(app)/app/configuracion/workspace";
 import { MoreLink } from "@/components/app/more-link";
 import { PageHeader } from "@/components/ui/data";
+import { billingStatus } from "@/lib/billing/mercadopago";
+import { stripeBillingStatus } from "@/lib/billing/stripe";
 import { requireSession } from "@/lib/auth";
 import { aiGenerationsThisMonth, publishedProducts } from "@/lib/quota";
 import { ensureSubscription } from "@/lib/repo";
@@ -33,6 +35,12 @@ export default async function SettingsPage() {
           country: workspace.country,
           currency: workspace.currency,
           taxId: workspace.tax_id,
+        }}
+        cobro={{
+          stripe: stripeBillingStatus().configured,
+          mercadopago: billingStatus().configured,
+          /* El portal solo existe si el abono se está cobrando por Stripe. */
+          portal: subscription.provider === "stripe" && Boolean(subscription.provider_customer_id),
         }}
         subscription={{
           plan: subscription.plan,

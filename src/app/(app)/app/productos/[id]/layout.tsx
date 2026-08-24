@@ -53,12 +53,34 @@ export default async function ProductWorkspaceLayout({
 
   const readyToPublish = journey.nextStep === null && !publicUrl;
 
+  /*
+   * En celular el encabezado se aprieta.
+   *
+   * Es el mismo contenido, no menos: el nombre del producto, en qué estado
+   * está y cuánto vendió. Pero con los tamaños de escritorio ocupaba media
+   * pantalla de teléfono, y lo que la persona vino a hacer —editar algo—
+   * quedaba abajo del pliegue en todas las secciones del producto.
+   */
+  /*
+   * El encabezado desaparece en las pantallas que piden todo el ancho.
+   *
+   * Hoy eso es el constructor de la página de venta, y ahí su propia barra ya
+   * es el encabezado: tiene la flecha para volver, el selector de las cuatro
+   * pantallas del recorrido, el estado de la página y todas las acciones.
+   * Dejar además el título del producto, sus botones y sus pestañas apilaba
+   * tres encabezados distintos antes de que empezara la vista previa —en un
+   * teléfono, media pantalla— para repetir cosas que la barra ya dice.
+   *
+   * El `group/producto` es lo que deja preguntarlo: el `data-fullbleed` lo
+   * pone la pantalla hija, así que el layout no necesita saber en qué ruta
+   * está ni volverse un Client Component para leer el pathname.
+   */
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-4">
+    <div className="group/producto flex flex-col gap-4 sm:gap-6">
+      <div className="flex flex-col gap-2.5 group-has-[[data-fullbleed]]/producto:hidden sm:gap-4">
         <Link
           href="/app/productos"
-          className="inline-flex w-fit items-center gap-1.5 text-[13px] font-medium text-ink-500 transition-colors hover:text-ink-800"
+          className="hidden w-fit items-center gap-1.5 text-[13px] font-medium text-ink-500 transition-colors hover:text-ink-800 sm:inline-flex"
         >
           <Icon name="chevronLeft" size={15} />
           Mis productos
@@ -66,10 +88,10 @@ export default async function ProductWorkspaceLayout({
 
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="text-[26px] font-semibold leading-tight tracking-tight text-ink-900">
+            <h1 className="text-[21px] font-semibold leading-tight tracking-tight text-ink-900 sm:text-[26px]">
               {product.name}
             </h1>
-            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[13.5px] text-ink-500">
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[13px] text-ink-500 sm:mt-2 sm:text-[13.5px]">
               <Badge tone={STAGE_TONE[stage]}>{STAGE_LABEL[stage]}</Badge>
               {offer && offer.price > 0 ? (
                 <span className="font-medium text-ink-800">
@@ -120,7 +142,11 @@ export default async function ProductWorkspaceLayout({
 
       {/* En desktop la navegación del producto vive en el sidebar. Estas
           pestañas son para móvil, donde el sidebar está oculto. */}
-      <ProductTabs productId={product.id} tabs={tabs} className="lg:hidden" />
+      <ProductTabs
+        productId={product.id}
+        tabs={tabs}
+        className="group-has-[[data-fullbleed]]/producto:hidden lg:hidden"
+      />
 
       {/* Solo aparece si la persona viene encadenando los pasos de la creación.
           Va acá y no en cada pantalla para que ninguna se quede afuera. */}

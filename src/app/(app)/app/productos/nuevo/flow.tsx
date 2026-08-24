@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { applyProductDraftAction, generateProductDraftAction } from "@/app/actions/ai";
-import { MoreOptions } from "@/components/ui/explain";
+import { PRESETS } from "@/components/landing/theme";
 import { Alert, TemplateNotice } from "@/components/ui/feedback";
 import { Icon } from "@/components/ui/icon";
 import {
@@ -43,10 +43,13 @@ const STEPS = ["Tu producto", "Tu carta de ventas"];
 export function NewProductFlow({
   aiConfigured,
   yaLoTiene,
+  presetTienda,
 }: {
   aiConfigured: boolean;
   /** Viene del alta: si ya tiene el material, la IA no le inventa un índice. */
   yaLoTiene?: boolean;
+  /** El color de la tienda: es el que viene marcado hasta que elija otro. */
+  presetTienda: string;
 }) {
   const router = useRouter();
   const toast = useToast();
@@ -57,6 +60,18 @@ export function NewProductFlow({
 
   const [nombre, setNombre] = useState("");
   const [descripcion, setDescripcion] = useState("");
+
+  /*
+   * Lo visual se decide acá, no tres pantallas después.
+   *
+   * La portada es el elemento que sostiene la página de venta —aparece en el
+   * encabezado, en la presentación, en el precio y en el cierre— y el color es
+   * lo que hace que la página no se parezca a la del resto. Los dos se cargaban
+   * en la ficha del producto, adonde nadie volvía, y por eso todas las páginas
+   * nacían iguales: sin una sola imagen y con los colores de la tienda.
+   */
+  const [portada, setPortada] = useState("");
+  const [preset, setPreset] = useState(presetTienda);
 
   const [draft, setDraft] = useState<ProductDraft | null>(null);
   const [isTemplate, setIsTemplate] = useState(false);
@@ -101,10 +116,12 @@ export function NewProductFlow({
     if (!draft) return;
     setError(null);
     startTransition(async () => {
-      const result = await applyProductDraftAction(draft, titulo, {
-        topic: descripcion,
-        productName: nombre,
-      });
+      const result = await applyProductDraftAction(
+        draft,
+        titulo,
+        { topic: descripcion, productName: nombre },
+        { coverUrl: portada, preset },
+      );
       if (result.ok) {
         toast.success("Producto creado", "Seguimos con el precio.");
         // Sin escalas: el paso siguiente del paso a paso es ponerle precio, y
@@ -192,16 +209,21 @@ export function NewProductFlow({
                 <Input value={titulo} onChange={(event) => setTitulo(event.target.value)} />
               </Field>
 
+              {/* Los otros títulos estaban detrás de un desplegable cerrado y
+                  nadie los abría: el vendedor se quedaba con el primero sin
+                  saber que había cinco. Ahora se ven, que es el punto de
+                  haberlos generado. */}
               {draft.titles?.length ? (
-                <MoreOptions label="¿Querés probar otro título?">
-                  <div className="flex flex-col gap-1.5">
+                <div>
+                  <p className="mb-2 text-[12.5px] text-ink-500">O elegí otro de estos:</p>
+                  <div className="flex flex-wrap gap-1.5">
                     {draft.titles.map((opcion) => (
                       <button
                         key={opcion}
                         type="button"
                         onClick={() => setTitulo(opcion)}
                         className={cn(
-                          "rounded-xl border px-3.5 py-2.5 text-left text-[13.5px] transition-colors",
+                          "rounded-full border px-3.5 py-1.5 text-left text-[13px] transition-colors",
                           titulo === opcion
                             ? "border-brand-400 bg-brand-50/60 font-semibold text-ink-900"
                             : "border-ink-200 text-ink-700 hover:border-ink-300 hover:bg-ink-50/60",
@@ -211,7 +233,7 @@ export function NewProductFlow({
                       </button>
                     ))}
                   </div>
-                </MoreOptions>
+                </div>
               ) : null}
 
               <Nucleo
@@ -309,9 +331,74 @@ export function NewProductFlow({
           ) : null}
 
           <Card className="p-6">
-            <Alert tone="ai">
+            <h3 className="text-[15px] font-semibold text-ink-900">
+              Cómo se va a ver tu página
+            </h3>
+            <p className="mt-1 text-[13.5px] text-ink-500">
+              Con esto armamos tu página de venta. Los dos se pueden cambiar después.
+            </p>
+
+            <div className="mt-5 flex flex-col gap-4">
+              <Field
+                label="Portada del producto"
+                hint="Pegá el link de la imagen. Aparece en el encabezado, en el precio y en el cierre de tu página."
+              >
+                <Input
+                  value={portada}
+                  placeholder="https://…"
+                  onChange={(event) => setPortada(event.target.value)}
+                />
+              </Field>
+
+              {portada ? (
+                <div className="-mt-1 flex items-center gap-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- la URL la pega el vendedor: puede ser de cualquier dominio. */}
+                  <img
+                    src={portada}
+                    alt="Portada del producto"
+                    className="h-28 w-24 rounded-lg border border-ink-200 object-contain"
+                  />
+                  <p className="text-[12.5px] text-ink-500">
+                    Así se va a ver en tu página. Si no aparece nada, revisá el link.
+                  </p>
+                </div>
+              ) : (
+                <Alert tone="info">
+                  Sin portada tu página sale solo con texto. Si todavía no la tenés, seguí y
+                  cargala después desde <strong>Mi producto</strong>.
+                </Alert>
+              )}
+
+              <Field label="Color de tu página">
+                <div className="flex flex-wrap gap-2">
+                  {PRESETS.map((item) => (
+                    <button
+                      key={item.preset}
+                      type="button"
+                      onClick={() => setPreset(item.preset)}
+                      aria-pressed={preset === item.preset}
+                      className={cn(
+                        "flex items-center gap-2 rounded-xl border px-3 py-2 text-[13px] transition-colors",
+                        preset === item.preset
+                          ? "border-brand-400 bg-brand-50/60 font-semibold text-ink-900"
+                          : "border-ink-200 text-ink-700 hover:border-ink-300 hover:bg-ink-50/60",
+                      )}
+                    >
+                      <span className="flex overflow-hidden rounded-full">
+                        {item.swatch.map((color) => (
+                          <span key={color} className="size-4" style={{ backgroundColor: color }} />
+                        ))}
+                      </span>
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </Field>
+            </div>
+
+            <Alert tone="ai" className="mt-5">
               Se crea como borrador. Después de crearlo te llevamos a ponerle precio y armar la
-              oferta; la portada, los archivos y la entrega se cargan en la ficha del producto.
+              oferta; los archivos y la entrega se cargan en la ficha del producto.
             </Alert>
 
             <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-ink-100 pt-5">

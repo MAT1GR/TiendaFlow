@@ -148,23 +148,33 @@ function ProductFlowBarInner({
   const base = `/app/productos/${productId}`;
   const segment = pathname.startsWith(`${base}/`) ? pathname.slice(base.length + 1) : "";
 
+  /*
+   * La página de venta queda afuera a propósito.
+   *
+   * Ahí la barra del editor es el encabezado de toda la pantalla —trae el
+   * selector de las cuatro pantallas del recorrido, el estado y las acciones—
+   * y esta barra encima deja dos progresos distintos compitiendo ("estás en la
+   * 1 de 4" y "vas por el paso 3 de 5") sin que ninguno se termine de leer. La
+   * cadena no se corta: el link para seguir con el cobro entra en esa misma
+   * barra, en `FlowContinue`.
+   */
   const step: FlowStepCode | null = segment.startsWith("producto")
     ? "producto"
     : segment.startsWith("oferta")
       ? "oferta"
-      : segment.startsWith("pagina")
-        ? "pagina"
-        : segment.startsWith("cobro")
-          ? "cobro"
-          : segment.startsWith("publicar")
-            ? "publicar"
-            : null;
+      : segment.startsWith("cobro")
+        ? "cobro"
+        : segment.startsWith("publicar")
+          ? "publicar"
+          : null;
 
   if (!step) return null;
 
   const next: Record<FlowStepCode, { href: string; label: string } | null> = {
     producto: { href: withFlow(`${base}/oferta`), label: "Continuar" },
     oferta: { href: withFlow(`${base}/pagina`), label: "Continuar" },
+    // La página de venta no muestra esta barra, pero el paso sigue existiendo
+    // en la cadena: el link vive en el selector de pantallas.
     pagina: { href: withFlow(`${base}/cobro`), label: "Continuar" },
     cobro: {
       href: withFlow(`${base}/publicar`),

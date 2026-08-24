@@ -5,6 +5,7 @@ import { FlowBar } from "@/components/app/flow-bar";
 import { PageHeader } from "@/components/ui/data";
 import { aiStatus } from "@/lib/ai/provider";
 import { requireSession } from "@/lib/auth";
+import { workspaceTheme } from "@/lib/repo";
 
 export const metadata: Metadata = { title: "Crear producto" };
 
@@ -13,7 +14,7 @@ export default async function NewProductPage({
 }: {
   searchParams: Promise<{ fuente?: string }>;
 }) {
-  await requireSession();
+  const { workspace } = await requireSession();
   const { fuente } = await searchParams;
   const status = aiStatus();
 
@@ -33,6 +34,9 @@ export default async function NewProductPage({
         // El alta ya preguntó si el material existe. Si existe, la IA describe
         // lo que hay adentro en vez de inventarle capítulos que nadie escribió.
         yaLoTiene={fuente === "propio"}
+        // El color de la tienda viene marcado: elegir es cambiarlo, no empezar
+        // de cero cada vez que crea un producto.
+        presetTienda={workspaceTheme(workspace.id).preset}
       />
     </div>
   );

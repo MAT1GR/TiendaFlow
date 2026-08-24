@@ -103,6 +103,8 @@ export interface Product {
   benefits: string | null;
   cover_url: string | null;
   cover_style: string | null;
+  /** Preset de colores de su página de venta. `null` = los de la tienda. */
+  landing_preset: string | null;
   base_price: number;
   currency: string;
   delivery_type: string;
@@ -442,6 +444,7 @@ export interface Subscription {
   status: string;
   provider: string | null;
   provider_subscription_id: string | null;
+  provider_customer_id: string | null;
   current_period_end: string | null;
   cancel_at_period_end: number;
   created_at: string;

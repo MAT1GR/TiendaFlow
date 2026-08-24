@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { ExperienceSteps, stepBlurb, type ExperienceStep } from "@/components/app/experience-steps";
+import { PantallaSelector, type ExperienceStep } from "@/components/app/experience-steps";
 import { Icon } from "@/components/ui/icon";
 
 /**
@@ -42,10 +42,7 @@ export function ExperienceScreen({
 }) {
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1.5">
-        <ExperienceSteps productId={productId} current={step} />
-        <p className="text-[13px] text-ink-500">{stepBlurb(step)}</p>
-      </div>
+      <PantallaSelector productId={productId} current={step} className="w-fit" />
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="rounded-2xl border border-ink-200 bg-ink-100 p-4 sm:p-6">

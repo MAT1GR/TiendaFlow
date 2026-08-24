@@ -32,7 +32,14 @@ export interface TemplateSection {
 export interface TemplateInput {
   product: Pick<
     Product,
-    "name" | "subtitle" | "description" | "audience" | "main_problem" | "transformation" | "benefits"
+    | "name"
+    | "subtitle"
+    | "description"
+    | "audience"
+    | "main_problem"
+    | "transformation"
+    | "benefits"
+    | "cover_url"
   > | null;
   offer: Pick<Offer, "headline" | "promise" | "benefits" | "cta_text" | "guarantee" | "price" | "compare_at_price" | "currency"> | null;
   bonuses: Array<Pick<Bonus, "name" | "description">>;
@@ -58,10 +65,20 @@ export function landingTemplate(input: TemplateInput): TemplateSection[] {
   const problem = pick(product?.main_problem);
   const transformation = pick(product?.transformation);
 
+  /*
+   * Los beneficios de la oferta y los del producto son casi siempre los
+   * mismos: la oferta se genera a partir del producto. Sin deduplicar, el
+   * mismo beneficio salía dos veces seguidas en las pastillas del encabezado y
+   * en la lista de "qué incluye", que es la clase de detalle que hace que una
+   * página se lea como generada y no como escrita.
+   */
   const benefits = [
-    ...toLines(offer?.benefits ?? null),
-    ...toLines(product?.benefits ?? null),
-  ].filter(Boolean);
+    ...new Set(
+      [...toLines(offer?.benefits ?? null), ...toLines(product?.benefits ?? null)]
+        .map((benefit) => benefit.trim())
+        .filter(Boolean),
+    ),
+  ];
 
   const priceLabel = offer && offer.price > 0 ? formatMoney(offer.price, offer.currency) : "$0";
   const compareLabel =
@@ -70,6 +87,22 @@ export function landingTemplate(input: TemplateInput): TemplateSection[] {
       : "";
 
   const cta = pick(offer?.cta_text, "Quiero mi acceso");
+
+  /*
+   * La portada del producto es el elemento visual de la página.
+   *
+   * Si el vendedor la cargó, aparece sola en los cuatro momentos donde el que
+   * lee necesita ver qué está comprando: el encabezado, la presentación del
+   * producto, la tarjeta de precio y el último llamado. No es la misma imagen
+   * gigante repetida cuatro veces —cada bloque la compone distinto—, pero es
+   * siempre la misma imagen, que es lo que hace que la página se lea como un
+   * producto y no como una plantilla.
+   *
+   * Si no la cargó, estos campos van vacíos y cada bloque dibuja su hueco con
+   * el texto de qué iría ahí. El hueco es la invitación a subirla.
+   */
+  const cover = pick(product?.cover_url);
+  const coverAlt = `Portada de ${productName}`;
 
   /*
    * Las pastillas del hero y las etiquetas son piezas cortas.
@@ -84,7 +117,9 @@ export function landingTemplate(input: TemplateInput): TemplateSection[] {
 
   const content: Record<string, Record<string, unknown>> = {
     hero: {
-      eyebrow: audience ? audience.toUpperCase() : "PARA QUIENES QUIEREN EMPEZAR HOY",
+      eyebrow: etiqueta(audience),
+      image: cover,
+      image_alt: coverAlt,
       headline: pick(offer?.headline, transformation, productName),
       subheadline: pick(offer?.promise, product?.subtitle, product?.description),
       cta,
@@ -147,13 +182,16 @@ export function landingTemplate(input: TemplateInput): TemplateSection[] {
       title: transformation || "Esto es lo que vas a poder hacer",
       subtitle: "Una imagen principal, un video opcional y algunos ejemplos de lo que se puede lograr.",
       featured_alt: `Imagen principal de ${productName}`,
+      featured_url: cover,
       video_url: "",
-      images: Array.from({ length: 6 }, (_, index) => ({ alt: `Ejemplo ${index + 1}` })),
+      images: Array.from({ length: 6 }, (_, index) => ({ alt: `Ejemplo ${index + 1}`, url: "" })),
       note: "",
     },
 
     solution: {
       badge: "LA SOLUCIÓN",
+      image: cover,
+      image_alt: coverAlt,
       title: productName,
       subtitle: pick(product?.subtitle, offer?.promise),
       text: pick(
@@ -217,6 +255,8 @@ export function landingTemplate(input: TemplateInput): TemplateSection[] {
     pricing: {
       title: transformation ? `Empezá hoy a ${lower(transformation)}` : "Empezá hoy",
       badge: "ACCESO COMPLETO",
+      image: cover,
+      image_alt: coverAlt,
       product_name: productName,
       subtitle: pick(product?.subtitle, offer?.promise),
       price_label: priceLabel,
@@ -282,6 +322,8 @@ export function landingTemplate(input: TemplateInput): TemplateSection[] {
 
     cta: {
       kicker: "PODÉS EMPEZAR HOY",
+      image: cover,
+      image_alt: coverAlt,
       headline: "No necesitás esperar a estar listo.",
       subheadline: "Solo necesitás dar el primer paso.",
       cta,
@@ -366,10 +408,48 @@ export function landingTemplate(input: TemplateInput): TemplateSection[] {
     },
   };
 
-  return (input.layout ?? DEFAULT_LAYOUT).structure.map((type) => ({
-    type,
-    content: content[type] ?? {},
-  }));
+  /*
+   * Un bloque que no tiene nada que decir no sale.
+   *
+   * La sección de bonos existía siempre, y cuando el vendedor todavía no había
+   * cargado ninguno se llenaba con "Todavía no cargaste bonos": una sección
+   * entera de la página de venta ocupada por una nota interna. El que la vea
+   * publicada sin darse cuenta pierde credibilidad justo antes del precio.
+   *
+   * Sigue apareciendo en el momento en que carga el primer bono, porque la
+   * página se regenera con los datos de la oferta.
+   */
+  const vacios = new Set<string>();
+  if (!bonuses.length) vacios.add("bonuses");
+
+  return (input.layout ?? DEFAULT_LAYOUT).structure
+    .filter((type) => !vacios.has(type))
+    .map((type) => ({
+      type,
+      content: content[type] ?? {},
+    }));
+}
+
+/**
+ * La etiqueta de arriba del encabezado.
+ *
+ * El avatar que escribe la IA es una frase entera —"personas que arrancan mil
+ * veces con los hábitos y abandonan a la semana"— y esta etiqueta va en
+ * mayúsculas y con mucho espaciado entre letras. Puesta tal cual, ocupaba seis
+ * renglones arriba del titular y era lo primero que se leía de la página.
+ *
+ * Si el avatar entra, se usa: es lo más específico que tenemos. Si no entra, se
+ * prueba con su primera parte, y recién si tampoco entra va el texto genérico.
+ * Cortar una frase por la mitad no es una opción: queda peor que no ponerla.
+ */
+function etiqueta(audience: string): string {
+  const MAX = 48;
+  const generico = "PARA QUIENES QUIEREN EMPEZAR HOY";
+  if (!audience) return generico;
+  if (audience.length <= MAX) return audience.toUpperCase();
+
+  const primeraParte = audience.split(/[,;.]/)[0].trim();
+  return primeraParte && primeraParte.length <= MAX ? primeraParte.toUpperCase() : generico;
 }
 
 /** "Bajar de peso" → "bajar de peso", para poder encadenar frases. */
@@ -416,7 +496,9 @@ export function mergeLandingDraft(
     if (section.type === "testimonials") return section;
 
     // Primero la forma, después el contenido.
-    const conformed = conformToShape(generated.get(section.type) ?? {}, section.content);
+    const conformed = sinImagenes(
+      conformToShape(generated.get(section.type) ?? {}, section.content),
+    );
     const result = sanitizeContent({ ...section.content, ...conformed }, section.content);
     cleaned += result.cleaned;
 
@@ -431,4 +513,33 @@ export function mergeLandingDraft(
     .map((section) => ({ type: section.type, content: section.content }));
 
   return { sections: [...merged, ...extra], cleaned };
+}
+
+/**
+ * Las imágenes no las elige el modelo.
+ *
+ * Un modelo de texto al que le pedís una landing devuelve `image:
+ * "https://ejemplo.com/portada.jpg"` sin pestañear. Esa URL no existe, y una
+ * imagen rota arriba de todo es peor que no tener imagen. Las URLs salen de un
+ * solo lado —lo que el vendedor cargó en su producto— y el copy generado no las
+ * puede pisar.
+ */
+const CAMPOS_DE_IMAGEN = new Set(["image", "url", "featured_url", "video_url"]);
+
+function sinImagenes(content: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(content)) {
+    if (CAMPOS_DE_IMAGEN.has(key)) continue;
+    // Las tarjetas de la galería traen su propia `url` adentro.
+    if (Array.isArray(value)) {
+      result[key] = value.map((item) =>
+        item && typeof item === "object" && !Array.isArray(item)
+          ? sinImagenes(item as Record<string, unknown>)
+          : item,
+      );
+      continue;
+    }
+    result[key] = value;
+  }
+  return result;
 }

@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
-    "dev:webpack": "next dev",
+    "dev": "next dev --turbopack -p 6600",
+    "dev:webpack": "next dev -p 6600",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p 6600",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "smoke": "node scripts/smoke.mjs"

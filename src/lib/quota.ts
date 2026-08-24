@@ -9,7 +9,7 @@ import { getSubscription } from "@/lib/repo";
  *
  * Hasta acá los planes eran una tabla de precios y nada más: los límites
  * estaban escritos en `plans.ts` pero no los leía nadie, así que el plan Free
- * daba exactamente lo mismo que el plan Max. Un tope que no se aplica no es un
+ * daba exactamente lo mismo que el plan Pro. Un tope que no se aplica no es un
  * tope, es una promesa incumplida en la dirección contraria.
  *
  * Se aplican dos, que son los que tienen un costo real detrás:

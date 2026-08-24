@@ -108,9 +108,22 @@ export async function generateOfferDraftAction(
   });
 }
 
+/**
+ * Lo que el vendedor contesta antes de generar: a quién le habla, de qué lo
+ * salva y en qué lo convierte. Viene del formulario del editor y pisa lo que
+ * haya cargado en el producto — si se tomó el trabajo de escribirlo ahí, es
+ * más fresco que lo que quedó guardado.
+ */
+export interface LandingBriefOverride {
+  audience?: string;
+  problem?: string;
+  transformation?: string;
+}
+
 export async function generateLandingDraftAction(
   pageId: string,
   tone?: string,
+  brief?: LandingBriefOverride,
 ): Promise<ActionResult<AiResponse<tasks.LandingDraft>>> {
   return guarded(async () => {
     const { workspace, user } = await requireSession();
@@ -132,14 +145,26 @@ export async function generateLandingDraftAction(
     const result = await tasks.generateLandingDraft({
       productName: product?.name ?? page.name,
       offerName: offer?.name,
-      audience: product?.audience ?? undefined,
-      problem: product?.main_problem ?? undefined,
-      transformation: product?.transformation ?? undefined,
+      audience: limpio(brief?.audience) ?? product?.audience ?? undefined,
+      problem: limpio(brief?.problem) ?? product?.main_problem ?? undefined,
+      transformation: limpio(brief?.transformation) ?? product?.transformation ?? undefined,
       price: offer?.price ?? product?.base_price ?? 9900,
       currency: offer?.currency ?? workspace.currency,
       benefits: toLines(offer?.benefits ?? product?.benefits ?? null),
       guarantee: offer?.guarantee ?? null,
       bonuses: bonuses.map((bonus) => ({ name: bonus.name, description: bonus.description })),
+      /*
+       * Todo lo que el vendedor ya cargó de su producto viaja al modelo.
+       *
+       * La página salía escrita a partir de tres campos —audiencia, problema,
+       * transformación— cuando en la ficha del producto había una descripción
+       * entera, una promesa y una categoría. El modelo llenaba ese vacío con
+       * relleno: más párrafos, más adjetivos, menos producto.
+       */
+      subtitle: product?.subtitle ?? null,
+      description: product?.description ?? null,
+      category: product?.category ?? null,
+      hasCover: Boolean(product?.cover_url?.trim()),
       tone,
       layout,
     });
@@ -163,7 +188,7 @@ export async function generateLandingDraftAction(
       task: "landing_draft",
       provider: result.provider,
       model: result.model,
-      input: { pageId, tone },
+      input: { pageId, tone, brief },
       output: { sections },
       entity_type: "landing_page",
       entity_id: pageId,
@@ -376,10 +401,17 @@ export async function applyOfferDraftAction(
   });
 }
 
+/** Lo visual que eligió en el alta: la portada y el color de su página. */
+export interface ProductLook {
+  coverUrl?: string;
+  preset?: string;
+}
+
 export async function applyProductDraftAction(
   draft: tasks.ProductDraft,
   chosenTitle: string,
   brief: tasks.ProductBriefInput,
+  look?: ProductLook,
 ): Promise<ActionResult<{ id: string }>> {
   return guarded(async () => {
     const { workspace } = await requireSession();
@@ -406,6 +438,16 @@ export async function applyProductDraftAction(
       outline: { chapters: draft.outline ?? [], faq: draft.faq ?? [] },
       source: "ai",
       cover_style: JSON.stringify({ from: "#6D5DFB", to: "#22D3EE" }),
+      /*
+       * La portada y el color se eligen en el alta, no después.
+       *
+       * Los dos se cargaban recién en la ficha del producto, tres pantallas más
+       * adelante. El resultado era que la página de venta nacía sin una sola
+       * imagen y con los colores de la tienda, y el vendedor la veía por
+       * primera vez así: igual a la de todos los demás.
+       */
+      cover_url: limpio(look?.coverUrl) ?? null,
+      landing_preset: limpio(look?.preset) ?? null,
     });
 
     repo.createNotification(workspace.id, {
@@ -569,4 +611,10 @@ function contextLinks(module: string): Array<{ label: string; href: string }> {
         { label: "Panel de IA", href: "/app/ia" },
       ];
   }
+}
+
+/** Un campo del brief, o `undefined` si vino vacío o solo con espacios. */
+function limpio(valor: string | undefined): string | undefined {
+  const texto = valor?.trim();
+  return texto ? texto : undefined;
 }

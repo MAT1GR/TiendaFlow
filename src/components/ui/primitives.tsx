@@ -389,7 +389,10 @@ export function Dropdown({
   }, [open]);
 
   return (
-    <div className="relative" ref={ref}>
+    // `min-w-0`: cuando el desplegable es hijo de un flex —la barra del editor,
+    // por ejemplo— sin esto no puede achicarse por debajo de su contenido y le
+    // roba el ancho a lo que tenga al lado, que termina cortado.
+    <div className="relative min-w-0" ref={ref}>
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}

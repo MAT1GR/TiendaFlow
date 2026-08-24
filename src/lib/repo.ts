@@ -88,6 +88,7 @@ export interface ProductInput {
   benefits?: string[] | null;
   cover_url?: string | null;
   cover_style?: string | null;
+  landing_preset?: string | null;
   base_price?: number;
   currency?: string;
   delivery_type?: string;
@@ -103,9 +104,9 @@ export function createProduct(workspaceId: string, input: ProductInput): Product
     `INSERT INTO products (
        id, workspace_id, name, subtitle, description, short_description, type, status,
        category, audience, main_problem, transformation, benefits, cover_url, cover_style,
-       base_price, currency, delivery_type, delivery_message, source, outline, is_demo,
-       created_at, updated_at
-     ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,?,?)`,
+       landing_preset, base_price, currency, delivery_type, delivery_message, source, outline,
+       is_demo, created_at, updated_at
+     ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,?,?)`,
     productId,
     workspaceId,
     input.name,
@@ -121,6 +122,7 @@ export function createProduct(workspaceId: string, input: ProductInput): Product
     input.benefits ? JSON.stringify(input.benefits) : null,
     input.cover_url ?? null,
     input.cover_style ?? null,
+    input.landing_preset ?? null,
     input.base_price ?? 0,
     input.currency ?? "ARS",
     input.delivery_type ?? "download",
@@ -147,6 +149,7 @@ const PRODUCT_FIELDS = [
   "benefits",
   "cover_url",
   "cover_style",
+  "landing_preset",
   "base_price",
   "currency",
   "delivery_type",
@@ -865,7 +868,13 @@ export function listLandingSections(workspaceId: string, pageId: string) {
 
 export function createLandingPage(
   workspaceId: string,
-  input: { name: string; offer_id?: string | null; funnel_step_id?: string | null },
+  input: {
+    name: string;
+    offer_id?: string | null;
+    funnel_step_id?: string | null;
+    /** Los colores de esta página. Sin esto, hereda los de la tienda. */
+    theme?: unknown;
+  },
 ) {
   const pageId = id();
   const now = ts();
@@ -879,10 +888,11 @@ export function createLandingPage(
     input.offer_id ?? null,
     input.name,
     uniqueSlug(workspaceId, "landing_pages", input.name),
-    // Los colores de la tienda, los que eligió el vendedor al crear la cuenta.
-    // Se guardan enteros —y no solo el acento— para que la página nazca con el
-    // estilo completo y solo tenga que retocar lo que no le guste.
-    JSON.stringify(workspaceTheme(workspaceId)),
+    // Los colores de la tienda, los que eligió el vendedor al crear la cuenta,
+    // salvo que este producto tenga los suyos. Se guardan enteros —y no solo el
+    // acento— para que la página nazca con el estilo completo y solo tenga que
+    // retocar lo que no le guste.
+    JSON.stringify(input.theme ? readTheme(input.theme) : workspaceTheme(workspaceId)),
     now,
     now,
   );
@@ -916,6 +926,21 @@ export function replaceLandingSections(
     });
     run(`UPDATE landing_pages SET updated_at = ? WHERE id = ?`, ts(), pageId);
   });
+}
+
+/** El contenido de una sola sección, sin tocar las demás. */
+export function updateLandingSectionContent(
+  workspaceId: string,
+  sectionId: string,
+  content: unknown,
+) {
+  run(
+    `UPDATE landing_sections SET content = ?, updated_at = ? WHERE workspace_id = ? AND id = ?`,
+    JSON.stringify(content ?? {}),
+    ts(),
+    workspaceId,
+    sectionId,
+  );
 }
 
 export function updateLandingPage(
@@ -1679,6 +1704,62 @@ export function setPlan(workspaceId: string, plan: string) {
     plan,
     ts(),
     workspaceId,
+  );
+}
+
+/**
+ * Guarda el estado de la suscripción tal como lo dejó el proveedor de cobro.
+ *
+ * Es un patch: lo que no venga en `patch` no se toca. Los webhooks llegan
+ * incompletos y desordenados —el aviso de "se autorizó" no trae la fecha del
+ * próximo débito, el de "se cobró" no trae el plan— y con un update total cada
+ * webhook borraría lo que dejó el anterior.
+ */
+export function updateSubscription(
+  workspaceId: string,
+  patch: {
+    plan?: string;
+    status?: string;
+    provider?: string | null;
+    providerSubscriptionId?: string | null;
+    providerCustomerId?: string | null;
+    currentPeriodEnd?: string | null;
+    cancelAtPeriodEnd?: boolean;
+  },
+) {
+  const campos: string[] = [];
+  const valores: unknown[] = [];
+
+  const set = (columna: string, valor: unknown) => {
+    campos.push(`${columna} = ?`);
+    valores.push(valor);
+  };
+
+  if (patch.plan !== undefined) set("plan", patch.plan);
+  if (patch.status !== undefined) set("status", patch.status);
+  if (patch.provider !== undefined) set("provider", patch.provider);
+  if (patch.providerSubscriptionId !== undefined) {
+    set("provider_subscription_id", patch.providerSubscriptionId);
+  }
+  if (patch.providerCustomerId !== undefined) {
+    set("provider_customer_id", patch.providerCustomerId);
+  }
+  if (patch.currentPeriodEnd !== undefined) set("current_period_end", patch.currentPeriodEnd);
+  if (patch.cancelAtPeriodEnd !== undefined) {
+    set("cancel_at_period_end", patch.cancelAtPeriodEnd ? 1 : 0);
+  }
+  if (campos.length === 0) return;
+
+  set("updated_at", ts());
+  valores.push(workspaceId);
+  run(`UPDATE subscriptions SET ${campos.join(", ")} WHERE workspace_id = ?`, ...(valores as never[]));
+}
+
+/** La suscripción atada a un id de Mercado Pago, para resolver un webhook. */
+export function getSubscriptionByProviderId(providerSubscriptionId: string) {
+  return get<Subscription>(
+    `SELECT * FROM subscriptions WHERE provider_subscription_id = ?`,
+    providerSubscriptionId,
   );
 }
 

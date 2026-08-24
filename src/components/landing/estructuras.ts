@@ -21,6 +21,21 @@ export interface LandingLayout {
   structure: readonly string[];
 }
 
+/**
+ * Ningún estilo arranca con bloques de relleno.
+ *
+ * "Los números de tu oferta" y la galería de seis huecos salían en la página
+ * clásica aunque el vendedor no tuviera ni un número real ni una sola imagen
+ * cargada, y una página con seis rectángulos grises y un "100% digital" se lee
+ * como plantilla, no como oferta. Siguen en la biblioteca de bloques para el
+ * que los quiera: lo que cambia es que ya no vienen puestos por defecto.
+ *
+ * Cada bloque de esta lista responde una pregunta del que está leyendo:
+ * qué es y qué consigo (hero) · por qué lo necesito (problems) · cómo me ayuda
+ * (solution) · qué voy a recibir (modules) · qué más obtengo (bonuses) · por
+ * qué conviene ahora (pricing) · por qué te creo (testimonials, guarantee) ·
+ * qué dudas me quedan (faq) · y el último empujón (cta).
+ */
 export const LANDING_LAYOUTS: LandingLayout[] = [
   {
     id: "clasica",
@@ -28,9 +43,7 @@ export const LANDING_LAYOUTS: LandingLayout[] = [
     blurb: "El recorrido completo: problema, solución, prueba y precio.",
     structure: [
       "hero",
-      "stats",
       "problems",
-      "gallery",
       "solution",
       "modules",
       "bonuses",
@@ -52,13 +65,10 @@ export const LANDING_LAYOUTS: LandingLayout[] = [
       "problems",
       "benefits",
       "pricing",
+      "bonuses",
+      "comparison",
       "testimonials",
       "guarantee",
-      "bonuses",
-      "features",
-      "comparison",
-      "stats",
-      "gallery",
       "faq",
       "cta",
       "footer",

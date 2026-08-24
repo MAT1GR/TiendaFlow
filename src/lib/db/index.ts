@@ -51,6 +51,12 @@ function migrate(database: DatabaseSync) {
     { table: "orders", column: "commission_amount", definition: "REAL NOT NULL DEFAULT 0" },
     { table: "orders", column: "paid_at", definition: "TEXT" },
     { table: "workspaces", column: "theme", definition: "TEXT" },
+    // El id del cliente en el proveedor de cobro (`cus_…` en Stripe). Es lo que
+    // deja abrir el portal donde cambia la tarjeta o cancela sin pasar por acá.
+    { table: "subscriptions", column: "provider_customer_id", definition: "TEXT" },
+    // El preset de colores que eligió para la página de venta de ESTE producto.
+    // Vacío = hereda los de la tienda, que es como venía funcionando.
+    { table: "products", column: "landing_preset", definition: "TEXT" },
   ];
 
   for (const { table, column, definition } of ADDITIONS) {

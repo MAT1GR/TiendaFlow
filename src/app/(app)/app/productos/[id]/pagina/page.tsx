@@ -2,12 +2,11 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
 import { LandingEditor } from "@/app/(app)/app/landings/[id]/editor";
-import { ExperienceSteps, stepBlurb } from "@/components/app/experience-steps";
+import { PantallaSelector } from "@/components/app/experience-steps";
 import { Card, LinkButton } from "@/components/ui/primitives";
 import { requireSession } from "@/lib/auth";
 import { isFlowActive, withFlow } from "@/lib/product-flow";
 import { productContext } from "@/lib/product-workspace";
-import { publishChecklist } from "@/lib/publish-checklist";
 import {
   getLandingPage,
   getLandingPageByStep,
@@ -21,11 +20,12 @@ export const metadata: Metadata = { title: "Página de venta" };
 /**
  * El constructor de la experiencia de compra, parado en la página de venta.
  *
- * Arriba de todo va el recorrido completo —página de venta, checkout, después
- * de comprar, gracias— porque esa es la pregunta que se hace el vendedor
- * ("¿qué ve mi cliente?"), no "¿en qué paso del funnel estoy?". Debajo, el
- * editor visual: bloques a la izquierda, la página al medio, lo que está
- * editando a la derecha.
+ * Arriba de todo van las cuatro pantallas del recorrido —página de venta,
+ * checkout, después de comprar, gracias— como tarjetas seleccionables, porque
+ * esa es la pregunta que se hace el vendedor ("¿qué ve mi cliente?") y no "¿en
+ * qué paso del funnel estoy?". Debajo, el editor: los bloques a la izquierda,
+ * la página al medio dibujada dentro de un teléfono, y a la derecha los campos
+ * del bloque que está tocando.
  */
 export default async function SalesPageTab({
   params,
@@ -43,7 +43,7 @@ export default async function SalesPageTab({
   const context = productContext(workspace.id, id);
   if (!context) notFound();
 
-  const { offer, funnel } = context;
+  const { product, offer, funnel } = context;
 
   if (!offer) {
     return (
@@ -92,11 +92,19 @@ export default async function SalesPageTab({
   const sections = listLandingSections(workspace.id, page.id);
   const theme = parseJson<unknown>(page.theme, {});
 
+  /*
+   * Acá no va nada arriba del editor.
+   *
+   * La barra del editor es el encabezado de esta pantalla: adentro tiene el
+   * selector de las cuatro pantallas del recorrido, el estado de la página y
+   * todas las acciones. Cualquier cosa que se apile encima —un título, un
+   * recorrido, un aviso— es alto que se le saca a la vista previa, que es lo
+   * único que la persona vino a mirar.
+   */
   return (
-    <div className="flex flex-col gap-4">
-      <Recorrido productId={id} step="venta" />
-
+    <div className="flex flex-col">
       <LandingEditor
+        productId={id}
         page={{
           id: page.id,
           name: page.name,
@@ -105,7 +113,16 @@ export default async function SalesPageTab({
           seoTitle: page.seo_title,
           seoDescription: page.seo_description,
         }}
-        blockers={publishChecklist(workspace.id, funnel.id, id)}
+        backHref={{ href: `/app/productos/${id}`, label: product.name }}
+        cover={{ url: product.cover_url, href: `/app/productos/${id}/producto` }}
+        /* El formulario de la IA arranca con lo que ya contestó al cargar su
+           producto. Si está completo es apretar un botón; si falta algo, el
+           hueco se ve y se llena ahí mismo. */
+        brief={{
+          audience: product.audience ?? "",
+          problem: product.main_problem ?? "",
+          transformation: product.transformation ?? "",
+        }}
         sections={sections.map((section) => ({
           id: section.id,
           type: section.type,
@@ -125,19 +142,13 @@ export default async function SalesPageTab({
 }
 
 /**
- * El recorrido de compra, con la frase que explica dónde está parado.
+ * El selector de pantallas, para las puertas.
  *
- * Se repite en las cuatro pantallas del recorrido y también en las puertas
- * ("todavía no tenés precio"): estar bloqueado no es motivo para esconderle a
+ * Estar bloqueado —"todavía no tenés precio"— no es motivo para esconderle a
  * alguien el mapa de lo que está armando.
  */
 function Recorrido({ productId, step }: { productId: string; step: "venta" }) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <ExperienceSteps productId={productId} current={step} />
-      <p className="text-[13px] text-ink-500">{stepBlurb(step)}</p>
-    </div>
-  );
+  return <PantallaSelector productId={productId} current={step} className="w-fit" />;
 }
 
 function Gate({

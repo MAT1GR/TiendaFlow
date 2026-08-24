@@ -16,25 +16,51 @@
  * Con `R` = facturación mensual del vendedor, el costo total de cada plan es
  * `abono + comisión × R`. Los puntos de cruce quedan así:
  *
- * | Plan    | Abono | Comisión | Conviene a partir de |
- * |---------|-------|----------|----------------------|
- * | Free    |  US$0 |    8%    | —                    |
- * | Starter | US$17 |    5%    | US$567/mes           |
- * | Pro     | US$60 |    2%    | US$1.433/mes         |
- * | Max     | US$80 |    1%    | US$2.000/mes         |
+ * | Plan    | Abono      | Comisión | Conviene a partir de |
+ * |---------|------------|----------|----------------------|
+ * | Free    |    US$0    |    8%    | —                    |
+ * | Creator |  US$9/mes  |    5%    | US$300/mes           |
+ * | Pro     | US$17/mes  |    3%    | US$400/mes           |
  *
- * Los tres cruces van en aumento (567 → 1.433 → 2.000), que es la condición
- * para que ninguno quede dominado por otro.
+ * Los dos cruces van en aumento (300 → 400), que es la condición para que
+ * ninguno quede dominado por otro: entre esos dos números Creator es
+ * estrictamente el más barato de los tres.
  *
- * Por qué Max cobra 1% y no 0%: con abono de US$80 y comisión cero, el cruce
- * contra Pro caería en US$1.000 —por debajo del cruce de Pro— y Pro pasaría a
- * ser un plan que a nadie le conviene nunca. Para poder anunciar "0% de
- * comisión" el abono de Max tendría que estar cerca de US$110.
+ * Por qué Pro cobra 3% y no 0%: con abono de US$17 y comisión cero el cruce
+ * contra Creator caería en US$160 —por debajo del cruce de Creator— y Creator
+ * pasaría a ser un plan que a nadie le conviene nunca.
+ *
+ * ## Por qué en dólares
+ *
+ * TiendaFlow se cobra en dólares para que el precio signifique lo mismo en
+ * todos los países y no haya que retocarlo cada vez que se mueve una moneda
+ * local. Quien paga por Mercado Pago ve el equivalente en su moneda al cambio
+ * del día, y por eso el importe puede variar de un mes a otro: lo fijo es el
+ * precio en dólares, no el débito.
+ *
+ * Ojo con mezclar monedas: la comisión por venta se calcula sobre el total de
+ * la orden, que está en la moneda del vendedor. Es una fracción, así que no
+ * necesita conversión —el 5% de una venta en pesos son pesos—. El abono es lo
+ * único que vive en dólares.
  */
 
-export type PlanId = "free" | "starter" | "pro" | "max";
+export type PlanId = "free" | "creator" | "pro";
 
-export const PLAN_IDS: PlanId[] = ["free", "starter", "pro", "max"];
+export const PLAN_IDS: PlanId[] = ["free", "creator", "pro"];
+
+/**
+ * Nombres viejos que todavía pueden estar guardados en `subscriptions.plan`.
+ *
+ * La escalera pasó de cuatro escalones a tres. Sin esta tabla, un workspace
+ * con `starter` o `max` guardado caería en `free` la próxima vez que se lea:
+ * alguien que estaba pagando pasaría a comisión del 8% sin que nadie lo toque.
+ * Se mapea hacia arriba, nunca hacia abajo — ante la duda, a favor del que ya
+ * estaba pagando.
+ */
+const PLANES_VIEJOS: Record<string, PlanId> = {
+  starter: "creator",
+  max: "pro",
+};
 
 /**
  * Cupo de una función medible.
@@ -52,7 +78,7 @@ export const UNLIMITED = Number.POSITIVE_INFINITY;
 export interface Plan {
   id: PlanId;
   name: string;
-  /** Precio mensual en dólares. */
+  /** Abono mensual en dólares. */
   priceUsd: number;
   blurb: string;
   /** Fracción del total de cada venta que se queda TiendaFlow. 0.08 = 8%. */
@@ -123,19 +149,26 @@ export const PLANS: Record<PlanId, Plan> = {
     ],
   },
 
-  starter: {
-    id: "starter",
-    name: "Starter",
-    priceUsd: 17,
+  creator: {
+    id: "creator",
+    name: "Creator",
+    priceUsd: 9,
     blurb: "Cuando ya vendés todos los meses y la comisión empieza a doler.",
     commissionRate: 0.05,
-    worthItFromUsd: 567,
+    worthItFromUsd: 300,
     limits: {
-      aiGenerations: q(30, "month"),
-      publishedProducts: q(3, "total"),
-      bonusesPerOffer: q(5, "total"),
-      upsellsPerOffer: q(2, "total"),
-      storageMb: q(500, "total"),
+      aiGenerations: q(50, "month"),
+      /*
+       * Sin tope de productos ya en Creator.
+       * El límite de productos es lo primero contra lo que choca alguien que
+       * empieza a funcionar, y cobrarle el salto más caro justo ahí castiga
+       * exactamente el momento que queremos premiar. Pro no se diferencia por
+       * cuántos productos podés tener sino por cuánto te queda de cada venta.
+       */
+      publishedProducts: q(UNLIMITED, "total"),
+      bonusesPerOffer: q(10, "total"),
+      upsellsPerOffer: q(3, "total"),
+      storageMb: q(2048, "total"),
     },
     features: {
       customDomain: false,
@@ -145,8 +178,8 @@ export const PLANS: Record<PlanId, Plan> = {
     },
     highlights: [
       "Comisión del 5% por venta",
-      "3 productos publicados",
-      "30 usos de IA por mes",
+      "Productos publicados sin tope",
+      "50 usos de IA por mes",
       "Recuperación de carrito",
     ],
   },
@@ -154,38 +187,10 @@ export const PLANS: Record<PlanId, Plan> = {
   pro: {
     id: "pro",
     name: "Pro",
-    priceUsd: 60,
-    blurb: "Para el que vive de esto y quiere su propia marca.",
-    commissionRate: 0.02,
-    worthItFromUsd: 1433,
-    limits: {
-      aiGenerations: q(150, "month"),
-      publishedProducts: q(10, "total"),
-      bonusesPerOffer: q(10, "total"),
-      upsellsPerOffer: q(5, "total"),
-      storageMb: q(5120, "total"),
-    },
-    features: {
-      customDomain: true,
-      cartRecovery: true,
-      advancedAnalytics: true,
-      affiliates: true,
-    },
-    highlights: [
-      "Comisión del 2% por venta",
-      "10 productos publicados",
-      "150 usos de IA por mes",
-      "Dominio propio y afiliados",
-    ],
-  },
-
-  max: {
-    id: "max",
-    name: "Max",
-    priceUsd: 80,
-    blurb: "Sin topes y con la comisión más baja que damos.",
-    commissionRate: 0.01,
-    worthItFromUsd: 2000,
+    priceUsd: 17,
+    blurb: "Para el que vive de esto: la comisión más baja y sin topes.",
+    commissionRate: 0.03,
+    worthItFromUsd: 400,
     limits: {
       aiGenerations: q(UNLIMITED, "month"),
       publishedProducts: q(UNLIMITED, "total"),
@@ -200,10 +205,10 @@ export const PLANS: Record<PlanId, Plan> = {
       affiliates: true,
     },
     highlights: [
-      "Comisión del 1% por venta",
-      "Productos publicados sin tope",
+      "Comisión del 3% por venta",
       "IA sin tope",
-      "Todo lo de Pro incluido",
+      "Dominio propio y afiliados",
+      "Estadísticas avanzadas",
     ],
   },
 };
@@ -212,15 +217,51 @@ export function isPlanId(value: string): value is PlanId {
   return (PLAN_IDS as string[]).includes(value);
 }
 
-/** Plan del workspace. Cualquier valor desconocido cae en `free`, nunca rompe. */
+/**
+ * Plan del workspace.
+ *
+ * Traduce los nombres viejos y cae en `free` solo si el valor no significa
+ * nada. Nunca rompe.
+ */
 export function planOf(plan: string | null | undefined): Plan {
-  return plan && isPlanId(plan) ? PLANS[plan] : PLANS.free;
+  if (!plan) return PLANS.free;
+  if (isPlanId(plan)) return PLANS[plan];
+  const migrado = PLANES_VIEJOS[plan];
+  return migrado ? PLANS[migrado] : PLANS.free;
 }
 
 /** Comisión que retiene TiendaFlow sobre una venta, redondeada a dos decimales. */
 export function commissionFor(plan: string | null | undefined, total: number) {
   const rate = planOf(plan).commissionRate;
   return { rate, amount: Math.round(total * rate * 100) / 100 };
+}
+
+/**
+ * El abono, como se escribe en una tarjeta de precios.
+ *
+ * Está acá y no en cada pantalla porque "Gratis" y "$7.990" son la misma
+ * decisión: si mañana el plan gratuito pasa a costar algo, no puede quedar una
+ * pantalla diciendo "Gratis" porque nadie se acordó de tocarla.
+ */
+export function planPriceLabel(plan: Plan) {
+  return plan.priceUsd === 0 ? "Gratis" : usd(plan.priceUsd);
+}
+
+/**
+ * Una cifra en dólares.
+ *
+ * Se escribe "US$9" y no "$9": en la mitad de los países donde va a leerse
+ * esta página el signo pelado significa la moneda local, y el precio de un
+ * plan es justo el número que no se puede prestar a confusión.
+ */
+export function usd(amount: number) {
+  return `US$${amount.toLocaleString("es-AR", { maximumFractionDigits: 2 })}`;
+}
+
+/** La comisión como se escribe: "8%", "1,5%". Sin decimales cuando es entero. */
+export function commissionLabel(plan: Plan) {
+  const porcentaje = plan.commissionRate * 100;
+  return `${Number.isInteger(porcentaje) ? porcentaje : porcentaje.toFixed(1).replace(".", ",")}%`;
 }
 
 export function formatQuota(quota: Quota) {
@@ -237,7 +278,7 @@ export function formatQuota(quota: Quota) {
  *
  * Es la única forma honesta de recomendar un plan: en vez de decirle "pasate a
  * Pro", mostrarle que con lo que factura hoy Pro le sale más barato que Free.
- * Devuelve los cuatro planes ordenados de más barato a más caro.
+ * Devuelve los tres planes ordenados de más barato a más caro.
  */
 export function planCosts(revenueUsd: number) {
   return PLAN_IDS.map((id) => {
@@ -307,10 +348,12 @@ const FEATURE_LABELS: Array<[keyof Plan["features"], string]> = [
  *
  * Sale de `limits` y `features` en vez de estar escrita a mano para que no se
  * despegue nunca de lo que la app efectivamente permite: si mañana Pro pasa a
- * 20 productos, la tarjeta lo dice sola.
+ * 20 productos, la tarjeta lo dice sola. Es también lo que nos impide anunciar
+ * una función que todavía no existe: si no hay una llave que la prenda, no hay
+ * renglón que la prometa.
  *
  * Cada plan lista solo lo que agrega sobre el anterior, con un primer ítem que
- * arrastra todo lo de abajo ("Todo lo del plan Starter"). Es la forma más corta
+ * arrastra todo lo de abajo ("Todo lo del plan Creator"). Es la forma más corta
  * de que se lea la escalera: el que mira sabe que subir nunca le saca nada.
  */
 export function planBenefits(id: PlanId): string[] {

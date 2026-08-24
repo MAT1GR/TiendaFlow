@@ -50,6 +50,12 @@ export function ProductEditor({
   const [tab, setTab] = useState("info");
   const [state, formAction, pending] = useActionState(updateProductAction, null);
   const [description, setDescription] = useState(product.description ?? "");
+  /*
+   * La portada vive en el estado y no en un `defaultValue` porque abajo se
+   * dibuja: pegar la URL y ver la imagen en el momento es la única forma de
+   * saber que el link sirve antes de que salga publicada en la página de venta.
+   */
+  const [cover, setCover] = useState(product.cover_url ?? "");
   const [aiPending, startAi] = useTransition();
 
   useEffect(() => {
@@ -115,6 +121,32 @@ export function ProductEditor({
               <Field label="Subtítulo">
                 <Input name="subtitle" defaultValue={product.subtitle ?? ""} />
               </Field>
+
+              <Field
+                label="Portada"
+                hint="La imagen de tu producto. Es lo que se ve en tu página de venta."
+              >
+                <Input
+                  name="cover_url"
+                  value={cover}
+                  placeholder="https://…"
+                  onChange={(event) => setCover(event.target.value)}
+                />
+              </Field>
+
+              {cover ? (
+                <div className="-mt-1 flex items-center gap-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- la URL la pega el vendedor: puede ser de cualquier dominio. */}
+                  <img
+                    src={cover}
+                    alt="Portada del producto"
+                    className="h-24 w-20 rounded-lg border border-ink-200 object-contain"
+                  />
+                  <p className="text-[12.5px] text-ink-500">
+                    Así se va a ver en tu página. Si no aparece nada, revisá el link.
+                  </p>
+                </div>
+              ) : null}
 
               <Field
                 label="Descripción"
@@ -228,6 +260,7 @@ export function ProductEditor({
             <>
               <input type="hidden" name="name" value={product.name} />
               <input type="hidden" name="subtitle" value={product.subtitle ?? ""} />
+              <input type="hidden" name="cover_url" value={cover} />
               <input type="hidden" name="description" value={description} />
               <input type="hidden" name="short_description" value={product.short_description ?? ""} />
               <input type="hidden" name="type" value={product.type} />

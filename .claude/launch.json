@@ -4,8 +4,23 @@
     {
       "name": "tiendaflow-dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
-      "port": 3000
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "port": 6600
+    },
+    {
+      "name": "tiendaflow-verificacion",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--",
+        "-p",
+        "6601"
+      ],
+      "port": 6601
     }
   ]
 }

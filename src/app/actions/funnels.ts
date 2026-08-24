@@ -53,16 +53,29 @@ export async function createFunnelAction(
     const steps = repo.listFunnelSteps(workspace.id, funnel.id);
     const landingStep = steps.find((step) => step.type === "landing");
     if (landingStep) {
+      const offer = offerId ? repo.getOffer(workspace.id, offerId) : null;
+      const product = productId ? repo.getProduct(workspace.id, productId) : null;
+      const storeTheme = repo.workspaceTheme(workspace.id);
+
+      /*
+       * Los colores del producto le ganan a los de la tienda.
+       *
+       * Quien vende una guía de arcilla y un curso de crochet no quiere las dos
+       * páginas del mismo color. El preset se elige al crear el producto; si no
+       * eligió ninguno, sigue heredando el de la tienda como siempre.
+       */
+      const theme = product?.landing_preset
+        ? readTheme({ preset: product.landing_preset, layout: storeTheme.layout })
+        : storeTheme;
+
       const pageId = repo.createLandingPage(workspace.id, {
         // El vendedor nunca ve este nombre en la pantalla del editor, pero sí
         // en listados: que diga "Página de venta de X" y no "Landing Funnel X".
         name: `Página de venta de ${name}`,
         offer_id: offerId,
         funnel_step_id: landingStep.id,
+        theme,
       });
-
-      const offer = offerId ? repo.getOffer(workspace.id, offerId) : null;
-      const product = productId ? repo.getProduct(workspace.id, productId) : null;
 
       repo.replaceLandingSections(
         workspace.id,
@@ -74,7 +87,7 @@ export async function createFunnelAction(
           workspaceName: workspace.name,
           // El estilo de página de la tienda: la página nace con la estructura
           // que el vendedor usó la última vez, no siempre con la clásica.
-          layout: findLayout(repo.workspaceTheme(workspace.id).layout),
+          layout: findLayout(theme.layout),
         }),
       );
     }

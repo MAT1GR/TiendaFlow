@@ -7,7 +7,7 @@ import { DISPLAY_FONTS, PRESETS, themeVars, type Preset } from "@/components/lan
 import { Alert } from "@/components/ui/feedback";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { Button, Card, Field, Input, Stepper } from "@/components/ui/primitives";
-import { PLAN_IDS, PLANS } from "@/lib/plans";
+import { commissionLabel, PLAN_IDS, PLANS, planPriceLabel, usd } from "@/lib/plans";
 import { cn, slugify } from "@/lib/utils";
 
 /**
@@ -240,7 +240,7 @@ export function OnboardingWizard({ firstName }: { firstName: string }) {
                     <span className="flex items-baseline justify-between gap-2">
                       <span className="text-[14px] font-semibold text-ink-900">{opcion.name}</span>
                       <span className="text-[15px] font-semibold tracking-tight text-ink-900">
-                        {opcion.priceUsd === 0 ? "Gratis" : `US$${opcion.priceUsd}`}
+                        {planPriceLabel(opcion)}
                         {opcion.priceUsd > 0 ? (
                           <span className="text-[11.5px] font-medium text-ink-400">/mes</span>
                         ) : null}
@@ -250,13 +250,12 @@ export function OnboardingWizard({ firstName }: { firstName: string }) {
                     <span className="mt-1 text-[12.5px] text-ink-500">{opcion.blurb}</span>
 
                     <span className="mt-2.5 inline-flex w-fit rounded-lg bg-white px-2 py-1 text-[11.5px] font-semibold text-ink-700 ring-1 ring-ink-200">
-                      Comisión {Math.round(opcion.commissionRate * 100)}% por venta
+                      Comisión {commissionLabel(opcion)} por venta
                     </span>
 
                     {opcion.worthItFromUsd ? (
                       <span className="mt-2 text-[11.5px] text-ink-400">
-                        Conviene si facturás más de US$
-                        {opcion.worthItFromUsd.toLocaleString("es-AR")} por mes
+                        Conviene si facturás más de {usd(opcion.worthItFromUsd)} por mes
                       </span>
                     ) : (
                       <span className="mt-2 text-[11.5px] text-ink-400">

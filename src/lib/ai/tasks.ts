@@ -127,6 +127,13 @@ lo que la app escribe después (la oferta, la página de venta y los anuncios):
 · main_problem — el dolor, dicho como lo diría esa persona, no como categoría.
 · transformation — en qué queda cuando termina. Un después, no una promesa vaga.
 
+LOS TÍTULOS — cómo se llama el producto
+El nombre tiene que decir de qué se trata en el primer segundo. Descriptivo y
+en castellano: "Arte con Arcilla", "Velas Artesanales", "Bordado Moderno",
+"Pintura con Espátula". Nada de nombres de marca ni palabras en inglés —Studio,
+Academy, Master, Pro, Lab, Creative— salvo que el vendedor ya haya usado una
+arriba. El diferencial y la promesa van en el subtítulo, no en el nombre.
+
 Después: 5 títulos posibles (el primero puede ser el que ya puso, si funciona),
 un subtítulo, el posicionamiento en una frase, una descripción larga de 3
 párrafos, una descripción corta (máx 160 caracteres), 6 beneficios escritos como
@@ -277,8 +284,27 @@ Tono: ${TONE_HINT[input.tone ?? "directo"] ?? TONE_HINT.directo}
 
 Devolvé headline, posicionamiento, promesa principal, un precio sugerido, 6
 beneficios en formato resultado (no características), texto del CTA, texto de
-garantía, 3 bonos con valor percibido, un order bump de bajo precio, un upsell
+garantía, 4 bonos con valor percibido, un order bump de bajo precio, un upsell
 y un downsell.
+
+LOS BONOS — la parte que más se arruina sola
+Un bono sirve si el vendedor lo puede producir esta semana y si empuja el mismo
+resultado que el producto principal. Elegí de acá: checklists, plantillas
+editables, guías rápidas, catálogos, hojas de trabajo, prompts, calendarios,
+mini-guías en PDF, archivos descargables.
+NO propongas nunca, aunque suenen valiosos: comunidad privada, grupo de
+WhatsApp, soporte personalizado, mentorías, llamadas 1 a 1, clases en vivo,
+certificados, ni nada que necesite una herramienta paga. Todo eso es trabajo
+que alguien tiene que sostener todos los meses, y el que arma esta oferta está
+vendiendo un producto digital justamente para no tener que hacerlo.
+Lo mismo vale para el order bump, el upsell y el downsell: son archivos, no
+servicios.
+
+Condiciones que ya están decididas y no se discuten: pago único, acceso digital
+inmediato y garantía de 7 días. Escribilas así.
+
+Si el producto habilita a que alguien venda lo que hace con él, se puede
+mencionar como posibilidad. Nunca como promesa, nunca con cifras.
 
 Sobre "suggested_price": es una propuesta, no un dato. Tené en cuenta que es un
 producto digital, que la moneda es ${input.currency} y que el precio de arriba
@@ -369,6 +395,20 @@ export interface LandingBriefInput {
   bonuses?: Array<{ name: string; description: string | null }>;
   /** El estilo de página elegido. Define qué bloques se le piden al modelo. */
   layout?: LandingLayout;
+  /** La promesa corta que el vendedor le puso al producto. */
+  subtitle?: string | null;
+  /** Lo que escribió sobre su producto. El modelo escribe a partir de esto. */
+  description?: string | null;
+  category?: string | null;
+  /**
+   * Si el producto tiene portada cargada.
+   *
+   * No es un detalle de diseño: cambia lo que hay que escribir. Con portada, el
+   * encabezado se compone a dos columnas y el titular tiene la mitad del ancho,
+   * así que tiene que entrar en dos líneas. Sin portada, la página es solo
+   * texto y el titular puede respirar.
+   */
+  hasCover?: boolean;
 }
 
 /**
@@ -383,17 +423,17 @@ export interface LandingBriefInput {
 const BLOCK_SPECS: Record<string, string> = {
   hero: "eyebrow, headline, subheadline, cta, pills[] (3 frases cortas), social, trust",
   stats: "items[{value, label}] (4), highlights[{title, subtitle, text}] (3)",
-  problems: "title, subtitle, items[] (5 dolores concretos, en segunda persona), closing",
+  problems: "title, subtitle, items[] (3 o 4 dolores concretos, en segunda persona), closing",
   gallery: "kicker, title, subtitle, featured_alt, images[{alt}] (6), note",
   solution:
     "badge, title, subtitle, text, tags[] (4), highlight, stats[{value, label}] (3), features[] (4)",
-  modules: "kicker, title, box_title, items[{title, description}] (6), metrics[{value, label}] (2)",
+  modules: "kicker, title, box_title, items[{title, description}] (4 a 6), metrics[{value, label}] (2)",
   bonuses: "kicker, title, items[{name, description, badge}], footer_note",
   pricing:
     "title, badge, product_name, subtitle, price_label, compare_label, note, includes[] (6), cta, trust[] (3)",
   testimonials: "kicker, title, subtitle, items[] vacío y placeholder true",
   guarantee: "title, text, seal, note",
-  faq: "kicker, title, items[{question, answer}] (8 preguntas reales de objeción)",
+  faq: "kicker, title, items[{question, answer}] (5 preguntas reales de objeción)",
   cta: "kicker, headline, subheadline, cta, micro, trust[] (3)",
   footer: "brand, text, links[] (3)",
   benefits: "title, items[] (6 resultados concretos, en segunda persona)",
@@ -417,7 +457,6 @@ export function generateLandingDraft(input: LandingBriefInput): Promise<AiResult
 
   // Los bloques del estilo que eligió el vendedor, no una lista fija.
   const layout = input.layout ?? DEFAULT_LAYOUT;
-  const bloques = layout.structure;
 
   /**
    * El borrador local y el pedido a la IA comparten la misma estructura: la
@@ -425,16 +464,19 @@ export function generateLandingDraft(input: LandingBriefInput): Promise<AiResult
    * con los mismos bloques en el mismo orden, y lo único que cambia es qué tan
    * buenos son los textos.
    */
-  const base = () =>
+  const baseSections = () =>
     landingTemplate({
       product: {
         name: input.productName,
-        subtitle: null,
-        description: null,
+        subtitle: input.subtitle ?? null,
+        description: input.description ?? null,
         audience: input.audience ?? null,
         main_problem: input.problem ?? null,
         transformation: input.transformation ?? null,
         benefits: JSON.stringify(input.benefits ?? []),
+        // Acá solo importa si hay portada o no: la URL real la pone la
+        // plantilla del lado del servidor, nunca el modelo.
+        cover_url: input.hasCover ? "cover" : null,
       },
       offer: {
         headline: null,
@@ -451,6 +493,17 @@ export function generateLandingDraft(input: LandingBriefInput): Promise<AiResult
       layout,
     });
 
+  /*
+   * Los bloques se sacan de la plantilla ya armada, no del estilo.
+   *
+   * No es lo mismo: la plantilla saca los bloques que no tienen con qué
+   * llenarse —la sección de bonos cuando todavía no hay bonos—, y pedirle al
+   * modelo que escriba una sección que la página no va a tener es gastar
+   * tokens en texto que se tira.
+   */
+  const base = baseSections();
+  const bloques = base.map((section) => section.type);
+
   return runAiTask<LandingDraft>({
     task: "landing_draft",
     system: SYSTEM_BASE,
@@ -458,25 +511,65 @@ export function generateLandingDraft(input: LandingBriefInput): Promise<AiResult
       .map((tipo) => `"${tipo}"`)
       .join("|")}, content: object }] }`,
     maxTokens: 4000,
-    prompt: `Escribí el copy completo de una landing page de venta directa para tráfico frío de Meta Ads.
+    prompt: `Escribí el copy de una landing page de venta directa para tráfico frío de Meta Ads.
 
-Producto: ${input.productName}
-Oferta: ${input.offerName ?? input.productName}
+DATOS DEL PRODUCTO (todo lo de abajo ya existe: no lo vuelvas a inventar)
+Producto: ${input.productName}${input.subtitle ? `
+Promesa corta: ${input.subtitle}` : ""}
+Oferta: ${input.offerName ?? input.productName}${input.category ? `
+Categoría: ${input.category}` : ""}
 Audiencia: ${audience}
 Problema: ${problem}
 Transformación: ${transformation}
 Precio: ${formatMoney(input.price, input.currency)}
 Tono: ${TONE_HINT[input.tone ?? "directo"] ?? TONE_HINT.directo}
+${input.description?.trim() ? `Lo que contó el vendedor sobre su producto:
+"""
+${input.description.trim()}
+"""` : ""}
 ${input.benefits?.length ? `Beneficios ya definidos: ${input.benefits.join(" | ")}` : ""}
-${input.bonuses?.length ? `Bonos ya definidos: ${input.bonuses.map((b) => b.name).join(" | ")}` : ""}
+${
+  input.bonuses?.length
+    ? `Bonos ya definidos:
+${input.bonuses
+  .map((bonus) => `· ${bonus.name}${bonus.description ? ` — ${bonus.description}` : ""}`)
+  .join("\n")}`
+    : ""
+}
+${input.guarantee ? `Garantía: ${input.guarantee}` : ""}
+${
+  input.hasCover
+    ? "Portada: el vendedor cargó la imagen de su producto. Aparece sola en el encabezado, en la presentación, en la tarjeta de precio y en el último llamado. No escribas URLs ni describas la imagen: ya está puesta."
+    : "Portada: todavía no cargó ninguna imagen. La página va a salir sin fotos, así que el texto tiene que sostenerse solo — más razón para que sea corto y con listas."
+}
 
-Devolvé EXACTAMENTE estos ${bloques.length} bloques, en este orden y con estos campos:
+ESTO ES DISEÑO, NO UN ARTÍCULO
+Una landing se escanea de arriba abajo en veinte segundos, casi siempre en un
+teléfono. Lo que convierte es la composición: títulos cortos, bullets, números,
+tarjetas, aire entre secciones y una imagen que se entienda de un vistazo.
+Nunca escribas bloques de texto. Cada sección tiene que poder leerse de un
+golpe de vista. Si dudás entre una frase más y una frase menos, va la de menos.
+
+CADA SECCIÓN RESPONDE UNA PREGUNTA. UNA SOLA.
+· hero — ¿Qué es esto y qué consigo?${input.hasCover ? " (el titular comparte el ancho con la portada: dos líneas como máximo)" : ""}
+· problems — ¿Por qué lo necesito?
+· solution — ¿Cómo me ayuda?
+· modules — ¿Qué voy a recibir?
+· bonuses — ¿Qué más obtengo?
+· pricing — ¿Por qué me conviene comprarlo ahora?
+· testimonials / guarantee — ¿Por qué debería confiar?
+· faq — ¿Qué dudas me quedan?
+· cta — el último empujón.
+Si una idea ya se dijo en otra sección, no se repite: se corta.
+
+Devolvé EXACTAMENTE estos ${bloques.length} bloques, en este orden y con estos campos.
+Ni uno más: no agregues secciones para ocupar espacio.
 
 ${bloques.map((tipo, i) => `${i + 1}. ${tipo} — ${BLOCK_SPECS[tipo] ?? "los campos que corresponda"}`).join("\n")}
 
 LONGITUD — la regla que más se incumple, leela dos veces:
-· Escribí CORTO. Una landing se escanea, no se lee. Si una frase dice lo mismo
-  con la mitad de las palabras, va con la mitad. Preferí punto antes que coma.
+· Escribí CORTO. Si una frase dice lo mismo con la mitad de las palabras, va con
+  la mitad. Preferí punto antes que coma.
 · Una idea por campo. Nada de encadenar con "y además", "también", "por si fuera poco".
 · Contá los caracteres antes de devolver. Máximos por campo:
   - headline / title / box_title: 60 caracteres.
@@ -497,6 +590,8 @@ LONGITUD — la regla que más se incumple, leela dos veces:
 Reglas:
 · Cada headline tiene que ser específico y hablarle a esa audiencia, no genérico.
 · En "problems" escribí dolores que la persona reconozca como propios, no categorías.
+  Tres o cuatro, no más: son tarjetas, no una lista de lamentos.
+· En "faq" van cinco preguntas: las que frenan la compra, no las decorativas.
 · PROHIBIDO inventar cantidades de personas, alumnos, ventas, descargas, años de
   experiencia o porcentajes de resultados. Nada de "+1.500 personas ya lo usan",
   "el 97% lo logra" ni "miles de clientes". Si el dato no está más arriba, NO EXISTE
@@ -507,9 +602,10 @@ Reglas:
   tenés un número real, usá algo verificable como "100%" digital, "24/7" de acceso o
   la cantidad de beneficios y bonos que te pasé.
 · NUNCA inventes testimonios: "testimonials" va con items vacío y placeholder en true.
+· No escribas URLs ni rutas de imágenes en ningún campo: las imágenes las pone la app.
 · No nombres medios de pago concretos: no sabés cuál tiene configurado.
 · Escribí en voseo rioplatense.`,
-    fallback: (): LandingDraft => ({ sections: base() }),
+    fallback: (): LandingDraft => ({ sections: base }),
   });
 }
 

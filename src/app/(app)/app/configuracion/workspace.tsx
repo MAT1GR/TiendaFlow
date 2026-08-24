@@ -8,7 +8,14 @@ import {
   loadDemoDataAction,
   updateAccountAction,
 } from "@/app/actions/auth";
-import { changePlanAction, updateWorkspaceAction } from "@/app/actions/settings";
+import {
+  cancelSubscriptionAction,
+  openBillingPortalAction,
+  startStripeCheckoutAction,
+  startSubscriptionAction,
+  syncStripeSubscriptionAction,
+} from "@/app/actions/billing";
+import { updateWorkspaceAction } from "@/app/actions/settings";
 import { Avatar } from "@/components/ui/data";
 import { Alert } from "@/components/ui/feedback";
 import { Icon } from "@/components/ui/icon";
@@ -29,20 +36,24 @@ import {
 } from "@/components/ui/primitives";
 import {
   bestPlanFor,
+  commissionLabel,
   formatQuota,
   PLAN_IDS,
   planBenefits,
   PLANS,
   planOf,
+  planPriceLabel,
+  usd,
   UNLIMITED,
 } from "@/lib/plans";
-import { cn, formatDate } from "@/lib/utils";
+import { cn, formatDate, formatMoney } from "@/lib/utils";
 
 
 export function SettingsWorkspace({
   user,
   workspace,
   subscription,
+  cobro,
   uso,
   hasDemo,
 }: {
@@ -55,6 +66,7 @@ export function SettingsWorkspace({
     taxId: string | null;
   };
   subscription: { plan: string; status: string; periodEnd: string | null };
+  cobro: EstadoDelCobro;
   /** Lo que el workspace consumió de su plan. */
   uso: { ia: number; publicados: number };
   hasDemo: boolean;
@@ -100,7 +112,7 @@ export function SettingsWorkspace({
           <NotificationsPanel />
         </div>
       ) : null}
-      {tab === "plan" ? <PlanPanel subscription={subscription} uso={uso} /> : null}
+      {tab === "plan" ? <PlanPanel subscription={subscription} uso={uso} cobro={cobro} /> : null}
       {tab === "datos" ? (
         <div className={angosto}>
           <DataPanel hasDemo={hasDemo} />
@@ -385,11 +397,28 @@ function Consumo({
  * las tarjetas recalculándose debajo evita que el vendedor compare abonos, que
  * sin la comisión al lado no dicen nada.
  */
+/**
+ * Qué caminos de cobro hay disponibles ahora mismo.
+ *
+ * Sale del servidor porque depende de variables de entorno. Los botones se
+ * dibujan según esto y no según lo que nos gustaría tener: ofrecer "Pagar con
+ * Mercado Pago" cuando Mercado Pago no está configurado es prometer algo que
+ * va a fallar recién cuando la persona lo apriete.
+ */
+export interface EstadoDelCobro {
+  stripe: boolean;
+  mercadopago: boolean;
+  /** Hay un abono vivo en Stripe cuyo portal se puede abrir. */
+  portal: boolean;
+}
+
 function PlanPanel({
   subscription,
+  cobro,
   uso,
 }: {
   subscription: { plan: string; status: string; periodEnd: string | null };
+  cobro: EstadoDelCobro;
   uso: { ia: number; publicados: number };
 }) {
   const router = useRouter();
@@ -402,10 +431,10 @@ function PlanPanel({
   /*
    * La calculadora arranca vacía a propósito.
    *
-   * Podríamos estimar la facturación mensual con las ventas que ya tiene
-   * cargadas, pero la app cobra en pesos y los planes están en dólares: para
-   * compararlos habría que inventar un tipo de cambio. Es más honesto que el
-   * número lo ponga el vendedor, que sí sabe cuánto factura en dólares.
+   * Podríamos estimar la facturación con las ventas que ya tiene cargadas,
+   * pero el vendedor cobra en su moneda y el abono está en dólares: para
+   * prellenar el campo habría que aplicarle un tipo de cambio y presentarlo
+   * como si fuera un dato suyo. Es más honesto que el número lo ponga él.
    */
   const [facturacion, setFacturacion] = useState("");
   const facturacionNum = Number(facturacion);
@@ -413,6 +442,90 @@ function PlanPanel({
     facturacion.trim() !== "" && Number.isFinite(facturacionNum) && facturacionNum >= 0;
   const conVentas = modo === "ventas" && facturacionValida;
   const recomendado = conVentas ? bestPlanFor(facturacionNum) : null;
+
+  /**
+   * Elegir un plan.
+   *
+   * Free se aplica en el momento —nadie tiene que esperar un webhook para
+   * dejar de pagar— y los planes pagos salen a Stripe. El plan **no** se
+   * cambia acá: lo cambia el webhook cuando el cobro se confirma. Si lo
+   * cambiara este botón, alcanzaría con abrir el checkout y cerrar la pestaña
+   * para tener Pro gratis.
+   */
+  function elegirPlan(planId: string) {
+    startTransition(async () => {
+      if (PLANS[planId as keyof typeof PLANS]?.priceUsd === 0) {
+        const result = await cancelSubscriptionAction();
+        if (result.ok) {
+          toast.toast({ title: "Volviste a Free", description: result.message, tone: "info" });
+          router.refresh();
+        } else {
+          toast.error("No pudimos cambiar el plan", result.error);
+        }
+        return;
+      }
+
+      const result = await startStripeCheckoutAction(planId);
+      if (result.ok) {
+        window.location.href = result.data.url;
+      } else {
+        toast.error("No pudimos abrir el pago", result.error);
+      }
+    });
+  }
+
+  /** El camino alternativo, para quien no puede pagar en dólares con tarjeta. */
+  function elegirPlanConMercadoPago(planId: string) {
+    startTransition(async () => {
+      const result = await startSubscriptionAction(planId);
+      if (result.ok) {
+        window.location.href = result.data.url;
+      } else {
+        toast.error("No pudimos abrir Mercado Pago", result.error);
+      }
+    });
+  }
+
+  /** Cambiar la tarjeta, ver las facturas o cancelar: todo eso vive en Stripe. */
+  function abrirPortal() {
+    startTransition(async () => {
+      const result = await openBillingPortalAction();
+      if (result.ok) {
+        window.location.href = result.data.url;
+      } else {
+        toast.error("No pudimos abrir el portal", result.error);
+      }
+    });
+  }
+
+  /*
+   * Al volver del checkout, el webhook puede tardar unos segundos.
+   *
+   * Ver "Free" después de haber pagado es la peor primera impresión posible,
+   * así que le preguntamos a Stripe directamente. No alcanza con que la URL
+   * diga `abono=listo`: eso lo puede escribir cualquiera. La activación sale
+   * de consultar la API, no del parámetro.
+   */
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("abono") !== "listo") return;
+    let cancelado = false;
+
+    void (async () => {
+      const result = await syncStripeSubscriptionAction();
+      if (cancelado) return;
+      if (result.ok) {
+        toast.success("Listo, tu abono quedó activo.");
+        router.refresh();
+      }
+      window.history.replaceState({}, "", window.location.pathname);
+    })();
+
+    return () => {
+      cancelado = true;
+    };
+    // Corre una sola vez, al volver de pagar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /* Con qué tarjeta se queda la cinta de arriba: la más elegida, o la más barata. */
   const destacadoId = recomendado ? recomendado.id : "pro";
@@ -438,7 +551,23 @@ function PlanPanel({
                 Renovación: {formatDate(subscription.periodEnd)}
               </p>
             ) : null}
+
+            {subscription.status === "past_due" ? (
+              <p className="mt-2 text-[12.5px] leading-relaxed text-amber-600">
+                No pudimos cobrarte el último débito. Tu plan sigue activo mientras se reintenta:
+                actualizá la tarjeta para no perderlo.
+              </p>
+            ) : null}
           </div>
+
+          {/* Cambiar la tarjeta, ver las facturas y cancelar viven en el portal
+              de Stripe. Rehacer esas pantallas acá significaría manipular datos
+              de tarjeta sin ninguna ventaja para el usuario. */}
+          {cobro.portal ? (
+            <Button variant="secondary" size="sm" loading={pending} onClick={abrirPortal}>
+              Administrar mi abono
+            </Button>
+          ) : null}
         </Card>
 
         <Card className="p-5">
@@ -570,11 +699,7 @@ function PlanPanel({
                       </p>
 
                       <p className="mt-2.5 text-[27px] font-semibold leading-none tracking-tight text-ink-900">
-                        {conVentas
-                          ? `US$${Math.round(total).toLocaleString("es-AR")}`
-                          : plan.priceUsd === 0
-                            ? "Gratis"
-                            : `US$${plan.priceUsd}`}
+                        {conVentas ? usd(Math.round(total)) : planPriceLabel(plan)}
                         {conVentas || plan.priceUsd > 0 ? (
                           <span className="text-[12.5px] font-medium text-ink-400"> /mes</span>
                         ) : null}
@@ -582,9 +707,9 @@ function PlanPanel({
 
                       <p className="mt-1.5 min-h-[30px] text-[11.5px] leading-snug text-ink-400">
                         {conVentas
-                          ? `${plan.priceUsd === 0 ? "Sin abono" : `Abono US$${plan.priceUsd}`} + ${Math.round(plan.commissionRate * 100)}% de tus ventas`
+                          ? `${plan.priceUsd === 0 ? "Sin abono" : `Abono ${usd(plan.priceUsd)}`} + ${commissionLabel(plan)} de tus ventas`
                           : plan.worthItFromUsd
-                            ? `Conviene si facturás más de US$${plan.worthItFromUsd.toLocaleString("es-AR")} por mes`
+                            ? `Conviene si facturás más de ${usd(plan.worthItFromUsd)} por mes`
                             : "Sin tarjeta y sin vencimiento"}
                       </p>
 
@@ -599,7 +724,7 @@ function PlanPanel({
                           {ahorro > 0.5 ? (
                             <p className="inline-flex w-fit items-center gap-1 rounded-full bg-accent-50 px-2 py-1 text-[11.5px] font-semibold text-accent-700">
                               <Icon name="trendDown" size={12} />
-                              Ahorrás US${Math.round(ahorro).toLocaleString("es-AR")} por mes
+                              Ahorrás {usd(Math.round(ahorro))} por mes
                             </p>
                           ) : null}
                         </div>
@@ -631,21 +756,7 @@ function PlanPanel({
                       <button
                         type="button"
                         disabled={current || pending}
-                        onClick={() =>
-                          startTransition(async () => {
-                            const result = await changePlanAction(plan.id);
-                            if (result.ok) {
-                              toast.toast({
-                                title: "Plan actualizado",
-                                description: result.message,
-                                tone: "info",
-                              });
-                              router.refresh();
-                            } else {
-                              toast.error("No pudimos cambiar el plan", result.error);
-                            }
-                          })
-                        }
+                        onClick={() => elegirPlan(plan.id)}
                         className={cn(
                           "mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-full px-3 text-[13px] font-semibold transition-colors",
                           current
@@ -662,6 +773,20 @@ function PlanPanel({
                             ? "Volver a Free"
                             : `Pasar a ${plan.name}`}
                       </button>
+
+                      {/* El camino alternativo, para quien no tiene una tarjeta
+                          que pueda pagar en dólares. Solo aparece si el cobro
+                          por Mercado Pago está configurado. */}
+                      {!current && plan.priceUsd > 0 && cobro.mercadopago ? (
+                        <button
+                          type="button"
+                          disabled={pending}
+                          onClick={() => elegirPlanConMercadoPago(plan.id)}
+                          className="mt-2 text-center text-[11.5px] font-medium text-white/55 underline-offset-2 transition-colors hover:text-white/85 hover:underline disabled:opacity-50"
+                        >
+                          Pagar con Mercado Pago
+                        </button>
+                      ) : null}
                     </div>
                   </div>
                 );

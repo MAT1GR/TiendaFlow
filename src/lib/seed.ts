@@ -315,6 +315,9 @@ export function seedDemoWorkspace(workspaceId: string) {
         main_problem: mainProduct.problem,
         transformation: mainProduct.transformation,
         benefits: JSON.stringify(mainProduct.benefits),
+        // El demo no trae portada: la landing de ejemplo se ve como la de
+        // cualquiera que todavía no subió la imagen de su producto.
+        cover_url: null,
       },
       offer: {
         headline: "Armá una rutina que puedas sostener",

@@ -43,6 +43,8 @@ export const SECTION_LIBRARY: Array<{
       headline: "El resultado que promete tu producto",
       subheadline: "Una línea que explique cómo lo consigue, y para quién es.",
       cta: "Quiero empezar",
+      image: "",
+      image_alt: "Portada del producto",
       pills: ["Acceso inmediato", "Pago único", "Desde cero"],
       social: "Material descargable para consultar siempre",
       trust: "Garantía de 7 días · Pago único · Acceso digital inmediato",
@@ -98,14 +100,15 @@ export const SECTION_LIBRARY: Array<{
       title: "Lo que vas a poder hacer con esto",
       subtitle: "Una imagen principal, un video opcional y una selección de ejemplos.",
       featured_alt: "Imagen principal del producto",
+      featured_url: "",
       video_url: "",
       images: [
-        { alt: "Ejemplo 1" },
-        { alt: "Ejemplo 2" },
-        { alt: "Ejemplo 3" },
-        { alt: "Ejemplo 4" },
-        { alt: "Ejemplo 5" },
-        { alt: "Ejemplo 6" },
+        { alt: "Ejemplo 1", url: "" },
+        { alt: "Ejemplo 2", url: "" },
+        { alt: "Ejemplo 3", url: "" },
+        { alt: "Ejemplo 4", url: "" },
+        { alt: "Ejemplo 5", url: "" },
+        { alt: "Ejemplo 6", url: "" },
       ],
       note: "",
     },
@@ -118,6 +121,8 @@ export const SECTION_LIBRARY: Array<{
     icon: "sparkles",
     defaults: {
       badge: "UNA BIBLIOTECA PARA USAR UNA Y OTRA VEZ",
+      image: "",
+      image_alt: "Portada del producto",
       title: "El nombre de tu producto",
       subtitle: "La promesa en una línea",
       text: "Todo lo que necesitás para pasar de “no sé qué hacer” a tener algo claro adelante.",
@@ -174,6 +179,8 @@ export const SECTION_LIBRARY: Array<{
     defaults: {
       title: "Empezá hoy",
       badge: "ACCESO COMPLETO",
+      image: "",
+      image_alt: "Portada del producto",
       product_name: "Tu producto",
       subtitle: "Todo lo que incluye, en una línea",
       price_label: "$0",
@@ -233,6 +240,8 @@ export const SECTION_LIBRARY: Array<{
       kicker: "PODÉS EMPEZAR HOY",
       headline: "No necesitás esperar a estar listo.",
       subheadline: "Solo necesitás dar el primer paso.",
+      image: "",
+      image_alt: "Portada del producto",
       cta: "Quiero mi acceso",
       micro: "Acceso digital inmediato · Garantía de 7 días",
       trust: ["Pago único", "Acceso inmediato", "Garantía de 7 días"],
@@ -444,18 +453,21 @@ function Band({
   children,
   className,
   tono,
+  ancho,
 }: {
   children: ReactNode;
   className?: string;
   /** `surface` pinta la banda con el color de tarjeta, para alternar el ritmo. */
   tono?: "surface";
+  /** Más aire a los costados: lo usa el encabezado cuando va a dos columnas. */
+  ancho?: boolean;
 }) {
   return (
     <section
       className={cn("px-5 py-12 @2xl:px-8 @2xl:py-16", className)}
       style={tono === "surface" ? { backgroundColor: "var(--tf-surface)" } : undefined}
     >
-      <div className="mx-auto w-full max-w-3xl">{children}</div>
+      <div className={cn("mx-auto w-full", ancho ? "max-w-5xl" : "max-w-3xl")}>{children}</div>
     </section>
   );
 }
@@ -467,11 +479,11 @@ function Band({
  * apretado y grande— y buena parte del carácter de estas páginas sale de ese
  * contraste.
  */
-function Kicker({ children }: { children: string }) {
+function Kicker({ children, className }: { children: string; className?: string }) {
   if (!children) return null;
   return (
     <p
-      className="text-center text-[12px] font-extrabold uppercase"
+      className={cn("text-center text-[12px] font-extrabold uppercase", className)}
       style={{ color: "var(--tf-accent)", letterSpacing: "0.18em" }}
     >
       {children}
@@ -483,10 +495,12 @@ function Titulo({
   children,
   as = "h2",
   centrado = true,
+  className,
 }: {
   children: string;
   as?: "h1" | "h2";
   centrado?: boolean;
+  className?: string;
 }) {
   const Tag = as;
   return (
@@ -497,6 +511,7 @@ function Titulo({
           ? "text-[clamp(2.1rem,8cqw,3.6rem)] leading-[1.04]"
           : "text-[clamp(1.5rem,4.6cqw,2.15rem)] leading-[1.18]",
         centrado && "text-center",
+        className,
       )}
       style={{ color: "var(--tf-text)", letterSpacing: as === "h1" ? "-0.045em" : "-0.03em" }}
     >
@@ -505,13 +520,22 @@ function Titulo({
   );
 }
 
-function Bajada({ children, centrado = true }: { children: string; centrado?: boolean }) {
+function Bajada({
+  children,
+  centrado = true,
+  className,
+}: {
+  children: string;
+  centrado?: boolean;
+  className?: string;
+}) {
   if (!children) return null;
   return (
     <p
       className={cn(
         "mx-auto mt-4 max-w-2xl text-[16px] leading-relaxed @2xl:text-[17px]",
         centrado && "text-center",
+        className,
       )}
       style={{ color: "var(--tf-muted)" }}
     >
@@ -569,14 +593,17 @@ function Cta({
   label,
   href,
   grande,
+  className: extra,
 }: {
   label: string;
   href?: string;
   grande?: boolean;
+  className?: string;
 }) {
   const className = cn(
     "mx-auto mt-8 flex w-full max-w-md items-center justify-center gap-2 text-center font-extrabold transition-transform active:scale-[.985]",
     grande ? "px-7 py-4.5 text-[16px]" : "px-6 py-3.5 text-[15px]",
+    extra,
   );
   const style = {
     backgroundColor: "var(--tf-accent)",
@@ -635,6 +662,44 @@ function Hueco({
   );
 }
 
+/**
+ * La imagen de un bloque, esté cargada o no.
+ *
+ * Con URL dibuja la imagen; sin URL, el mismo hueco de siempre con el texto de
+ * qué va ahí. Es un solo componente para los dos casos a propósito: la
+ * composición del bloque —el lugar, la proporción, el aire alrededor— no
+ * cambia según el vendedor haya subido o no su portada, así que la página no
+ * se reacomoda entera el día que la sube.
+ *
+ * `object-contain` y no `cover`: una portada de ebook es vertical y una foto de
+ * producto es horizontal. Recortar la portada para llenar un rectángulo le come
+ * el título, que es justo lo que hay que ver.
+ */
+function Figura({
+  url,
+  alt,
+  className,
+  chico,
+}: {
+  url: string;
+  alt: string;
+  className?: string;
+  chico?: boolean;
+}) {
+  if (!url) return <Hueco label={alt} className={className} chico={chico} />;
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- la URL la pega el vendedor: puede ser de cualquier dominio.
+    <img
+      src={url}
+      alt={alt}
+      loading="lazy"
+      className={cn("w-full object-contain", className)}
+      style={{ borderRadius: "var(--tf-radius-lg)" }}
+    />
+  );
+}
+
 /* -------------------------------------------------------------------------- */
 
 export function LandingSectionView({
@@ -654,7 +719,87 @@ export function LandingSectionView({
 
   switch (section.type) {
     /* ---------------------------------------------------------------- 1 */
-    case "hero":
+    case "hero": {
+      const portada = str(c, "image");
+      const portadaAlt = str(c, "image_alt", "Portada del producto");
+
+      const pastillas =
+        lines(c, "pills").length > 0 ? (
+          <ul className="mt-7 flex flex-wrap items-center justify-center gap-2 @xl:justify-start">
+            {lines(c, "pills").map((pill, index) => (
+              <li key={index}>
+                <Pastilla>{pill}</Pastilla>
+              </li>
+            ))}
+          </ul>
+        ) : null;
+
+      const respaldo = (
+        <>
+          {str(c, "social") ? (
+            <p className="mt-5 text-[14.5px] font-semibold" style={{ color: "var(--tf-text)" }}>
+              {str(c, "social")}
+            </p>
+          ) : null}
+          {str(c, "trust") ? (
+            <p className="mt-2 text-[12.5px]" style={{ color: "var(--tf-muted)" }}>
+              {str(c, "trust")}
+            </p>
+          ) : null}
+        </>
+      );
+
+      /*
+       * Con portada cargada, el encabezado se parte en dos: el texto a la
+       * izquierda y la imagen a la derecha. Es la diferencia entre una página
+       * que se lee y una que se ve.
+       *
+       * En el teléfono se apila en el orden en que se decide una compra:
+       * titular, subtítulo, portada, botón. La imagen queda justo antes del
+       * botón —no después— porque es lo último que mira alguien antes de
+       * apretar. Eso es lo que hacen los tres hijos del grid: en pantalla
+       * grande la imagen se corre a la columna derecha y ocupa las dos filas.
+       */
+      if (portada) {
+        return (
+          <Band ancho className="pt-12 @xl:pt-16">
+            <div className="grid items-center gap-8 @xl:grid-cols-[1.05fr_.95fr] @xl:gap-10 @3xl:gap-12">
+              <div className="text-center @xl:order-1 @xl:text-left">
+                <Kicker className="@xl:text-left">{str(c, "eyebrow")}</Kicker>
+                {/* A media columna el titular no puede pedir el mismo cuerpo
+                    que a pantalla completa: con `8cqw` una promesa de siete
+                    palabras se convierte en cuatro renglones. */}
+                <Titulo as="h1" centrado={false} className="@xl:text-[clamp(1.7rem,4.4cqw,2.8rem)]">
+                  {str(c, "headline", "Tu titular principal")}
+                </Titulo>
+                <Bajada centrado={false} className="@xl:mx-0">
+                  {str(c, "subheadline")}
+                </Bajada>
+              </div>
+
+              <div className="@xl:order-2 @xl:row-span-2">
+                <Figura
+                  url={portada}
+                  alt={portadaAlt}
+                  className="mx-auto aspect-[4/5] max-w-[19rem] @xl:max-w-[24rem]"
+                />
+              </div>
+
+              <div className="text-center @xl:order-3 @xl:text-left">
+                {pastillas}
+                <Cta
+                  label={str(c, "cta", "Quiero mi acceso")}
+                  href={ctaHref}
+                  grande
+                  className="@xl:mx-0"
+                />
+                {respaldo}
+              </div>
+            </div>
+          </Band>
+        );
+      }
+
       return (
         <Band className="pt-14 text-center @2xl:pt-20">
           <Kicker>{str(c, "eyebrow")}</Kicker>
@@ -673,18 +818,10 @@ export function LandingSectionView({
 
           <Cta label={str(c, "cta", "Quiero mi acceso")} href={ctaHref} grande />
 
-          {str(c, "social") ? (
-            <p className="mt-5 text-[14.5px] font-semibold" style={{ color: "var(--tf-text)" }}>
-              {str(c, "social")}
-            </p>
-          ) : null}
-          {str(c, "trust") ? (
-            <p className="mt-2 text-[12.5px]" style={{ color: "var(--tf-muted)" }}>
-              {str(c, "trust")}
-            </p>
-          ) : null}
+          {respaldo}
         </Band>
       );
+    }
 
     /* ---------------------------------------------------------------- 2 */
     case "stats":
@@ -774,7 +911,11 @@ export function LandingSectionView({
           <Titulo>{str(c, "title")}</Titulo>
           <Bajada>{str(c, "subtitle")}</Bajada>
 
-          <Hueco label={str(c, "featured_alt", "Imagen principal")} className="mt-8 aspect-[16/10]" />
+          <Figura
+            url={str(c, "featured_url")}
+            alt={str(c, "featured_alt", "Imagen principal")}
+            className="mt-8 aspect-[16/10]"
+          />
 
           {str(c, "video_url") ? (
             <div
@@ -794,7 +935,13 @@ export function LandingSectionView({
           {cards(c, "images").length > 0 ? (
             <div className="mt-3 grid grid-cols-2 gap-3 @2xl:grid-cols-3">
               {cards(c, "images").map((image, index) => (
-                <Hueco key={index} label={image.alt} className="aspect-square" chico />
+                <Figura
+                  key={index}
+                  url={image.url ?? ""}
+                  alt={image.alt}
+                  className="aspect-square"
+                  chico
+                />
               ))}
             </div>
           ) : null}
@@ -840,6 +987,14 @@ export function LandingSectionView({
             >
               {str(c, "subtitle")}
             </p>
+          ) : null}
+
+          {str(c, "image") ? (
+            <Figura
+              url={str(c, "image")}
+              alt={str(c, "image_alt", "Portada del producto")}
+              className="mx-auto mt-8 aspect-[4/5] max-w-[15rem]"
+            />
           ) : null}
 
           {str(c, "text") ? (
@@ -1038,6 +1193,14 @@ export function LandingSectionView({
               >
                 {str(c, "badge")}
               </span>
+            ) : null}
+
+            {str(c, "image") ? (
+              <Figura
+                url={str(c, "image")}
+                alt={str(c, "image_alt", "Portada del producto")}
+                className="mx-auto mt-6 aspect-[4/5] max-w-[11rem]"
+              />
             ) : null}
 
             {str(c, "product_name") ? (
@@ -1264,6 +1427,16 @@ export function LandingSectionView({
           <Titulo>{str(c, "headline", "Empezá hoy")}</Titulo>
           <Bajada>{str(c, "subheadline")}</Bajada>
 
+          {/* La portada va antes del botón, no después: es lo último que mira
+              alguien antes de decidir. */}
+          {str(c, "image") ? (
+            <Figura
+              url={str(c, "image")}
+              alt={str(c, "image_alt", "Portada del producto")}
+              className="mx-auto mt-8 aspect-[4/5] max-w-[13rem]"
+            />
+          ) : null}
+
           <Cta label={str(c, "cta", "Quiero mi acceso")} href={ctaHref} grande />
 
           {str(c, "micro") ? (
@@ -1489,7 +1662,7 @@ export function LandingSectionView({
     case "image":
       return (
         <Band>
-          <Hueco label={str(c, "alt", "Imagen")} className="aspect-[16/9]" />
+          <Figura url={str(c, "url")} alt={str(c, "alt", "Imagen")} className="aspect-[16/9]" />
         </Band>
       );
 

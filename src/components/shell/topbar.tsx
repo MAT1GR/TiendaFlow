@@ -19,16 +19,28 @@ export function Topbar({
   notifications,
   onOpenMenu,
   onOpenCopilot,
+  className,
 }: {
   user: { full_name: string; email: string };
   notifications: Notification[];
   onOpenMenu: () => void;
   onOpenCopilot: () => void;
+  /**
+   * Las clases van al `<header>` y no a un envoltorio: el encabezado es
+   * `sticky top-0`, y meterlo adentro de un div lo deja pegado a una caja del
+   * alto de sí mismo, que es lo mismo que no estar pegado a nada.
+   */
+  className?: string;
 }) {
   const unread = notifications.filter((item) => !item.read_at).length;
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-ink-200 bg-white/85 px-3 backdrop-blur-md sm:px-5">
+    <header
+      className={cn(
+        "sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-ink-200 bg-white/85 px-3 backdrop-blur-md sm:px-5",
+        className,
+      )}
+    >
       <button
         type="button"
         onClick={onOpenMenu}

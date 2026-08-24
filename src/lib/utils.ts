@@ -15,26 +15,58 @@ const CURRENCY_LOCALE: Record<string, string> = {
   BRL: "pt-BR",
 };
 
+/**
+ * A partir de acá se abrevia: 10.000 pasa a "10 k".
+ *
+ * El sufijo lo ponemos nosotros y no `Intl` con `notation: "compact"`. Esa
+ * opción devuelve "k" o "K" según qué datos de ICU tenga el motor, y Node y el
+ * navegador no siempre traen los mismos: el servidor renderizaba "$456,3 k",
+ * el cliente "$456,3 K", y React tiraba el árbol entero para rehidratarlo por
+ * una letra. Una abreviatura escrita a mano es aburrida y da siempre igual en
+ * los dos lados, que es exactamente lo que necesita algo que se renderiza dos
+ * veces.
+ */
+const DESDE_COMPACTO = 10_000;
+const ESCALAS: Array<[number, string]> = [
+  [1_000_000_000, "MM"],
+  [1_000_000, "M"],
+  [1_000, "k"],
+];
+
+/** El número abreviado y su sufijo, o `null` si no llega al piso. */
+function abreviar(value: number): { valor: number; sufijo: string } | null {
+  if (Math.abs(value) < DESDE_COMPACTO) return null;
+  for (const [escala, sufijo] of ESCALAS) {
+    if (Math.abs(value) >= escala) return { valor: value / escala, sufijo };
+  }
+  return null;
+}
+
 export function formatMoney(amount: number, currency = "ARS", compact = false) {
   const locale = CURRENCY_LOCALE[currency] ?? "es-AR";
+  const abreviado = compact ? abreviar(amount) : null;
+
   try {
-    return new Intl.NumberFormat(locale, {
+    const texto = new Intl.NumberFormat(locale, {
       style: "currency",
       currency,
-      minimumFractionDigits: compact || Number.isInteger(amount) ? 0 : 2,
-      maximumFractionDigits: 2,
-      notation: compact && Math.abs(amount) >= 10000 ? "compact" : "standard",
-    }).format(amount);
+      minimumFractionDigits: 0,
+      maximumFractionDigits: abreviado ? 1 : compact || Number.isInteger(amount) ? 0 : 2,
+    }).format(abreviado ? abreviado.valor : amount);
+
+    return abreviado ? `${texto} ${abreviado.sufijo}` : texto;
   } catch {
     return `$${amount.toFixed(0)}`;
   }
 }
 
 export function formatNumber(value: number, compact = false) {
-  return new Intl.NumberFormat("es-AR", {
-    notation: compact && Math.abs(value) >= 10000 ? "compact" : "standard",
+  const abreviado = compact ? abreviar(value) : null;
+  const texto = new Intl.NumberFormat("es-AR", {
     maximumFractionDigits: 1,
-  }).format(value);
+  }).format(abreviado ? abreviado.valor : value);
+
+  return abreviado ? `${texto} ${abreviado.sufijo}` : texto;
 }
 
 export function formatPercent(value: number, digits = 1) {

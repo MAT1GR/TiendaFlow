@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
 import { AfterPurchaseWizard } from "@/app/(app)/app/productos/[id]/despues/wizard";
-import { ExperienceSteps, stepBlurb } from "@/components/app/experience-steps";
+import { PantallaSelector } from "@/components/app/experience-steps";
 import { SectionIntro } from "@/components/app/section-intro";
 import { LinkButton } from "@/components/ui/primitives";
 import { requireSession } from "@/lib/auth";
@@ -274,12 +274,7 @@ function Moment({
  * verlo entero es lo que hace que "después de comprar" signifique algo.
  */
 function Recorrido({ productId }: { productId: string }) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <ExperienceSteps productId={productId} current="despues" />
-      <p className="text-[13px] text-ink-500">{stepBlurb("despues")}</p>
-    </div>
-  );
+  return <PantallaSelector productId={productId} current="despues" className="w-fit" />;
 }
 
 function EmptyGate({
