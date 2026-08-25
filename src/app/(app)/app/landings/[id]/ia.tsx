@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import { AiProgress } from "@/components/app/ai-progress";
 import { Alert } from "@/components/ui/feedback";
 import { Button, Field, Input, Modal, Select, Textarea } from "@/components/ui/primitives";
 
@@ -38,6 +39,8 @@ export function AiModal({
   onClose,
   onGenerate,
   loading,
+  progress,
+  progressLabel,
   hasOffer,
   hasSections,
   initial,
@@ -47,6 +50,9 @@ export function AiModal({
   onClose: () => void;
   onGenerate: (tone: string, brief: LandingBrief) => void;
   loading: boolean;
+  /** Avance del pedido, 0 a 100. Lo dibuja la barra adentro del modal. */
+  progress: number;
+  progressLabel: string;
   hasOffer: boolean;
   /** Si ya hay bloques escritos, se avisa que se reemplazan. */
   hasSections: boolean;
@@ -95,6 +101,8 @@ export function AiModal({
       }
     >
       <div className="flex flex-col gap-4">
+        <AiProgress running={loading} progress={progress} label={progressLabel} />
+
         <Field
           label="¿Qué problema ayuda a resolver?"
           hint="Escribilo como lo diría tu cliente, no como lo dirías vos."

@@ -3,6 +3,7 @@ import "server-only";
 import { DEFAULT_LAYOUT, type LandingLayout } from "@/components/landing/estructuras";
 import { landingTemplate } from "@/lib/landing-template";
 import { runAiTask, type AiResult } from "@/lib/ai/provider";
+import { EJES, playbook, type EjeId } from "@/lib/ai/playbook";
 import { formatMoney, formatPercent } from "@/lib/utils";
 
 /**
@@ -18,11 +19,26 @@ const TONE_HINT: Record<string, string> = {
   inspirador: "inspirador y motivacional, sin exagerar promesas",
 };
 
+/**
+ * Quién es la IA de la app.
+ *
+ * No es un asistente genérico al que además le pedimos que escriba bien: es un
+ * vendedor de productos digitales de precio bajo, y esa diferencia se nota en
+ * cada texto que devuelve. Los criterios concretos —los tres ejes, la prueba
+ * del vecino, para quién está escribiendo— viven en `playbook.ts` y entran acá
+ * completos, porque valen para todas las tareas sin excepción.
+ *
+ * El párrafo de la honestidad no es un agregado de compliance: es la línea que
+ * separa lo que la app puede escribir de lo que solo sabe el vendedor. Está en
+ * el system y no en cada prompt para que ninguna tarea nueva se olvide de él.
+ */
 const SYSTEM_BASE = `Sos el copiloto de TiendaFlow, una plataforma para vender productos digitales.
+Trabajás para una sola persona: alguien que armó su producto y necesita venderlo.
 Escribís en español latinoamericano natural (voseo rioplatense), directo y sin jerga corporativa.
-Nunca inventás datos, testimonios, cifras de ventas ni resultados de clientes.
 Nunca prometés resultados garantizados.
-Si te falta información, escribís copy que funcione sin ella en vez de inventarla.`;
+Si te falta información, escribís copy que funcione sin ella en vez de inventarla.
+
+${playbook("ejes", "lowTicket", "generico", "honestidad")}`;
 
 /* -------------------------------------------------------------------------- */
 /* 1. Creación de producto                                                     */
@@ -141,7 +157,10 @@ resultado y no como característica, un índice de 6 a 8 capítulos con resumen 
 bullets cada uno, 5 preguntas frecuentes con respuesta, 4 ideas de bonos y 3
 ideas de oferta.
 
-No inventes cifras, testimonios ni resultados de clientes: no los tenés.`,
+Las preguntas frecuentes no son de trámite: son las objeciones reales del avatar
+escritas como las diría él.
+
+${playbook("clienteIdeal", "bonos")}`,
     fallback: (): ProductDraft => {
       /*
        * Sin proveedor de IA no hay carta de ventas: hay andamio.
@@ -313,7 +332,11 @@ El resto de los precios va relativo a ese: el order bump entre el 15% y el 30%
 del principal, el upsell entre 1,5x y 3x, el downsell alrededor del 50% del
 upsell.
 
-No inventes cifras de resultados de clientes.`,
+El campo "value" de cada bono es lo que la app usa internamente para ordenarlos:
+no lo escribas en ningún texto visible ni digas que el bono "está valuado en"
+nada. Ese número no lo tenés.
+
+${playbook("titulares", "bonos")}`,
     fallback: (): OfferDraft => ({
       headline: `${input.productName}: ${transformation}`,
       positioning: `Para ${audience} que quieren dejar atrás ${problem}.`,
@@ -442,6 +465,14 @@ const BLOCK_SPECS: Record<string, string> = {
   comparison:
     "title, without_title, with_title, without_items[] (5), with_items[] (5) — en espejo, punto por punto",
   countdown: "title, text (sin inventar una fecha: decile al vendedor que ponga la suya)",
+  para_vos_si:
+    'title ("Esto es para vos si…"), items[{line1, line2}] (5) — line1: situación real + lo que ya intentó y falló; line2: por qué le pasa y en qué termina. Dos líneas, siempre las dos',
+  vas_a_lograr:
+    'title ("En 30 días vas a lograr…", con el plazo real), items[{line1, line2}] (5) — line1: acción + resultado concreto; line2: sin qué dolor y con qué beneficio. En espejo con para_vos_si',
+  urgency_bar:
+    "message (por qué conviene ahora, motivo verdadero: el precio de lanzamiento, el cierre que definió el vendedor), note (opcional, 60 caracteres) — sin cupos ni cantidades inventadas",
+  live_purchases:
+    "title, empty_note (qué se muestra mientras todavía no hay ventas). No escribas compradores: los pone la app con las ventas reales",
   headline: "text",
   subheadline: "text",
   mockup: "title, caption",
@@ -604,7 +635,9 @@ Reglas:
 · NUNCA inventes testimonios: "testimonials" va con items vacío y placeholder en true.
 · No escribas URLs ni rutas de imágenes en ningún campo: las imágenes las pone la app.
 · No nombres medios de pago concretos: no sabés cuál tiene configurado.
-· Escribí en voseo rioplatense.`,
+· Escribí en voseo rioplatense.
+
+${playbook("pagina", "items", "titulares")}`,
     fallback: (): LandingDraft => ({ sections: base }),
   });
 }
@@ -788,7 +821,12 @@ Tono: ${TONE_HINT[input.tone ?? "directo"] ?? TONE_HINT.directo}
 Devolvé 5 textos principales (máx 125 palabras), 5 títulos (máx 40 caracteres),
 3 descripciones (máx 30 caracteres), 6 hooks de primeros 3 segundos,
 4 ángulos con su idea y 4 variantes de CTA.
-En review_note recordá que hay que revisar políticas de Meta.`,
+En review_note recordá que hay que revisar políticas de Meta.
+
+Los 4 ángulos tienen que entrar por motivos DISTINTOS de compra, no ser el mismo
+argumento con otras palabras. Repartilos entre los tres ejes.
+
+${playbook("angulos", "hooks", "ejemplos")}`,
     fallback: (): AdCopyDraft => ({
       primary_texts: [
         `Si estás en ${problem}, esto es para vos.\n\n${input.productName} te da el paso a paso para llegar a ${transformation}.\n\nAcceso inmediato.`,
@@ -876,6 +914,355 @@ export interface DashboardInsight {
   severity: "info" | "warning" | "success";
   action_label: string;
   action_href: string;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 8. Cliente ideal                                                            */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * La investigación del avatar.
+ *
+ * Es la única tarea que la app guarda entera y vuelve a leer: el resto de las
+ * pantallas —ángulos, titulares, objeciones, la página de venta— trabajan mucho
+ * mejor con esto adelante que con los tres campos sueltos del producto.
+ *
+ * El vendedor no la escribe: la revisa. Por eso cada campo tiene que poder
+ * leerse como una frase suya, no como una ficha de mercado.
+ */
+export interface IdealClientResearch {
+  /** El avatar en una frase, para poder mostrarlo como título. */
+  headline: string;
+  profile: string;
+  daily_life: string;
+  main_problem: string;
+  pains: string[];
+  desires: string[];
+  /** Lo que no le cuenta a nadie. Es de donde sale el copy que pega. */
+  hidden_fears: string[];
+  failed_attempts: Array<{ attempt: string; why_failed: string }>;
+  objections: string[];
+  /** Frases textuales, en primera persona. Materia prima de titulares. */
+  inner_thoughts: string[];
+  buying_triggers: string[];
+  before_after: Array<{ before: string; after: string }>;
+}
+
+export interface IdealClientInput {
+  productName: string;
+  /** Lo que el vendedor contó del producto, con sus palabras. */
+  description?: string | null;
+  niche?: string | null;
+  audience?: string | null;
+  problem?: string | null;
+  transformation?: string | null;
+  price: number;
+  currency: string;
+}
+
+export function generateIdealClient(
+  input: IdealClientInput,
+): Promise<AiResult<IdealClientResearch>> {
+  const audience = input.audience?.trim() || "deducilo del producto";
+  const niche = input.niche?.trim() || "deducilo del producto";
+
+  return runAiTask<IdealClientResearch>({
+    task: "ideal_client",
+    system: SYSTEM_BASE,
+    schemaHint:
+      "{ headline, profile, daily_life, main_problem, pains: string[6], desires: string[5], hidden_fears: string[4], failed_attempts: [{attempt, why_failed}] (4), objections: string[6], inner_thoughts: string[6], buying_triggers: string[5], before_after: [{before, after}] (5) }",
+    maxTokens: 3500,
+    prompt: `Investigá al cliente ideal de este producto digital.
+
+Producto: ${input.productName}
+Nicho: ${niche}
+Audiencia declarada: ${audience}
+Precio: ${formatMoney(input.price, input.currency)}
+${input.problem?.trim() ? `Problema que dice resolver: ${input.problem.trim()}` : ""}
+${input.transformation?.trim() ? `Resultado que promete: ${input.transformation.trim()}` : ""}
+${
+  input.description?.trim()
+    ? `Lo que contó el vendedor:
+"""
+${input.description.trim()}
+"""`
+    : ""
+}
+
+Devolvé:
+· headline — el avatar en una sola frase, la que usaríamos como título.
+· profile — quién es y en qué situación está. Una situación, no una demografía.
+· daily_life — cómo es su día con este problema encima.
+· main_problem — el dolor central, leído en clave de los tres ejes.
+· pains — 6 dolores concretos, contados como escenas.
+· desires — 5 deseos, alineados a los tres ejes.
+· hidden_fears — 4 miedos o deseos que no le cuenta a nadie.
+· failed_attempts — 4 cosas que ya probó y por qué no le funcionaron.
+· objections — 6 objeciones, con las palabras exactas del comprador.
+· inner_thoughts — 6 frases textuales que se dice en la cabeza, en primera persona.
+· buying_triggers — 5 cosas que lo hacen comprar sin pensarlo mucho.
+· before_after — 5 pares del antes y el después de su vida con este producto.
+
+${playbook("clienteIdeal")}`,
+    fallback: (): IdealClientResearch => {
+      const quien = input.audience?.trim() || "alguien que quiere avanzar con esto";
+      const dolor = input.problem?.trim() || "no saber por dónde empezar";
+      const meta = input.transformation?.trim() || "tener un plan concreto";
+
+      /*
+       * Sin proveedor no hay investigación: hay una ficha en blanco.
+       *
+       * Es a propósito que no diga casi nada. Un avatar inventado por una
+       * plantilla es peor que ninguno: se ve completo, nadie lo revisa y
+       * después toda la página de venta le habla a una persona que no existe.
+       * Lo único que ponemos es lo que el vendedor ya escribió.
+       */
+      return {
+        headline: quien,
+        profile: `Lo que sabemos hasta ahora: ${quien}. Completá esta parte con lo que conozcas de tus compradores.`,
+        daily_life: `Su día pasa por ${dolor}. Escribí acá cómo lo vivís vos o cómo te lo contaron.`,
+        main_problem: dolor,
+        pains: [dolor],
+        desires: [meta],
+        hidden_fears: [],
+        failed_attempts: [],
+        objections: [],
+        inner_thoughts: [],
+        buying_triggers: [],
+        before_after: [{ before: dolor, after: meta }],
+      };
+    },
+  });
+}
+
+/* -------------------------------------------------------------------------- */
+/* 9. Ángulos de venta                                                         */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Un ángulo es hook + cuerpo + CTA, y sale de un eje.
+ *
+ * El eje viaja en el dato, no solo en el texto: la interfaz los agrupa por ahí,
+ * y es la forma de que el vendedor vea de un vistazo que tiene cuatro ángulos
+ * del mismo motivo de compra y ninguno de los otros dos.
+ */
+export interface SalesAngle {
+  name: string;
+  eje: EjeId;
+  hook: string;
+  body: string;
+  cta: string;
+  /** A qué parte del avatar le habla. Es lo que evita cuatro ángulos iguales. */
+  speaks_to: string;
+}
+
+export interface AnglesDraft {
+  angles: SalesAngle[];
+}
+
+export interface AnglesInput {
+  productName: string;
+  description?: string | null;
+  audience?: string | null;
+  problem?: string | null;
+  transformation?: string | null;
+  price: number;
+  currency: string;
+  tone?: string;
+  /** La investigación del avatar, si ya la hizo. Cambia todo el resultado. */
+  research?: IdealClientResearch | null;
+  benefits?: string[];
+  bonuses?: Array<{ name: string; description: string | null }>;
+}
+
+export function generateAngles(input: AnglesInput): Promise<AiResult<AnglesDraft>> {
+  const audience = input.audience?.trim() || "tu audiencia";
+  const problem = input.problem?.trim() || "el problema que resolvés";
+  const transformation = input.transformation?.trim() || "el resultado que prometés";
+
+  return runAiTask<AnglesDraft>({
+    task: "sales_angles",
+    system: SYSTEM_BASE,
+    schemaHint: `{ angles: [{ name, eje: "${EJES.map((eje) => eje.id).join('"|"')}", hook, body, cta, speaks_to }] (6) }`,
+    maxTokens: 3000,
+    prompt: `Escribí 6 ángulos de venta para este producto digital.
+
+Producto: ${input.productName}
+Audiencia: ${audience}
+Problema: ${problem}
+Transformación: ${transformation}
+Precio: ${formatMoney(input.price, input.currency)}
+Tono: ${TONE_HINT[input.tone ?? "directo"] ?? TONE_HINT.directo}
+${input.benefits?.length ? `Beneficios ya definidos: ${input.benefits.join(" | ")}` : ""}
+${
+  input.bonuses?.length
+    ? `Bonos: ${input.bonuses.map((bonus) => bonus.name).join(" | ")}`
+    : ""
+}
+${input.description?.trim() ? `Lo que contó el vendedor:\n"""\n${input.description.trim()}\n"""` : ""}
+${resumenAvatar(input.research)}
+
+Dos ángulos por cada eje: dos de generar ingresos, dos de ahorrar dinero y dos
+de ahorrar tiempo o estrés. Si para este producto un eje realmente no aplica,
+poné más de los otros y decilo en el nombre del ángulo — pero antes pensalo dos
+veces: casi siempre aplica, solo que hay que buscarlo.
+
+El campo "eje" lleva el id exacto: ${EJES.map((eje) => eje.id).join(", ")}.
+El campo "speaks_to" dice a qué parte del avatar le habla ese ángulo, en pocas
+palabras. Dos ángulos no pueden tener el mismo speaks_to.
+
+${playbook("angulos", "ejemplos")}`,
+    fallback: (): AnglesDraft => ({
+      /*
+       * El borrador local arma la forma, no el contenido.
+       *
+       * Un ángulo sin IA no puede salir bien —es justo el texto que depende de
+       * conocer a la persona— así que devolvemos uno por eje con el esqueleto
+       * marcado y los datos que el vendedor ya cargó en su lugar. Se ve que
+       * está para completar, que es exactamente lo que es.
+       */
+      angles: EJES.map((eje) => ({
+        name: `Ángulo de ${eje.label.toLowerCase()}`,
+        eje: eje.id,
+        hook: `Si ${problem}, esto es para vos.`,
+        body: `${capitalize(transformation)} con ${input.productName}. Escribí acá el momento exacto en que a tu cliente le duele y qué recibe, con cantidades reales.`,
+        cta: "Entrá y empezá hoy.",
+        speaks_to: audience,
+      })),
+    }),
+  });
+}
+
+/**
+ * El avatar, resumido para meterlo adentro de otro prompt.
+ *
+ * Las tareas que escriben copy no necesitan la investigación entera: necesitan
+ * las frases que la persona dice, lo que teme y lo que ya probó. Mandar el
+ * objeto completo llena el prompt de campos que el modelo no va a usar.
+ */
+function resumenAvatar(research?: IdealClientResearch | null): string {
+  if (!research) return "";
+
+  const lista = (label: string, items: string[] | undefined) =>
+    items?.length ? `${label}: ${items.slice(0, 6).join(" | ")}` : "";
+
+  return [
+    "INVESTIGACIÓN DEL CLIENTE IDEAL (usala, no la repitas textual)",
+    research.headline ? `Avatar: ${research.headline}` : "",
+    research.main_problem ? `Dolor central: ${research.main_problem}` : "",
+    lista("Dolores", research.pains),
+    lista("Deseos", research.desires),
+    lista("Miedos que no cuenta", research.hidden_fears),
+    lista("Lo que ya probó", research.failed_attempts?.map((item) => item.attempt)),
+    lista("Objeciones", research.objections),
+    lista("Frases que se dice", research.inner_thoughts),
+    lista("Lo que lo hace comprar", research.buying_triggers),
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+/* -------------------------------------------------------------------------- */
+/* 10. Titulares y promesas                                                    */
+/* -------------------------------------------------------------------------- */
+
+export interface HeadlinesDraft {
+  /** Titular + subtítulo van de a pares: uno sin el otro no se puede evaluar. */
+  pairs: Array<{ headline: string; subheadline: string }>;
+}
+
+export function generateHeadlines(input: {
+  productName: string;
+  description?: string | null;
+  audience?: string | null;
+  problem?: string | null;
+  transformation?: string | null;
+  timeframe?: string | null;
+  tone?: string;
+  research?: IdealClientResearch | null;
+}): Promise<AiResult<HeadlinesDraft>> {
+  const audience = input.audience?.trim() || "tu audiencia";
+  const transformation = input.transformation?.trim() || "el resultado que prometés";
+
+  return runAiTask<HeadlinesDraft>({
+    task: "headlines",
+    system: SYSTEM_BASE,
+    schemaHint: "{ pairs: [{ headline, subheadline }] (5) }",
+    maxTokens: 1800,
+    prompt: `Escribí 5 pares de titular y subtítulo para la página de venta y los anuncios.
+
+Producto: ${input.productName}
+Audiencia: ${audience}
+Problema: ${input.problem?.trim() || "deducilo"}
+Transformación: ${transformation}
+Plazo real de la transformación: ${input.timeframe?.trim() || "elegí uno creíble para este producto"}
+Tono: ${TONE_HINT[input.tone ?? "directo"] ?? TONE_HINT.directo}
+${input.description?.trim() ? `Lo que contó el vendedor:\n"""\n${input.description.trim()}\n"""` : ""}
+${resumenAvatar(input.research)}
+
+Los 5 pares tienen que ser distintos entre sí de verdad: cada uno entra por otro
+motivo de compra. Cinco formas de decir lo mismo son un titular, no cinco.
+
+${playbook("titulares")}`,
+    fallback: (): HeadlinesDraft => ({
+      pairs: [
+        {
+          headline: capitalize(transformation),
+          subheadline: `${input.productName} — acceso inmediato.`,
+        },
+      ],
+    }),
+  });
+}
+
+/* -------------------------------------------------------------------------- */
+/* 11. Objeciones                                                              */
+/* -------------------------------------------------------------------------- */
+
+export interface ObjectionsDraft {
+  items: Array<{ objection: string; answers: string[] }>;
+}
+
+export function generateObjections(input: {
+  productName: string;
+  description?: string | null;
+  audience?: string | null;
+  price: number;
+  currency: string;
+  guarantee?: string | null;
+  research?: IdealClientResearch | null;
+}): Promise<AiResult<ObjectionsDraft>> {
+  return runAiTask<ObjectionsDraft>({
+    task: "objections",
+    system: SYSTEM_BASE,
+    schemaHint: "{ items: [{ objection, answers: string[3] }] (8) }",
+    maxTokens: 2500,
+    prompt: `Escribí las 8 objeciones que frenan la compra de este producto, con 3 respuestas cada una.
+
+Producto: ${input.productName}
+Audiencia: ${input.audience?.trim() || "tu audiencia"}
+Precio: ${formatMoney(input.price, input.currency)}
+${input.guarantee?.trim() ? `Garantía que da el vendedor: ${input.guarantee.trim()}` : "Garantía: 7 días."}
+${input.description?.trim() ? `Lo que contó el vendedor:\n"""\n${input.description.trim()}\n"""` : ""}
+${resumenAvatar(input.research)}
+
+Las respuestas solo pueden apoyarse en lo que está acá arriba. Si para desarmar
+una objeción hiciera falta un dato que el vendedor no dio, escribí la respuesta
+señalando qué tiene que completar él.
+
+${playbook("objeciones")}`,
+    fallback: (): ObjectionsDraft => ({
+      items: [
+        {
+          objection: "¿Y si no es lo que estoy buscando?",
+          answers: [
+            input.guarantee?.trim() ||
+              "Tenés 7 días de garantía: si no te sirve, te devolvemos el dinero.",
+          ],
+        },
+      ],
+    }),
+  });
 }
 
 function capitalize(value: string) {

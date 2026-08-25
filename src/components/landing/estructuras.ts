@@ -74,6 +74,41 @@ export const LANDING_LAYOUTS: LandingLayout[] = [
       "footer",
     ],
   },
+  /*
+   * El orden de una página de infoproducto que ya vende.
+   *
+   * No es una variante estética de la clásica: cambia lo que hace la página. En
+   * la clásica el vendedor explica el problema y después su solución; acá la
+   * persona primero se reconoce ("esto es para vos si…") y después se ve del
+   * otro lado ("en 30 días vas a lograr…"), y recién ahí aparece el producto.
+   * Es el orden que usan las páginas de ebooks y cursos de precio bajo, donde
+   * el que llega viene de un anuncio y decide en veinte segundos.
+   *
+   * La barra de urgencia va arriba de todo y las compras en vivo justo antes
+   * del precio, que es donde la duda pesa más. Las dos se alimentan de datos
+   * reales del funnel: si no hay gente mirando ni ventas hechas, no dicen nada.
+   */
+  {
+    id: "infoproducto",
+    label: "Infoproducto",
+    blurb: "Para ebooks y cursos de precio bajo. La persona se reconoce, se ve del otro lado y compra.",
+    structure: [
+      "urgency_bar",
+      "hero",
+      "para_vos_si",
+      "vas_a_lograr",
+      "bonuses",
+      "solution",
+      "modules",
+      "live_purchases",
+      "pricing",
+      "guarantee",
+      "testimonials",
+      "faq",
+      "cta",
+      "footer",
+    ],
+  },
   {
     id: "express",
     label: "Express",

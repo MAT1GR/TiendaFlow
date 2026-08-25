@@ -5,18 +5,23 @@ import { useRouter } from "next/navigation";
 import { useLayoutEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { generateLandingDraftAction } from "@/app/actions/ai";
-import { publishLandingAction, saveLandingSectionsAction } from "@/app/actions/funnels";
+import {
+  publishLandingAction,
+  saveLandingSectionsAction,
+  type LandingPublishResult,
+} from "@/app/actions/funnels";
 import { SectionProperties } from "@/app/(app)/app/landings/[id]/campos";
 import { DesignPanel } from "@/app/(app)/app/landings/[id]/diseno";
 import { AiModal, type LandingBrief } from "@/app/(app)/app/landings/[id]/ia";
+import { useAiProgress } from "@/components/app/ai-progress";
 import { PantallaSelector } from "@/components/app/experience-steps";
-import { FlowContinue } from "@/components/app/flow-continue";
+import { FlowContinue, type FlowNext } from "@/components/app/flow-continue";
 import { LandingSectionView, SECTION_LIBRARY, type SectionData } from "@/components/landing/blocks";
 import { applyLayout, type LandingLayout } from "@/components/landing/estructuras";
 import { readTheme, themeVars, type LandingTheme } from "@/components/landing/theme";
 import { Alert, TemplateNotice } from "@/components/ui/feedback";
 import { Icon, type IconName } from "@/components/ui/icon";
-import { Badge, Button, Drawer, Modal, useToast } from "@/components/ui/primitives";
+import { Badge, Button, Drawer, LinkButton, Modal, useToast } from "@/components/ui/primitives";
 import { cn } from "@/lib/utils";
 import type { LandingSectionType } from "@/lib/types";
 
@@ -41,6 +46,7 @@ export function LandingEditor({
   brief,
   backHref,
   productId,
+  next,
   cover,
 }: {
   page: {
@@ -63,12 +69,16 @@ export function LandingEditor({
    * producto: ahí no hay checkout ni página de gracias adónde saltar.
    */
   productId?: string;
+  /** Lo que sigue después de la página. Lo calcula el servidor con el recorrido. */
+  next?: FlowNext | null;
   /** La portada del producto, para avisar cuando falta antes de generar. */
   cover?: { url: string | null; href: string };
 }) {
   const router = useRouter();
   const toast = useToast();
   const [pending, startTransition] = useTransition();
+  const ai = useAiProgress();
+  const [publishResult, setPublishResult] = useState<LandingPublishResult | null>(null);
 
   const [sections, setSections] = useState<SectionData[]>(initialSections);
   const [selectedId, setSelectedId] = useState<string | null>(initialSections[0]?.id ?? null);
@@ -287,21 +297,38 @@ export function LandingEditor({
         setDirty(false);
       }
       const result = await publishLandingAction(page.id);
-      if (result.ok) {
-        toast.success("Tu página está publicada.");
-        router.refresh();
-      } else {
+      if (!result.ok) {
         toast.error("Todavía no podemos publicarla", result.error);
+        return;
       }
+
+      /*
+       * El resultado se muestra en pantalla, no en un cartelito que se va.
+       *
+       * Publicar la página es el momento en el que la persona espera que pase
+       * algo, y hasta ahora lo único que pasaba era un toast verde de tres
+       * segundos mientras su página seguía sin poder verse. El panel se queda:
+       * o trae el link para abrirla, o dice qué falta y el botón para ir.
+       */
+      setPublishResult(result.data);
+      if (result.data.online) {
+        toast.success("Tu página está online.");
+      }
+      router.refresh();
     });
   }
 
-  function generate(tone: string, datos: LandingBrief) {
-    startTransition(async () => {
+  /**
+   * El modal se cierra recién cuando la barra llega al final, no cuando vuelve
+   * la respuesta. Son medio segundo de diferencia, pero es la diferencia entre
+   * ver que terminó y ver que algo desapareció.
+   */
+  async function generate(tone: string, datos: LandingBrief) {
+    const listo = await ai.run("Escribiendo tu página de venta", async () => {
       const result = await generateLandingDraftAction(page.id, tone, datos);
       if (!result.ok) {
         toast.error("No pudimos crear la página", result.error);
-        return;
+        return false;
       }
       const generated = result.data.data.sections.map((section, index) => ({
         id: `tmp-${Date.now()}-${index}`,
@@ -315,8 +342,9 @@ export function LandingEditor({
         warning: result.data.warning,
         cleaned: result.data.cleaned,
       });
-      setAiOpen(false);
     });
+
+    if (listo) setAiOpen(false);
   }
 
   function regenerateSection() {
@@ -368,6 +396,14 @@ export function LandingEditor({
         pending={pending}
         backHref={backHref}
       />
+
+      {publishResult ? (
+        <ResultadoDePublicar
+          resultado={publishResult}
+          productId={productId ?? null}
+          onClose={() => setPublishResult(null)}
+        />
+      ) : null}
 
       {aiNotice?.isTemplate ? (
         <div className="border-b border-ink-200 bg-white px-4 py-3">
@@ -484,7 +520,7 @@ export function LandingEditor({
           </Button>
           {/* Va último: es el hilo del paso a paso, no una acción sobre la
               página. Su propio separador lo distingue de las dos de al lado. */}
-          {productId ? <FlowContinue productId={productId} /> : null}
+          <FlowContinue next={next ?? null} />
         </div>
       </div>
 
@@ -622,7 +658,9 @@ export function LandingEditor({
         open={aiOpen}
         onClose={() => setAiOpen(false)}
         onGenerate={generate}
-        loading={pending}
+        loading={ai.running}
+        progress={ai.progress}
+        progressLabel={ai.label}
         hasOffer={Boolean(offer)}
         hasSections={!vacia}
         cover={cover}
@@ -1165,4 +1203,84 @@ function tieneContenido(section: SectionData): boolean {
     return false;
   };
   return Object.values(section.content).some(hayTexto);
+}
+
+/**
+ * Qué pasó cuando apretaste Publicar.
+ *
+ * Antes esto era un toast verde que decía "Tu página está publicada" y se iba
+ * a los tres segundos — mientras la página seguía sin poder verla nadie,
+ * porque lo que la hace pública es publicar el producto, no la página. El
+ * vendedor apretaba el botón, leía que estaba todo bien y su link no existía.
+ *
+ * El panel se queda hasta que lo cierren y tiene una sola salida clara:
+ * si ya está online, el link para abrirla; si no, qué falta y el botón para
+ * ir a terminarlo. Nunca dice "listo" sobre algo que no está listo.
+ */
+function ResultadoDePublicar({
+  resultado,
+  productId,
+  onClose,
+}: {
+  resultado: LandingPublishResult;
+  productId: string | null;
+  onClose: () => void;
+}) {
+  const destino = resultado.productId ?? productId;
+
+  return (
+    <div className="border-b border-ink-200 bg-white px-4 py-3">
+      <div
+        className={cn(
+          "flex flex-wrap items-center justify-between gap-x-5 gap-y-3 rounded-2xl border px-4 py-3.5",
+          resultado.online
+            ? "border-accent-200 bg-accent-50/50"
+            : "border-brand-200 bg-brand-50/60",
+        )}
+      >
+        <div className="flex min-w-0 items-start gap-3">
+          <span
+            className={cn(
+              "mt-0.5 grid size-6 shrink-0 place-items-center rounded-full text-white",
+              resultado.online ? "bg-accent-500" : "bg-brand-600",
+            )}
+            aria-hidden="true"
+          >
+            <Icon name={resultado.online ? "check" : "rocket"} size={13} />
+          </span>
+
+          <div className="min-w-0">
+            <p className="text-[14px] font-semibold text-ink-900">
+              {resultado.online
+                ? "Tu página está online"
+                : "Guardamos tu página, pero todavía no la puede ver nadie"}
+            </p>
+            <p className="mt-0.5 text-[12.5px] leading-relaxed text-ink-500">
+              {resultado.online
+                ? "Cualquiera con el link puede entrar y comprar."
+                : resultado.blockers.length
+                  ? `Para ponerla a la venta falta: ${resultado.blockers[0].toLowerCase()}`
+                  : "Falta un último paso: publicar tu producto."}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2">
+          {resultado.online && resultado.publicUrl ? (
+            <LinkButton href={resultado.publicUrl} icon="eye" size="sm" target="_blank">
+              Ver mi página
+            </LinkButton>
+          ) : destino ? (
+            <LinkButton href={`/app/productos/${destino}/publicar`} icon="rocket" size="sm">
+              Publicar mi producto
+            </LinkButton>
+          ) : null}
+
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            Cerrar
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 }

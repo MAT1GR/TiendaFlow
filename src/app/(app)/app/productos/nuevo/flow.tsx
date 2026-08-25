@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { applyProductDraftAction, generateProductDraftAction } from "@/app/actions/ai";
+import { AiProgress, useAiProgress } from "@/components/app/ai-progress";
 import { PRESETS } from "@/components/landing/theme";
 import { Alert, TemplateNotice } from "@/components/ui/feedback";
 import { Icon } from "@/components/ui/icon";
@@ -54,6 +55,7 @@ export function NewProductFlow({
   const router = useRouter();
   const toast = useToast();
   const [pending, startTransition] = useTransition();
+  const ai = useAiProgress();
 
   const [step, setStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -94,7 +96,7 @@ export function NewProductFlow({
       return;
     }
 
-    startTransition(async () => {
+    return ai.run("Armando tu carta de ventas", async () => {
       const result = await generateProductDraftAction({
         topic: descripcion,
         productName: nombre,
@@ -102,7 +104,7 @@ export function NewProductFlow({
       });
       if (!result.ok) {
         setError(result.error);
-        return;
+        return false;
       }
       setDraft(result.data.data);
       setIsTemplate(result.data.isTemplate);
@@ -184,8 +186,10 @@ export function NewProductFlow({
               </Alert>
             ) : null}
 
+            <AiProgress running={ai.running} progress={ai.progress} label={ai.label} />
+
             <div className="flex justify-end border-t border-ink-100 pt-5">
-              <Button variant="ai" size="lg" icon="sparkles" loading={pending} onClick={generar}>
+              <Button variant="ai" size="lg" icon="sparkles" loading={ai.running} onClick={generar}>
                 Armar mi carta de ventas
               </Button>
             </div>
@@ -412,11 +416,14 @@ export function NewProductFlow({
               </Button>
 
               <div className="flex flex-wrap gap-2">
-                <Button variant="secondary" icon="refresh" loading={pending} onClick={generar}>
+                <Button variant="secondary" icon="refresh" loading={ai.running} onClick={generar}>
                   Regenerar
                 </Button>
+                {/* El botón dice adónde lleva, no solo qué guarda: al crear
+                    el producto la app sigue sola con el precio, y saberlo de
+                    antemano es la diferencia entre confirmar y arriesgarse. */}
                 <Button size="lg" icon="check" loading={pending} onClick={crear}>
-                  Crear producto
+                  Crear y ponerle precio
                 </Button>
               </div>
             </div>

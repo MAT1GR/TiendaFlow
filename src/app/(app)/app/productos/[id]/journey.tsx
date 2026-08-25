@@ -1,7 +1,6 @@
 import Link from "next/link";
 
 import { Icon } from "@/components/ui/icon";
-import { withFlow } from "@/lib/product-flow";
 import type { JourneyStep, ProductJourney } from "@/lib/product-workspace";
 import { cn } from "@/lib/utils";
 
@@ -19,7 +18,17 @@ export function Journey({ journey }: { journey: ProductJourney }) {
   const { steps, completed, total, percent, live } = journey;
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
+    /*
+      `data-recorrido` es lo que le avisa al encabezado que acá abajo ya está el
+      recorrido completo, para que esconda su renglón comprimido y no lo diga
+      dos veces. Es el mismo mecanismo que usa el editor de la página con
+      `data-fullbleed`: la pantalla hija declara qué es y el layout se acomoda,
+      sin que el layout tenga que mirar la ruta ni volverse un Client Component.
+    */
+    <section
+      data-recorrido
+      className="overflow-hidden rounded-2xl border border-ink-200 bg-white"
+    >
       <header className="border-b border-ink-100 px-5 py-4">
         <h2 className="flex items-center gap-2 text-[15px] font-semibold tracking-tight text-ink-900">
           <span className="tf-emoji" aria-hidden="true">
@@ -66,10 +75,11 @@ function StepRow({ step }: { step: JourneyStep }) {
 
   return (
     <li>
-      {/* El paso que sigue retoma el paso a paso: la persona confirma y la app
-          la lleva sola hasta el final, sin volver acá entre paso y paso. */}
+      {/* Cualquier paso se puede tocar y lleva ahí, esté hecho o no: el
+          recorrido es la navegación del producto, no una lista de solo lectura
+          donde el único link vivo es el siguiente. */}
       <Link
-        href={withFlow(step.href, step.next)}
+        href={step.href}
         className={cn(
           "group flex items-center gap-3 px-5 py-3.5 transition-colors",
           step.next ? "bg-brand-50/50 hover:bg-brand-50" : "hover:bg-ink-50",

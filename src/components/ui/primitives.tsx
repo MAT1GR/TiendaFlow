@@ -94,6 +94,12 @@ interface LinkButtonProps {
   full?: boolean;
   children: ReactNode;
   prefetch?: boolean;
+  /**
+   * Abrir en otra pestaña. Lo usan los links a la página pública: el vendedor
+   * la está mirando desde su editor y perder lo que estaba haciendo para ver
+   * cómo quedó es exactamente lo que no queremos.
+   */
+  target?: "_blank";
 }
 
 export function LinkButton({
@@ -106,11 +112,14 @@ export function LinkButton({
   full,
   children,
   prefetch,
+  target,
 }: LinkButtonProps) {
   return (
     <Link
       href={href}
       prefetch={prefetch}
+      target={target}
+      rel={target === "_blank" ? "noreferrer" : undefined}
       className={cn(
         "inline-flex items-center justify-center font-medium transition-all duration-150 active:scale-[.98]",
         VARIANTS[variant],

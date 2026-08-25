@@ -5,6 +5,7 @@ import { useEffect, useState, useTransition } from "react";
 
 import { applyOfferDraftAction, generateOfferDraftAction } from "@/app/actions/ai";
 import { createOfferAction } from "@/app/actions/catalog";
+import { AiProgress, useAiProgress } from "@/components/app/ai-progress";
 import { MoreOptions, TermLabel } from "@/components/ui/explain";
 import { Alert, TemplateNotice } from "@/components/ui/feedback";
 import { Icon } from "@/components/ui/icon";
@@ -48,6 +49,7 @@ export function NewOfferForm({
   const router = useRouter();
   const toast = useToast();
   const [pending, startTransition] = useTransition();
+  const ai = useAiProgress();
   const [error, setError] = useState<string | null>(null);
 
   const [productId, setProductId] = useState(initialProductId ?? products[0]?.id ?? "");
@@ -95,11 +97,12 @@ export function NewOfferForm({
       return;
     }
     setError(null);
-    startTransition(async () => {
+
+    return ai.run("Armando tu oferta", async () => {
       const result = await generateOfferDraftAction(productId);
       if (!result.ok) {
         setError(result.error);
-        return;
+        return false;
       }
       const data = result.data.data;
       setDraft(data);
@@ -182,10 +185,17 @@ export function NewOfferForm({
               La IA usa sus datos para proponerte la oferta completa.
             </p>
           </div>
-          <Button type="button" variant="ai" icon="sparkles" loading={pending} onClick={generate}>
+          <Button type="button" variant="ai" icon="sparkles" loading={ai.running} onClick={generate}>
             Crear oferta con IA
           </Button>
         </div>
+
+        <AiProgress
+          running={ai.running}
+          progress={ai.progress}
+          label={ai.label}
+          className="mt-4"
+        />
 
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <Field label="Producto" required>
@@ -352,9 +362,12 @@ export function NewOfferForm({
         </Card>
       ) : null}
 
-      <div className="flex justify-end gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2">
+        <p className="text-[12.5px] text-ink-500">
+          Al guardar seguimos con la página donde lo vas a vender.
+        </p>
         <Button type="submit" size="lg" loading={pending} icon="check">
-          Crear oferta
+          Guardar y armar mi página
         </Button>
       </div>
     </form>

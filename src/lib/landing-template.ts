@@ -401,6 +401,55 @@ export function landingTemplate(input: TemplateInput): TemplateSection[] {
           ],
     },
 
+    /*
+     * Los dos bloques espejo.
+     *
+     * Sin IA no hay forma de escribirlos bien —dependen de conocer a la persona
+     * mejor de lo que la conoce la plantilla— así que el borrador local arma la
+     * forma con lo que el vendedor ya cargó y deja la segunda línea de cada
+     * ítem escrita como lo que es: una instrucción de qué falta. Es preferible
+     * a llenar cinco tarjetas con frases de relleno que se ven terminadas.
+     */
+    para_vos_si: {
+      title: "Esto es para vos si…",
+      items: [
+        {
+          line1: problem
+            ? `Ya intentaste resolver ${lower(problem)} por tu cuenta, pero seguís en el mismo lugar`
+            : "Ya intentaste resolverlo por tu cuenta, pero seguís en el mismo lugar",
+          line2:
+            "Completá esta línea con por qué le pasa y en qué termina: ahí es donde la persona se reconoce.",
+        },
+        {
+          line1: "Juntás información de todos lados y cuando llega el momento no sabés cuál usar",
+          line2: "Escribí la consecuencia real: qué pierde, cuánto tiempo, cómo se siente.",
+        },
+      ],
+    },
+
+    vas_a_lograr: {
+      title: transformation ? `Vas a lograr ${lower(transformation)}` : "Vas a lograr…",
+      items: (benefits.length ? benefits.slice(0, 5) : ["El primer resultado concreto"]).map(
+        (benefit) => ({
+          line1: benefit,
+          line2: "Agregá sin qué dolor lo conseguís y con qué beneficio te quedás.",
+        }),
+      ),
+    },
+
+    urgency_bar: {
+      message: offer?.compare_at_price
+        ? "El precio de lanzamiento está por subir"
+        : "Precio de lanzamiento",
+      note: "Cambiá esto por el motivo real por el que conviene comprar hoy. Si no tenés uno, sacá el bloque.",
+    },
+
+    live_purchases: {
+      title: "Últimas compras",
+      empty_note:
+        "Acá van a aparecer solas tus ventas reales, con el nombre de pila del comprador. Hasta tu primera venta, el bloque no se muestra en tu página.",
+    },
+
     footer: {
       brand: workspaceName.toUpperCase(),
       text: `© ${new Date().getFullYear()} ${workspaceName}. Todos los derechos reservados.`,

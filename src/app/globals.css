@@ -259,6 +259,50 @@
   animation-delay: var(--tf-delay, 0ms);
 }
 
+/* El punto que late al lado de "N personas están viendo esta página". Es lo
+   único de esa barra que se mueve, y alcanza: el dato ya es real, la animación
+   solo dice que está pasando ahora. */
+@keyframes tf-latido {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 0.55;
+  }
+}
+
+.tf-latido {
+  animation: tf-latido 1.6s ease-in-out infinite;
+}
+
+/* Los tres puntos que siguen a "Escribiendo tu página". Van por CSS y no por
+   estado de React: es la única parte de la barra de progreso que se mueve todo
+   el tiempo, y no vale la pena volver a renderizar el árbol tres veces por
+   segundo para dibujar un punto. */
+@keyframes tf-puntos {
+  0% {
+    content: "";
+  }
+  25% {
+    content: ".";
+  }
+  50% {
+    content: "..";
+  }
+  75%,
+  100% {
+    content: "...";
+  }
+}
+
+.tf-puntos::after {
+  content: "...";
+  animation: tf-puntos 1.4s steps(1, end) infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

@@ -6,7 +6,7 @@ import { PantallaSelector } from "@/components/app/experience-steps";
 import { Card, LinkButton } from "@/components/ui/primitives";
 import { requireSession } from "@/lib/auth";
 import { isFlowActive, withFlow } from "@/lib/product-flow";
-import { productContext } from "@/lib/product-workspace";
+import { productContext, productJourney } from "@/lib/product-workspace";
 import {
   getLandingPage,
   getLandingPageByStep,
@@ -16,6 +16,20 @@ import {
 import { formatMoney, parseJson } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Página de venta" };
+
+/**
+ * El botón de "lo que sigue", escrito con el verbo de la acción.
+ *
+ * Mismo criterio que la barra de las otras secciones: el botón dice qué va a
+ * pasar, no "Continuar". Es la única pista que tiene la persona sobre adónde
+ * la manda, y probar para averiguarlo es exactamente lo que queremos evitar.
+ */
+const SIGUIENTE: Record<string, string> = {
+  producto: "Cargar mi producto",
+  oferta: "Ponerle precio",
+  cobro: "Conectar mis cobros",
+  publicar: "Publicar mi producto",
+};
 
 /**
  * El constructor de la experiencia de compra, parado en la página de venta.
@@ -93,6 +107,28 @@ export default async function SalesPageTab({
   const theme = parseJson<unknown>(page.theme, {});
 
   /*
+   * Lo que sigue después de la página.
+   *
+   * El editor ocupa el alto completo de la ventana, así que la barra de "lo que
+   * sigue" que llevan las demás secciones acá no entra: el paso siguiente viaja
+   * como un botón al lado de Publicar. Sale del recorrido real —el primer paso
+   * que todavía falta— y no de una ruta fija, para que no mande a conectar
+   * cobros a alguien que ya los tiene conectados.
+   */
+  const journey = productJourney(workspace.id, id);
+  const pendiente = journey?.steps.find(
+    (step) => step.code !== "pagina" && step.required && step.state !== "done",
+  );
+
+  const next = pendiente
+    ? {
+        href: pendiente.href,
+        label: SIGUIENTE[pendiente.code] ?? `Seguir con ${pendiente.title.toLowerCase()}`,
+        short: "Seguir",
+      }
+    : null;
+
+  /*
    * Acá no va nada arriba del editor.
    *
    * La barra del editor es el encabezado de esta pantalla: adentro tiene el
@@ -105,6 +141,7 @@ export default async function SalesPageTab({
     <div className="flex flex-col">
       <LandingEditor
         productId={id}
+        next={next}
         page={{
           id: page.id,
           name: page.name,

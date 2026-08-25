@@ -695,6 +695,20 @@ export function listFunnelSteps(workspaceId: string, funnelId: string) {
   );
 }
 
+/**
+ * Un paso suelto, por su id.
+ *
+ * Sirve para el camino inverso: desde una página de venta llegar a su funnel,
+ * que es el que sabe si esa página se puede ver o no.
+ */
+export function getFunnelStep(workspaceId: string, stepId: string) {
+  return get<FunnelStep>(
+    `SELECT * FROM funnel_steps WHERE workspace_id = ? AND id = ?`,
+    workspaceId,
+    stepId,
+  );
+}
+
 export function createFunnel(
   workspaceId: string,
   input: {
@@ -1341,6 +1355,63 @@ export function trackEvent(
     event.metadata ? JSON.stringify(event.metadata) : null,
     ts(),
   );
+}
+
+/**
+ * La prueba social de una página, con datos reales.
+ *
+ * Las notificaciones de compra en vivo y el "hay gente viendo esto" son de lo
+ * que más levanta la conversión de una página de venta, y también de lo más
+ * fácil de falsificar: el patrón que circula es un script con diez nombres
+ * inventados y un contador que sube y baja solo. La app no hace eso —el que da
+ * la cara cuando un comprador pregunta es el vendedor, no nosotros— así que los
+ * mismos dos bloques se alimentan de lo que realmente pasó.
+ *
+ * `viewers` son las sesiones distintas que abrieron una página de este funnel
+ * en la última media hora. `purchases` son las últimas compras pagadas, con el
+ * nombre de pila y el país del comprador: lo justo para reconocerse en alguien
+ * parecido, sin exponer a nadie.
+ *
+ * Si no hay ventas todavía, la lista vuelve vacía y el bloque no se dibuja. Una
+ * página nueva no muestra compras: no las tuvo.
+ */
+export interface LiveProof {
+  viewers: number;
+  purchases: Array<{ name: string; place: string | null; at: string }>;
+}
+
+export function getLiveProof(workspaceId: string, funnelId: string, limit = 8): LiveProof {
+  const desde = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+
+  const viewers = get<{ total: number }>(
+    `SELECT COUNT(DISTINCT session_key) AS total FROM analytics_events
+      WHERE workspace_id = ? AND funnel_id = ? AND name = 'page_view'
+        AND session_key IS NOT NULL AND created_at >= ?`,
+    workspaceId,
+    funnelId,
+    desde,
+  );
+
+  const rows = all<{ full_name: string; country: string | null; paid_at: string }>(
+    `SELECT c.full_name AS full_name, c.country AS country, o.paid_at AS paid_at
+       FROM orders o JOIN customers c ON c.id = o.customer_id
+      WHERE o.workspace_id = ? AND o.funnel_id = ? AND o.status = 'paid'
+        AND o.paid_at IS NOT NULL AND o.is_demo = 0
+      ORDER BY o.paid_at DESC LIMIT ?`,
+    workspaceId,
+    funnelId,
+    limit,
+  );
+
+  return {
+    viewers: viewers?.total ?? 0,
+    purchases: rows.map((row) => ({
+      // Solo el nombre de pila: el apellido de un comprador no va en una página pública.
+      name: row.full_name.trim().split(/\s+/)[0] ?? row.full_name,
+      place: row.country?.trim() || null,
+      at: row.paid_at,
+    })),
+  };
 }
 
 export function recordAttribution(

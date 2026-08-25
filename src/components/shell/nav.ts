@@ -66,7 +66,7 @@ export interface CreateItem {
    * Lo que se va a crear necesita un producto. Si estás adentro de uno se usa
    * ese; si no, primero preguntamos para cuál.
    */
-  needsProduct?: "oferta" | "pagina" | "bono";
+  needsProduct?: "oferta" | "pagina" | "bono" | "cliente";
 }
 
 /**
@@ -127,5 +127,10 @@ export const CREATE_TARGET: Record<
     segment: "oferta",
     title: "¿A qué producto le sumás un bono?",
     blurb: "Los bonos acompañan la oferta de un producto: elegí cuál.",
+  },
+  cliente: {
+    segment: "cliente",
+    title: "¿De qué producto querés conocer al cliente?",
+    blurb: "El cliente ideal se investiga por producto: no le vendés lo mismo a la misma persona.",
   },
 };

@@ -12,6 +12,7 @@ import { landingTemplate, mergeLandingDraft } from "@/lib/landing-template";
 import * as repo from "@/lib/repo";
 import { parseJson, toLines } from "@/lib/utils";
 import { checkAiQuota } from "@/lib/quota";
+import { readIdealClient } from "@/lib/ai/research";
 import { fail, guarded, ok, type ActionResult } from "@/app/actions/shared";
 
 /**
@@ -617,4 +618,196 @@ function contextLinks(module: string): Array<{ label: string; href: string }> {
 function limpio(valor: string | undefined): string | undefined {
   const texto = valor?.trim();
   return texto ? texto : undefined;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Investigación de mercado                                                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Todo lo que la app sabe de un producto, listo para un prompt.
+ *
+ * Las cuatro tareas de investigación arrancan igual: buscar el producto, su
+ * oferta y sus bonos, y chequear el cupo. Estaba escrito cuatro veces y las
+ * cuatro copias ya se habían separado entre sí.
+ */
+async function contextoDeProducto(productId: string) {
+  const { workspace, user } = await requireSession();
+
+  const cupo = checkAiQuota(workspace.id);
+  if (!cupo.ok) {
+    return { ok: false as const, error: cupo.reason ?? "No te quedan pedidos de IA este mes." };
+  }
+
+  const product = repo.getProduct(workspace.id, productId);
+  if (!product) {
+    return { ok: false as const, error: "No encontramos ese producto en tu workspace." };
+  }
+
+  const offer = repo.listOffers(workspace.id).find((item) => item.product_id === product.id) ?? null;
+  const bonuses = offer ? repo.listBonuses(workspace.id, offer.id) : [];
+
+  return { ok: true as const, workspace, user, product, offer, bonuses };
+}
+
+export async function generateIdealClientAction(
+  productId: string,
+): Promise<ActionResult<AiResponse<tasks.IdealClientResearch>>> {
+  return guarded(async () => {
+    const contexto = await contextoDeProducto(productId);
+    if (!contexto.ok) return fail(contexto.error);
+    const { workspace, user, product, offer } = contexto;
+
+    const result = await tasks.generateIdealClient({
+      productName: product.name,
+      description: product.description,
+      niche: product.category,
+      audience: product.audience,
+      problem: product.main_problem,
+      transformation: product.transformation,
+      price: offer?.price ?? product.base_price ?? 9900,
+      currency: offer?.currency ?? workspace.currency,
+    });
+
+    repo.logAiGeneration(workspace.id, {
+      user_id: user.id,
+      task: "ideal_client",
+      provider: result.provider,
+      model: result.model,
+      input: { productId },
+      output: result.data,
+      entity_type: "product",
+      entity_id: productId,
+    });
+
+    revalidatePath(`/app/productos/${productId}/cliente`);
+
+    return ok({
+      data: result.data,
+      isTemplate: result.isTemplate,
+      provider: result.provider,
+      warning: result.warning,
+    });
+  });
+}
+
+export async function generateAnglesAction(
+  productId: string,
+  tone?: string,
+): Promise<ActionResult<AiResponse<tasks.AnglesDraft>>> {
+  return guarded(async () => {
+    const contexto = await contextoDeProducto(productId);
+    if (!contexto.ok) return fail(contexto.error);
+    const { workspace, user, product, offer, bonuses } = contexto;
+
+    const result = await tasks.generateAngles({
+      productName: product.name,
+      description: product.description,
+      audience: product.audience,
+      problem: product.main_problem,
+      transformation: product.transformation,
+      price: offer?.price ?? product.base_price ?? 9900,
+      currency: offer?.currency ?? workspace.currency,
+      tone,
+      // La investigación del avatar, si ya la hizo. Cambia por completo el resultado.
+      research: readIdealClient(workspace.id, productId),
+      benefits: toLines(offer?.benefits ?? product.benefits ?? null),
+      bonuses: bonuses.map((bonus) => ({ name: bonus.name, description: bonus.description })),
+    });
+
+    repo.logAiGeneration(workspace.id, {
+      user_id: user.id,
+      task: "sales_angles",
+      provider: result.provider,
+      model: result.model,
+      input: { productId, tone },
+      output: result.data,
+      entity_type: "product",
+      entity_id: productId,
+    });
+
+    return ok({
+      data: result.data,
+      isTemplate: result.isTemplate,
+      provider: result.provider,
+      warning: result.warning,
+    });
+  });
+}
+
+export async function generateHeadlinesAction(
+  productId: string,
+  tone?: string,
+): Promise<ActionResult<AiResponse<tasks.HeadlinesDraft>>> {
+  return guarded(async () => {
+    const contexto = await contextoDeProducto(productId);
+    if (!contexto.ok) return fail(contexto.error);
+    const { workspace, user, product, offer } = contexto;
+
+    const result = await tasks.generateHeadlines({
+      productName: product.name,
+      description: product.description,
+      audience: product.audience,
+      problem: product.main_problem,
+      transformation: product.transformation,
+      tone,
+      research: readIdealClient(workspace.id, productId),
+    });
+
+    repo.logAiGeneration(workspace.id, {
+      user_id: user.id,
+      task: "headlines",
+      provider: result.provider,
+      model: result.model,
+      input: { productId, tone },
+      output: result.data,
+      entity_type: "product",
+      entity_id: productId,
+    });
+
+    return ok({
+      data: result.data,
+      isTemplate: result.isTemplate,
+      provider: result.provider,
+      warning: result.warning,
+    });
+  });
+}
+
+export async function generateObjectionsAction(
+  productId: string,
+): Promise<ActionResult<AiResponse<tasks.ObjectionsDraft>>> {
+  return guarded(async () => {
+    const contexto = await contextoDeProducto(productId);
+    if (!contexto.ok) return fail(contexto.error);
+    const { workspace, user, product, offer } = contexto;
+
+    const result = await tasks.generateObjections({
+      productName: product.name,
+      description: product.description,
+      audience: product.audience,
+      price: offer?.price ?? product.base_price ?? 9900,
+      currency: offer?.currency ?? workspace.currency,
+      guarantee: offer?.guarantee ?? null,
+      research: readIdealClient(workspace.id, productId),
+    });
+
+    repo.logAiGeneration(workspace.id, {
+      user_id: user.id,
+      task: "objections",
+      provider: result.provider,
+      model: result.model,
+      input: { productId },
+      output: result.data,
+      entity_type: "product",
+      entity_id: productId,
+    });
+
+    return ok({
+      data: result.data,
+      isTemplate: result.isTemplate,
+      provider: result.provider,
+      warning: result.warning,
+    });
+  });
 }

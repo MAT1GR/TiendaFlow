@@ -56,6 +56,13 @@ export const PRODUCT_SECTIONS = [
     blurb: "Acá definís qué estás vendiendo y qué recibe tu cliente cuando compra.",
   },
   {
+    segment: "cliente",
+    label: "Mi cliente",
+    emoji: "🎯",
+    blurb:
+      "Acá averiguás a quién le vendés: qué le duele, qué lo frena y con qué palabras hablarle.",
+  },
+  {
     segment: "oferta",
     label: "Mi oferta",
     emoji: "💰",

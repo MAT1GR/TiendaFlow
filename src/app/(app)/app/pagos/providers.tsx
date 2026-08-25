@@ -7,6 +7,7 @@ import { disconnectIntegrationAction, savePaymentProviderAction } from "@/app/ac
 import { HowTo } from "@/components/ui/explain";
 import { Alert, ConnectionStatus } from "@/components/ui/feedback";
 import { Icon } from "@/components/ui/icon";
+import { PaymentLogo } from "@/components/ui/payment-logos";
 import {
   Button,
   Card,
@@ -42,10 +43,9 @@ const STEPS: Record<string, React.ReactNode[]> = {
 
 const DETAILS: Record<
   string,
-  { flag: string; blurb: string; who: string; publicLabel: string; secretLabel: string; help: string }
+  { blurb: string; who: string; publicLabel: string; secretLabel: string; help: string }
 > = {
   stripe: {
-    flag: "💳",
     blurb: "Tarjetas internacionales, en dólares o en la moneda que elijas.",
     who: "Si le vendés a gente de afuera, necesitás este.",
     publicLabel: "Publishable key (pk_…)",
@@ -53,7 +53,6 @@ const DETAILS: Record<
     help: "Te vamos guiando: son dos claves que copiás del panel de Stripe.",
   },
   mercadopago: {
-    flag: "🇦🇷",
     blurb: "Tarjetas, débito, efectivo y cuotas en Argentina y el resto de Latinoamérica.",
     who: "Si vendés en pesos, este es el que usa casi todo el mundo.",
     publicLabel: "Public key (APP_USR…)",
@@ -107,12 +106,7 @@ export function PaymentProviders({
               className={provider.connected ? "border-accent-200 p-5" : "p-5"}
             >
               <div className="flex items-start justify-between gap-3">
-                <span
-                  className="tf-emoji !inline-flex size-11 shrink-0 items-center justify-center rounded-2xl bg-ink-100 !text-[22px]"
-                  aria-hidden="true"
-                >
-                  {detail?.flag ?? "💳"}
-                </span>
+                <PaymentLogo provider={provider.id} size={44} />
                 <ConnectionStatus status={provider.connected ? "connected" : "disconnected"} />
               </div>
 

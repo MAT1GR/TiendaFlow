@@ -2,10 +2,9 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
 import { Journey } from "@/app/(app)/app/productos/[id]/journey";
-import { AdviceCard } from "@/app/(app)/app/productos/[id]/advice";
 import { ShareLink } from "@/app/(app)/app/productos/[id]/share-link";
 import { SectionIntro } from "@/components/app/section-intro";
-import { productAdvice, productContext, productJourney, sectionBlurb } from "@/lib/product-workspace";
+import { productContext, productJourney, sectionBlurb } from "@/lib/product-workspace";
 import { requireSession } from "@/lib/auth";
 import { formatMoney, formatNumber, formatPercent } from "@/lib/utils";
 
@@ -14,15 +13,21 @@ export const metadata: Metadata = { title: "Resumen" };
 /**
  * Resumen del producto: el GPS.
  *
- * Está ordenada por lo que la persona necesita saber, en ese orden y no otro:
+ * Antes de vender, acá va **una sola cosa: el recorrido**. Nada más.
  *
- *   1. ¿Qué me falta y qué hago ahora?  → el camino
- *   2. ¿Qué me conviene hacer?          → la recomendación
- *   3. ¿Está funcionando?               → los números
+ * Llegó a tener tres bloques diciendo lo mismo — el recorrido, una tarjeta de
+ * "TiendaFlow recomienda" y una barra de "lo que sigue", los tres señalando el
+ * mismo paso, con tres botones al mismo lado. Tres formas de decir "te falta
+ * conectar los cobros" no insisten más: hacen dudar de si son tres cosas
+ * distintas y obligan a leer las tres para descubrir que no.
  *
- * Los números aparecen solo cuando el producto ya está a la venta. Cuatro
- * métricas en cero a alguien que todavía no publicó no le dicen nada y le tapan
- * lo único que tiene que hacer.
+ * El recorrido gana porque dice todo lo que dicen los otros dos y algo más:
+ * también muestra lo que ya está hecho, que es la mitad que importa cuando
+ * alguien viene arrastrando un lanzamiento desde hace días.
+ *
+ * Los números y la recomendación aparecen recién cuando el producto está a la
+ * venta. Cuatro métricas en cero a alguien que todavía no publicó no le dicen
+ * nada y le tapan lo único que tiene que hacer.
  */
 export default async function ProductOverviewPage({
   params,
@@ -37,7 +42,6 @@ export default async function ProductOverviewPage({
   if (!context || !journey) notFound();
 
   const { publicUrl, stats, offer } = context;
-  const advice = productAdvice(workspace.id, id);
   const currency = offer?.currency ?? workspace.currency;
   const ticket = stats.orders > 0 ? stats.revenue / stats.orders : 0;
 
@@ -46,8 +50,6 @@ export default async function ProductOverviewPage({
       <SectionIntro emoji="🏠" title="Resumen" blurb={sectionBlurb("")} />
 
       <Journey journey={journey} />
-
-      {advice ? <AdviceCard advice={advice} /> : null}
 
       {publicUrl ? <ShareLink url={publicUrl} /> : null}
 

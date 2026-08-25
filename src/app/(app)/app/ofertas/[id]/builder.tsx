@@ -17,6 +17,7 @@ import {
   updateOfferAction,
 } from "@/app/actions/catalog";
 import { Explain, MoreOptions, TermLabel } from "@/components/ui/explain";
+import { AiProgress, useAiProgress } from "@/components/app/ai-progress";
 import { Alert, TemplateNotice } from "@/components/ui/feedback";
 import { Icon } from "@/components/ui/icon";
 import {
@@ -169,7 +170,7 @@ function OfferForm({
   const router = useRouter();
   const toast = useToast();
   const [state, formAction, pending] = useActionState(updateOfferAction, null);
-  const [aiPending, startAi] = useTransition();
+  const ai = useAiProgress();
   const [aiNotice, setAiNotice] = useState<{ isTemplate: boolean; warning?: string } | null>(null);
   const [values, setValues] = useState({
     headline: offer.headline ?? "",
@@ -191,11 +192,11 @@ function OfferForm({
       toast.error("Falta el producto", "Asociá un producto a la oferta para poder generar el copy.");
       return;
     }
-    startAi(async () => {
+    return ai.run("Armando tu oferta", async () => {
       const result = await generateOfferDraftAction(offer.product_id as string);
       if (!result.ok) {
         toast.error("No pudimos generar la propuesta", result.error);
-        return;
+        return false;
       }
       const draft = result.data.data;
       setValues({
@@ -220,10 +221,12 @@ function OfferForm({
         <Card className="flex flex-col gap-4 p-5">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-[15px] font-semibold text-ink-900">Promesa y copy</h2>
-            <Button type="button" variant="ai" size="sm" icon="sparkles" loading={aiPending} onClick={regenerate}>
+            <Button type="button" variant="ai" size="sm" icon="sparkles" loading={ai.running} onClick={regenerate}>
               Regenerar con IA
             </Button>
           </div>
+
+          <AiProgress running={ai.running} progress={ai.progress} label={ai.label} />
 
           <Field label="Nombre de la oferta" required>
             <Input name="name" defaultValue={offer.name} required />

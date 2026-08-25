@@ -51,7 +51,13 @@ export type LandingSectionType =
   | "countdown"
   | "social_proof"
   | "video"
-  | "image";
+  | "image"
+  /* Los dos bloques espejo: la persona se reconoce y después se ve del otro lado. */
+  | "para_vos_si"
+  | "vas_a_lograr"
+  /* Urgencia y prueba social en vivo, alimentadas con datos reales del funnel. */
+  | "urgency_bar"
+  | "live_purchases";
 
 export type IntegrationProvider =
   | "meta"

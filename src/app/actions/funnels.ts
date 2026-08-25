@@ -371,7 +371,33 @@ export async function updateLandingMetaAction(
   });
 }
 
-export async function publishLandingAction(pageId: string): Promise<ActionResult<null>> {
+/**
+ * Qué pasó al publicar la página, para poder decirlo.
+ *
+ * Publicar la página marcaba `landing_pages.status` y devolvía `null`. El
+ * problema es que ese estado no lo mira nadie: lo que decide si un visitante
+ * puede ver la página es el estado del **funnel**, y ese seguía en borrador.
+ * O sea que el vendedor apretaba Publicar, veía un cartelito verde y su página
+ * seguía sin existir para el mundo. "La publicás y no hace nada" era
+ * exactamente eso, y era verdad.
+ *
+ * Ahora la acción devuelve el estado real: si ya está online, con qué link, y
+ * si no, qué falta y adónde ir a resolverlo.
+ */
+export interface LandingPublishResult {
+  /** `true` cuando cualquiera con el link ya puede entrar. */
+  online: boolean;
+  /** El link público, solo si realmente está online. */
+  publicUrl: string | null;
+  /** Lo que falta para que se pueda ver, en criollo. */
+  blockers: string[];
+  /** Adónde mandarlo a terminar. */
+  productId: string | null;
+}
+
+export async function publishLandingAction(
+  pageId: string,
+): Promise<ActionResult<LandingPublishResult>> {
   return guarded(async () => {
     const { workspace } = await requireSession();
     const page = repo.getLandingPage(workspace.id, pageId);
@@ -388,9 +414,34 @@ export async function publishLandingAction(pageId: string): Promise<ActionResult
     if (!hasCta) return fail("Agregá al menos un llamado a la acción antes de publicar.");
 
     repo.updateLandingPage(workspace.id, pageId, { status: "published" });
+
+    /*
+     * El funnel es el que decide si la página existe para el mundo.
+     *
+     * No lo publicamos de prepo: publicar el producto es una decisión con
+     * consecuencias —empieza a poder cobrar— y tiene su propia pantalla con su
+     * checklist. Lo que sí hacemos es dejar de mentir sobre el resultado.
+     */
+    const step = page.funnel_step_id
+      ? repo.getFunnelStep(workspace.id, page.funnel_step_id)
+      : null;
+    const funnel = step ? repo.getFunnel(workspace.id, step.funnel_id) : null;
+
+    const online = funnel?.status === "published";
+    const offer = funnel?.offer_id ? repo.getOffer(workspace.id, funnel.offer_id) : null;
+
     revalidatePath(`/app/landings/${pageId}`);
     // El editor de la pagina tambien vive adentro del producto.
     revalidatePath("/app/productos", "layout");
-    return ok(null, "Landing publicada.");
+
+    return ok(
+      {
+        online,
+        publicUrl: online && funnel ? `/f/${repo.publicSlug(funnel)}` : null,
+        blockers: funnel && !online ? funnelPublishBlockers(workspace.id, funnel.id) : [],
+        productId: offer?.product_id ?? null,
+      },
+      online ? "Tu página quedó actualizada y está online." : "Tu página quedó guardada y lista.",
+    );
   });
 }

@@ -11,18 +11,23 @@ import {
   flowIndex,
   flowStep,
   nextFlowStep,
-  withFlow,
   withoutFlow,
   type FlowStepCode,
 } from "@/lib/product-flow";
 import { cn } from "@/lib/utils";
 
 /**
- * La barra del paso a paso.
+ * La barra del paso a paso, para las pantallas de creación sueltas.
  *
- * Aparece solo cuando la persona está en el medio de la creación de un producto
- * y contesta las tres preguntas de cualquier proceso largo: en qué paso voy,
- * qué viene después y cómo me bajo.
+ * Aparece en las tres pantallas que están fuera del espacio de trabajo de un
+ * producto —crear producto, crear oferta, armar página— porque ahí todavía no
+ * hay producto adonde colgar el recorrido, y sin esta barra la persona no
+ * tendría forma de saber que está en el medio de una cadena de cinco pasos.
+ *
+ * Adentro del producto ya no se usa. Ahí el progreso vive en el renglón del
+ * encabezado (`ProgressLine`, que además marca dónde estás y te deja saltar a
+ * cualquier paso) y el paso siguiente en la barra de abajo (`ProductNextStep`).
+ * Los tres juntos eran tres formas de decir lo mismo en la misma pantalla.
  *
  * "Salir del paso a paso" no cancela nada ni borra nada: saca la marca de la
  * URL y deja a la persona en la misma pantalla, ahora suelta. Un proceso del
@@ -113,76 +118,4 @@ function FlowBarInner({ step, next, always = false }: FlowBarProps) {
       </div>
     </section>
   );
-}
-
-/**
- * La barra, para las pantallas que viven adentro de un producto.
- *
- * El paso sale de la URL en vez de pasarse a mano en cada pantalla: son seis
- * rutas y todas terminan pasando por el mismo layout, así que hacerlo una sola
- * vez acá evita que una pantalla nueva se olvide de sumarse al paso a paso.
- */
-export function ProductFlowBar({
-  productId,
-  cobroListo,
-}: {
-  productId: string;
-  /** Si ya hay un medio de pago conectado, el botón de cobros cambia de texto. */
-  cobroListo: boolean;
-}) {
-  return (
-    <Suspense fallback={null}>
-      <ProductFlowBarInner productId={productId} cobroListo={cobroListo} />
-    </Suspense>
-  );
-}
-
-function ProductFlowBarInner({
-  productId,
-  cobroListo,
-}: {
-  productId: string;
-  cobroListo: boolean;
-}) {
-  const pathname = usePathname();
-  const base = `/app/productos/${productId}`;
-  const segment = pathname.startsWith(`${base}/`) ? pathname.slice(base.length + 1) : "";
-
-  /*
-   * La página de venta queda afuera a propósito.
-   *
-   * Ahí la barra del editor es el encabezado de toda la pantalla —trae el
-   * selector de las cuatro pantallas del recorrido, el estado y las acciones—
-   * y esta barra encima deja dos progresos distintos compitiendo ("estás en la
-   * 1 de 4" y "vas por el paso 3 de 5") sin que ninguno se termine de leer. La
-   * cadena no se corta: el link para seguir con el cobro entra en esa misma
-   * barra, en `FlowContinue`.
-   */
-  const step: FlowStepCode | null = segment.startsWith("producto")
-    ? "producto"
-    : segment.startsWith("oferta")
-      ? "oferta"
-      : segment.startsWith("cobro")
-        ? "cobro"
-        : segment.startsWith("publicar")
-          ? "publicar"
-          : null;
-
-  if (!step) return null;
-
-  const next: Record<FlowStepCode, { href: string; label: string } | null> = {
-    producto: { href: withFlow(`${base}/oferta`), label: "Continuar" },
-    oferta: { href: withFlow(`${base}/pagina`), label: "Continuar" },
-    // La página de venta no muestra esta barra, pero el paso sigue existiendo
-    // en la cadena: el link vive en el selector de pantallas.
-    pagina: { href: withFlow(`${base}/cobro`), label: "Continuar" },
-    cobro: {
-      href: withFlow(`${base}/publicar`),
-      label: cobroListo ? "Continuar" : "Seguir sin conectar",
-    },
-    // Publicar termina con el botón de publicar, no con un link.
-    publicar: null,
-  };
-
-  return <FlowBar step={step} next={next[step]} />;
 }

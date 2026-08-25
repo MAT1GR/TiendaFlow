@@ -119,6 +119,31 @@ const TEXT_FIELDS: Record<string, TextField[]> = {
     { key: "text", label: "Texto", multiline: true },
   ],
   social_proof: [{ key: "text", label: "Texto", multiline: true }],
+  para_vos_si: [
+    { key: "title", label: "Título" },
+    { key: "subtitle", label: "Subtítulo", multiline: true },
+  ],
+  vas_a_lograr: [
+    { key: "title", label: "Título", hint: "Poné el plazo real: \"En 30 días vas a lograr…\"." },
+    { key: "subtitle", label: "Subtítulo", multiline: true },
+  ],
+  urgency_bar: [
+    {
+      key: "message",
+      label: "Por qué conviene ahora",
+      hint: "Tiene que ser cierto: el precio de lanzamiento, la fecha que definiste.",
+    },
+    { key: "note", label: "Aclaración debajo", multiline: true },
+  ],
+  live_purchases: [
+    { key: "title", label: "Título" },
+    {
+      key: "empty_note",
+      label: "Qué decir mientras no haya ventas",
+      multiline: true,
+      hint: "Solo lo ves vos acá. En tu página el bloque no aparece hasta tu primera venta.",
+    },
+  ],
   video: [
     { key: "title", label: "Título" },
     { key: "url", label: "URL del video" },
@@ -271,6 +296,36 @@ const OBJECT_LISTS: Record<string, ObjectList[]> = {
         { key: "description", label: "Descripción", multiline: true },
       ],
       empty: { title: "", description: "" },
+    },
+  ],
+  /*
+   * Los dos bloques espejo llevan las dos líneas separadas a propósito.
+   *
+   * En un solo campo con un salto de línea en el medio, la segunda línea se
+   * termina comiendo: alguien escribe el golpe de identificación, le parece que
+   * ya está y sigue. Dos campos con su etiqueta hacen visible que faltaba la
+   * mitad, que es justo la mitad que hace que la persona se reconozca.
+   */
+  para_vos_si: [
+    {
+      key: "items",
+      label: "Los ítems",
+      fields: [
+        { key: "line1", label: "La situación + lo que ya intentó" },
+        { key: "line2", label: "Por qué le pasa y en qué termina", multiline: true },
+      ],
+      empty: { line1: "", line2: "" },
+    },
+  ],
+  vas_a_lograr: [
+    {
+      key: "items",
+      label: "Los ítems",
+      fields: [
+        { key: "line1", label: "La acción + el resultado" },
+        { key: "line2", label: "Sin qué dolor y con qué beneficio", multiline: true },
+      ],
+      empty: { line1: "", line2: "" },
     },
   ],
 };

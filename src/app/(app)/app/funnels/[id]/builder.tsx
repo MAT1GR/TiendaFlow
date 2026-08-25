@@ -15,6 +15,7 @@ import {
   reorderFunnelStepsAction,
   setFunnelStatusAction,
 } from "@/app/actions/funnels";
+import { AiProgress, useAiProgress } from "@/components/app/ai-progress";
 import { TermLabel } from "@/components/ui/explain";
 import { Alert, TemplateNotice } from "@/components/ui/feedback";
 import { Icon, type IconName } from "@/components/ui/icon";
@@ -78,6 +79,7 @@ export function FunnelBuilder({
   const toast = useToast();
   const [pending, startTransition] = useTransition();
   const [order, setOrder] = useState(steps.map((step) => step.id));
+  const ai = useAiProgress();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [renaming, setRenaming] = useState<FunnelStep | null>(null);
   const [diagnosis, setDiagnosis] = useState<{
@@ -124,11 +126,11 @@ export function FunnelBuilder({
   }
 
   function analyze() {
-    startTransition(async () => {
+    return ai.run("Revisando tu funnel", async () => {
       const result = await analyzeFunnelAction(funnel.id, "30d");
       if (!result.ok) {
         toast.error("No pudimos analizar el funnel", result.error);
-        return;
+        return false;
       }
       setDiagnosis({
         data: result.data.data,
@@ -169,7 +171,7 @@ export function FunnelBuilder({
           <Button variant="secondary" size="sm" icon="settings" onClick={() => setSettingsOpen(true)}>
             Ajustes
           </Button>
-          <Button variant="ai" size="sm" icon="sparkles" loading={pending} onClick={analyze}>
+          <Button variant="ai" size="sm" icon="sparkles" loading={ai.running} onClick={analyze}>
             Optimizar mi funnel
           </Button>
           {funnel.status === "published" ? (
@@ -192,6 +194,13 @@ export function FunnelBuilder({
             </Button>
           )}
         </div>
+
+        <AiProgress
+          running={ai.running}
+          progress={ai.progress}
+          label={ai.label}
+          className="mt-4"
+        />
       </Card>
 
       {blockers.length && funnel.status !== "published" ? (

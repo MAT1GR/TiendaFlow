@@ -119,9 +119,12 @@ export function NewFunnelForm({
         </div>
       </Card>
 
-      <div className="flex justify-end">
+      <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2">
+        <p className="text-[12.5px] text-ink-500">
+          Te dejamos la página armada y seguimos escribiendo lo que va adentro.
+        </p>
         <Button type="submit" size="lg" loading={pending} icon="layers">
-          Armar mi página
+          Armar y escribir mi página
         </Button>
       </div>
     </form>

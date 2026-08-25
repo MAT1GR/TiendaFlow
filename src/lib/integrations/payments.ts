@@ -440,9 +440,15 @@ const mercadoPagoProvider: PaymentProvider = {
 
 /* -------------------------------------------------------------------------- */
 
+/*
+ * El orden importa: es el que se ve en pantalla.
+ *
+ * Mercado Pago va primero porque es el que usa la enorme mayoría de los que
+ * venden acá. Poner Stripe adelante hacía que el caso normal quedara segundo.
+ */
 const PROVIDERS: Record<ProviderId, PaymentProvider> = {
-  stripe: stripeProvider,
   mercadopago: mercadoPagoProvider,
+  stripe: stripeProvider,
 };
 
 export function isProviderId(value: string): value is ProviderId {

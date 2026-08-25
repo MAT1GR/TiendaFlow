@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ProductTabs, type WorkspaceTab } from "@/app/(app)/app/productos/[id]/tabs";
-import { ProductFlowBar } from "@/components/app/flow-bar";
+import { ProductNextStep } from "@/components/app/next-step";
+import { ProgressLine } from "@/components/app/progress-line";
 import { Badge, LinkButton } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/icon";
 import { requireSession } from "@/lib/auth";
@@ -114,6 +115,29 @@ export default async function ProductWorkspaceLayout({
                 </>
               ) : null}
             </div>
+
+            {/*
+              Cuánto llevo, en un renglón. Lo que hago ahora está abajo, en la
+              barra de "lo que sigue": son dos preguntas distintas y cada una
+              tiene su lugar.
+
+              Desaparece en el Resumen, que es la pantalla que dibuja el
+              recorrido completo: ahí este renglón sería la misma información
+              comprimida, arriba de la versión larga.
+            */}
+            <div className="group-has-[[data-recorrido]]/producto:hidden">
+              <ProgressLine
+                steps={journey.steps.map((step) => ({
+                  code: step.code,
+                  title: step.title,
+                  status: step.status,
+                  state: step.state,
+                  href: step.href,
+                  required: step.required,
+                }))}
+                className="-ml-2 mt-2"
+              />
+            </div>
           </div>
 
           <div className="flex shrink-0 flex-wrap gap-2">
@@ -148,14 +172,27 @@ export default async function ProductWorkspaceLayout({
         className="group-has-[[data-fullbleed]]/producto:hidden lg:hidden"
       />
 
-      {/* Solo aparece si la persona viene encadenando los pasos de la creación.
-          Va acá y no en cada pantalla para que ninguna se quede afuera. */}
-      <ProductFlowBar
-        productId={product.id}
-        cobroListo={journey.steps.some((step) => step.code === "cobro" && step.state === "done")}
-      />
-
       {children}
+
+      {/*
+        "¿Y ahora qué?", contestado en todas las secciones.
+        Va acá abajo y no en cada pantalla para que ninguna se olvide, y se
+        esconde en el constructor de la página de venta, que ocupa el alto
+        completo de la ventana y tiene su propia barra de acciones.
+      */}
+      <div className="group-has-[[data-fullbleed]]/producto:hidden">
+        <ProductNextStep
+          steps={journey.steps.map((step) => ({
+            code: step.code,
+            title: step.title,
+            status: step.status,
+            state: step.state,
+            href: step.href,
+            required: step.required,
+          }))}
+          publicUrl={publicUrl}
+        />
+      </div>
     </div>
   );
 }

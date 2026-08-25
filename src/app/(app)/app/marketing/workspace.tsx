@@ -1,10 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useActionState, useEffect, useState, useTransition } from "react";
+import { useActionState, useEffect, useState } from "react";
 
 import { generateAdCopyAction } from "@/app/actions/ai";
 import { createCampaignAction } from "@/app/actions/settings";
+import { AiProgress, useAiProgress } from "@/components/app/ai-progress";
 import { Table, Td, Tr } from "@/components/ui/data";
 import { Explain, TermLabel } from "@/components/ui/explain";
 import { Alert, TemplateNotice } from "@/components/ui/feedback";
@@ -284,7 +285,7 @@ function CampaignModal({
 
 function AdCopyPanel({ offers }: { offers: Array<{ id: string; name: string }> }) {
   const toast = useToast();
-  const [pending, startTransition] = useTransition();
+  const ai = useAiProgress();
   const [offerId, setOfferId] = useState(offers[0]?.id ?? "");
   const [tone, setTone] = useState("directo");
   const [draft, setDraft] = useState<AdCopyDraft | null>(null);
@@ -298,11 +299,12 @@ function AdCopyPanel({ offers }: { offers: Array<{ id: string; name: string }> }
       return;
     }
     setError(null);
-    startTransition(async () => {
+
+    return ai.run("Escribiendo tus anuncios", async () => {
       const result = await generateAdCopyAction(offerId, tone);
       if (!result.ok) {
         setError(result.error);
-        return;
+        return false;
       }
       setDraft(result.data.data);
       setIsTemplate(result.data.isTemplate);
@@ -360,10 +362,17 @@ function AdCopyPanel({ offers }: { offers: Array<{ id: string; name: string }> }
               <option value="inspirador">Inspirador</option>
             </Select>
           </Field>
-          <Button variant="ai" icon="sparkles" loading={pending} onClick={generate}>
+          <Button variant="ai" icon="sparkles" loading={ai.running} onClick={generate}>
             Crear anuncio con IA
           </Button>
         </div>
+
+        <AiProgress
+          running={ai.running}
+          progress={ai.progress}
+          label={ai.label}
+          className="mt-4"
+        />
 
         {error ? (
           <Alert tone="error" className="mt-4">

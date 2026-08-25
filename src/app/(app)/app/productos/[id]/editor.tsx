@@ -10,6 +10,7 @@ import {
   deleteProductFileAction,
   updateProductAction,
 } from "@/app/actions/catalog";
+import { AiProgress, useAiProgress } from "@/components/app/ai-progress";
 import { Alert } from "@/components/ui/feedback";
 import { Icon } from "@/components/ui/icon";
 import {
@@ -56,7 +57,7 @@ export function ProductEditor({
    * saber que el link sirve antes de que salga publicada en la página de venta.
    */
   const [cover, setCover] = useState(product.cover_url ?? "");
-  const [aiPending, startAi] = useTransition();
+  const ai = useAiProgress();
 
   useEffect(() => {
     if (state?.ok) {
@@ -65,8 +66,14 @@ export function ProductEditor({
     }
   }, [state, toast, router]);
 
+  const ETIQUETA_REESCRITURA = {
+    improve: "Mejorando tu texto",
+    expand: "Ampliando tu texto",
+    shorten: "Acortando tu texto",
+  } as const;
+
   function rewrite(action: "improve" | "expand" | "shorten") {
-    startAi(async () => {
+    return ai.run(ETIQUETA_REESCRITURA[action], async () => {
       const result = await rewriteTextAction({
         text: description,
         action,
@@ -74,7 +81,7 @@ export function ProductEditor({
       });
       if (!result.ok) {
         toast.error("No pudimos reescribir el texto", result.error);
-        return;
+        return false;
       }
       setDescription(result.data.data.text);
       if (result.data.isTemplate) {
@@ -166,18 +173,20 @@ export function ProductEditor({
                   variant="ghost"
                   size="sm"
                   icon="sparkles"
-                  loading={aiPending}
+                  loading={ai.running}
                   onClick={() => rewrite("improve")}
                 >
                   Mejorar
                 </Button>
-                <Button type="button" variant="ghost" size="sm" loading={aiPending} onClick={() => rewrite("expand")}>
+                <Button type="button" variant="ghost" size="sm" loading={ai.running} onClick={() => rewrite("expand")}>
                   Ampliar
                 </Button>
-                <Button type="button" variant="ghost" size="sm" loading={aiPending} onClick={() => rewrite("shorten")}>
+                <Button type="button" variant="ghost" size="sm" loading={ai.running} onClick={() => rewrite("shorten")}>
                   Acortar
                 </Button>
               </div>
+
+              <AiProgress running={ai.running} progress={ai.progress} label={ai.label} />
 
               <Field label="Descripción corta" hint="Máximo 160 caracteres, se usa en previews.">
                 <Input

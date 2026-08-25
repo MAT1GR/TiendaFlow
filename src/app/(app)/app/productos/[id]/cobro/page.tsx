@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
 import { SectionIntro } from "@/components/app/section-intro";
+import { Icon } from "@/components/ui/icon";
+import { PaymentLogo } from "@/components/ui/payment-logos";
 import { LinkButton } from "@/components/ui/primitives";
 import { requireSession } from "@/lib/auth";
 import { listProviderStatus } from "@/lib/integrations/payments";
@@ -10,14 +12,12 @@ import { cn, formatMoney } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Cómo cobro" };
 
-const EXPLAIN: Record<string, { flag: string; blurb: string; who: string }> = {
+const EXPLAIN: Record<string, { blurb: string; who: string }> = {
   mercadopago: {
-    flag: "🇦🇷",
     blurb: "Tarjetas, débito, efectivo y cuotas en Argentina y el resto de Latinoamérica.",
     who: "Si vendés en pesos, este es el que usa casi todo el mundo.",
   },
   stripe: {
-    flag: "💳",
     blurb: "Tarjetas internacionales, en dólares o en la moneda que elijas.",
     who: "Si le vendés a gente de afuera, necesitás este.",
   },
@@ -45,17 +45,14 @@ export default async function HowIGetPaidTab({ params }: { params: Promise<{ id:
     <div className="flex flex-col gap-5">
       <SectionIntro emoji="💳" title="Cómo cobro" blurb={sectionBlurb("cobro")} />
 
-      {connected.length === 0 ? (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-5">
-          <p className="text-[15px] font-semibold text-ink-900">
-            Todavía no podés cobrar este producto
-          </p>
-          <p className="mt-1 max-w-2xl text-[13.5px] leading-relaxed text-ink-700">
-            Sin un medio de pago conectado, la persona llega hasta el final pero no puede completar
-            la compra: el pedido queda pendiente y nadie recibe lo que compró.
-          </p>
-        </div>
-      ) : (
+      {/*
+        Cuando ya puede cobrar se lo decimos con el número puesto: es la
+        confirmación concreta de que la cadena quedó cerrada. Cuando todavía no
+        conectó nada no va ningún cartel: las dos tarjetas de abajo ya dicen
+        "Sin conectar" y traen el botón. Un aviso rojo arriba repitiendo lo que
+        se ve abajo no agrega información, solo agrega alarma.
+      */}
+      {connected.length > 0 ? (
         <div className="rounded-2xl border border-accent-200 bg-accent-50/60 p-5">
           <p className="flex items-center gap-2 text-[15px] font-semibold text-ink-900">
             <span className="tf-emoji" aria-hidden="true">
@@ -69,7 +66,7 @@ export default async function HowIGetPaidTab({ params }: { params: Promise<{ id:
               : `Tenés ${connected.map((provider) => provider.name).join(" y ")} conectado. Falta ponerle precio al producto.`}
           </p>
         </div>
-      )}
+      ) : null}
 
       {/* Tarjetas grandes, una por medio de pago. La decisión es "conectá tu
           cuenta y listo": las claves y la configuración técnica viven en Pagos
@@ -86,12 +83,7 @@ export default async function HowIGetPaidTab({ params }: { params: Promise<{ id:
               )}
             >
               <div className="flex items-start justify-between gap-3">
-                <span
-                  className="tf-emoji !inline-flex size-11 shrink-0 items-center justify-center rounded-2xl bg-ink-100 !text-[22px]"
-                  aria-hidden="true"
-                >
-                  {detail?.flag ?? "💳"}
-                </span>
+                <PaymentLogo provider={provider.id} size={44} />
 
                 <span
                   className={cn(
@@ -135,10 +127,79 @@ export default async function HowIGetPaidTab({ params }: { params: Promise<{ id:
         })}
       </ul>
 
-      <p className="text-[12.5px] leading-relaxed text-ink-400">
+      <RecorridoDelDinero />
+    </div>
+  );
+}
+
+/**
+ * Adónde va la plata.
+ *
+ * Esta pantalla terminaba a media altura y dejaba media ventana en blanco, y
+ * el hueco no era solo estético: es justo la pantalla donde alguien decide
+ * entregar los datos de la cuenta donde va a entrar su dinero, y ahí el silencio
+ * se lee como que falta información.
+ *
+ * Tres pasos alcanzan, porque el mensaje es uno solo y es el que importa: la
+ * plata va de tu cliente a tu cuenta, y nosotros no estamos en el medio.
+ */
+function RecorridoDelDinero() {
+  const pasos = [
+    {
+      emoji: "🛒",
+      title: "Tu cliente paga",
+      text: "Elige su medio de pago en el checkout y confirma la compra.",
+    },
+    {
+      emoji: "🏦",
+      title: "El dinero entra a tu cuenta",
+      text: "Va directo a tu cuenta del proveedor, menos su comisión. No pasa por acá.",
+    },
+    {
+      emoji: "📊",
+      title: "TiendaFlow registra la venta",
+      text: "Le entregamos el producto, guardamos el pedido y lo sumamos a tus resultados.",
+    },
+  ];
+
+  return (
+    <section className="rounded-2xl border border-ink-200 bg-white p-5">
+      <h2 className="text-[15px] font-semibold tracking-tight text-ink-900">
+        ¿Cómo funciona el dinero?
+      </h2>
+      <p className="mt-1 text-[13px] text-ink-500">
+        Desde que alguien aprieta comprar hasta que la venta aparece en tus resultados.
+      </p>
+
+      <ol className="mt-5 grid gap-3 sm:grid-cols-3">
+        {pasos.map((paso, index) => (
+          <li key={paso.title} className="relative flex flex-col rounded-xl bg-ink-50/70 p-4">
+            {/*
+              La flecha entre pasos solo existe cuando los tres están en fila.
+              Apilados en un teléfono apuntaría hacia el costado, a la nada.
+            */}
+            {index < pasos.length - 1 ? (
+              <Icon
+                name="arrowRight"
+                size={16}
+                className="absolute -right-2.5 top-1/2 hidden -translate-y-1/2 text-ink-300 sm:block"
+                aria-hidden="true"
+              />
+            ) : null}
+
+            <span className="tf-emoji !text-[20px]" aria-hidden="true">
+              {paso.emoji}
+            </span>
+            <span className="mt-2 text-[13.5px] font-semibold text-ink-900">{paso.title}</span>
+            <span className="mt-1 text-[12.5px] leading-relaxed text-ink-500">{paso.text}</span>
+          </li>
+        ))}
+      </ol>
+
+      <p className="mt-4 border-t border-ink-100 pt-4 text-[12.5px] leading-relaxed text-ink-400">
         El dinero de tus ventas va directo a tu propia cuenta. TiendaFlow no lo toca en ningún
         momento: solo arma el cobro y registra la venta.
       </p>
-    </div>
+    </section>
   );
 }

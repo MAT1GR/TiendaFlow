@@ -5,56 +5,73 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 
 import { Icon } from "@/components/ui/icon";
-import { FLOW_PARAM, withFlow, withoutFlow } from "@/lib/product-flow";
+import { FLOW_PARAM, withoutFlow } from "@/lib/product-flow";
 
 /**
- * El paso a paso, reducido a un link.
+ * El paso siguiente, reducido a un link.
  *
- * En el resto del producto el paso a paso se muestra con una barra que dice
- * "Paso 3 de 5" y dibuja el progreso. En el constructor de la página no entra:
- * ahí la barra de arriba es el encabezado de toda la pantalla, y sumarle una
- * franja con otro progreso distinto empuja para abajo lo único que la persona
- * vino a mirar.
+ * En el resto del producto "lo que sigue" es una barra abajo de la pantalla. En
+ * el constructor de la página no entra: ahí la barra de arriba es el encabezado
+ * de toda la pantalla, el editor ocupa el alto completo de la ventana y no hay
+ * un "abajo" adonde poner nada.
  *
- * Lo que sí hace falta es no cortar la cadena: si viene encadenando la
- * creación de su producto, tiene que poder seguir sin volver al menú. Eso es
- * un link, y entra al lado de Publicar.
+ * Así que acá el paso siguiente es un botón, al lado de Publicar.
+ *
+ * Antes esto aparecía **solo** si en la URL viajaba `guia=1`, o sea únicamente
+ * si la persona venía encadenando la creación desde cero. El que entraba a
+ * editar su página desde el menú terminaba, apretaba Publicar y se quedaba sin
+ * saber qué seguía. Ahora el botón está siempre y dice adónde va; lo único que
+ * sigue atado a la marca es el "salir del paso a paso", que sin paso a paso
+ * activo no significa nada.
  */
 
-export function FlowContinue({ productId }: { productId: string }) {
+export interface FlowNext {
+  href: string;
+  /** El verbo de lo que sigue: "Conectar mis cobros", "Publicar mi producto". */
+  label: string;
+  /** Versión corta, para que entre en un teléfono. */
+  short: string;
+}
+
+export function FlowContinue({ next }: { next: FlowNext | null }) {
   return (
     <Suspense fallback={null}>
-      <FlowContinueInner productId={productId} />
+      <FlowContinueInner next={next} />
     </Suspense>
   );
 }
 
-function FlowContinueInner({ productId }: { productId: string }) {
+function FlowContinueInner({ next }: { next: FlowNext | null }) {
   const params = useSearchParams();
   const pathname = usePathname();
 
-  if (params.get(FLOW_PARAM) !== "1") return null;
+  if (!next) return null;
 
+  const enFlujo = params.get(FLOW_PARAM) === "1";
   const query = params.toString();
   const salir = withoutFlow(query ? `${pathname}?${query}` : pathname);
 
   return (
     <span className="flex shrink-0 items-center gap-2">
       {/* El separador deja claro que esto es de otra naturaleza que Guardar y
-          Publicar: no es una acción sobre la página, es el hilo del paso a paso. */}
+          Publicar: no es una acción sobre la página, es hacia dónde se sigue. */}
       <span className="h-5 w-px bg-ink-200" aria-hidden="true" />
+
+      {enFlujo ? (
+        <Link
+          href={salir}
+          className="hidden text-[12px] font-medium text-ink-400 underline-offset-2 hover:text-ink-700 hover:underline xl:inline"
+        >
+          Salir del paso a paso
+        </Link>
+      ) : null}
+
       <Link
-        href={salir}
-        className="hidden text-[12px] font-medium text-ink-400 underline-offset-2 hover:text-ink-700 hover:underline xl:inline"
-      >
-        Salir del paso a paso
-      </Link>
-      <Link
-        href={withFlow(`/app/productos/${productId}/cobro`)}
+        href={next.href}
         className="inline-flex h-8 items-center gap-1.5 rounded-full bg-emerald-600 px-3.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-emerald-700"
       >
-        <span className="hidden sm:inline">Seguir con el cobro</span>
-        <span className="sm:hidden">Seguir</span>
+        <span className="hidden sm:inline">{next.label}</span>
+        <span className="sm:hidden">{next.short}</span>
         <Icon name="arrowRight" size={14} />
       </Link>
     </span>

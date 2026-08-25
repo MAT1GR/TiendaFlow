@@ -3,6 +3,7 @@ import "server-only";
 import { cache } from "react";
 
 import { all, get } from "@/lib/db";
+import { readIdealClient } from "@/lib/ai/research";
 import { funnelPublishBlockers } from "@/lib/launch";
 import { withFlow } from "@/lib/product-flow";
 import * as repo from "@/lib/repo";
@@ -267,6 +268,7 @@ export const productJourney = cache(function productJourney(
 
   const published = funnel?.status === "published";
   const productDone = hasContent;
+  const clienteDone = Boolean(readIdealClient(workspaceId, productId));
   const offerDone = Boolean(offer && offer.price > 0);
 
   const pageIssue = !funnel
@@ -294,6 +296,23 @@ export const productJourney = cache(function productJourney(
       state: productDone ? "done" : "todo",
       href: `${base}/producto`,
       required: true,
+    },
+    /*
+     * Conocer al cliente no bloquea la venta, pero cambia todo lo que se
+     * escribe después. Va en el recorrido —y no escondido en un menú— porque
+     * si no aparece acá nadie lo encuentra hasta que ya escribió la página
+     * entera hablándole a nadie.
+     */
+    {
+      code: "cliente",
+      emoji: "🎯",
+      title: "Mi cliente",
+      status: clienteDone
+        ? "Investigado"
+        : "Opcional, pero mejora todo lo que escribe la IA después",
+      state: clienteDone ? "done" : "optional",
+      href: `${base}/cliente`,
+      required: false,
     },
     {
       code: "oferta",
@@ -384,46 +403,31 @@ export interface ProductAdvice {
 /**
  * La tarjeta "TiendaFlow recomienda".
  *
- * Una sola recomendación a la vez, siempre la más urgente. Antes de publicar
- * habla de lo que falta; después habla de lo que está pasando de verdad con las
- * visitas y las ventas.
+ * Una sola recomendación a la vez, siempre la más urgente, y **solo cuando el
+ * producto ya está a la venta**.
+ *
+ * Antes de publicar también daba consejos, y el consejo era siempre el mismo:
+ * cuál era el paso siguiente. Eso ya lo dice el recorrido, que está justo
+ * arriba y lo dice mejor —con los seis pasos, cuáles están hechos y en cuál
+ * vas—, así que la tarjeta terminaba siendo la misma frase escrita dos veces en
+ * la misma pantalla, con dos botones que llevaban al mismo lado. Cuando algo
+ * aparece duplicado, lo que se pone en duda es si son dos cosas distintas.
+ *
+ * Después de publicar sí tiene algo propio que decir: ahí ya no habla de lo que
+ * falta configurar sino de lo que está pasando de verdad con las visitas y las
+ * ventas, que es información que el recorrido no tiene.
  */
 export function productAdvice(workspaceId: string, productId: string): ProductAdvice | null {
   const context = productContext(workspaceId, productId);
   const journey = productJourney(workspaceId, productId);
   if (!context || !journey) return null;
 
+  // Todavía no vende: de esto se ocupa el recorrido, y con más detalle.
+  if (!journey.live) return null;
+
   const { offer, stats } = context;
   const base = `/app/productos/${productId}`;
 
-  /* --- Todavía no está a la venta --- */
-  if (!journey.live) {
-    const missing = journey.total - journey.completed;
-
-    if (journey.nextStep) {
-      return {
-        emoji: "💡",
-        title: missing === 1 ? "Tu producto está casi listo" : "Seguí por acá",
-        body:
-          missing === 1
-            ? `Solo falta un paso. ${journey.nextStep.status}.`
-            : `${journey.nextStep.status}. Es lo próximo del camino.`,
-        ctaLabel: "Continuar",
-        // Retoma el paso a paso donde quedó: confirma y sigue hasta publicar.
-        ctaHref: withFlow(journey.nextStep.href),
-      };
-    }
-
-    return {
-      emoji: "🚀",
-      title: "Está todo listo",
-      body: "Ya configuraste todo lo necesario. Falta publicarlo para tener tu link de venta.",
-      ctaLabel: "Publicar mi producto",
-      ctaHref: withFlow(`${base}/publicar`),
-    };
-  }
-
-  /* --- Ya está a la venta --- */
   if (stats.visits === 0) {
     return {
       emoji: "📣",

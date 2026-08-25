@@ -12,6 +12,7 @@ import { tiendaActual } from "@/lib/public-url";
 import {
   resolvePublicFunnel,
   getLandingPageByStep,
+  getLiveProof,
   getOffer,
   getProduct,
   listFunnelSteps,
@@ -80,6 +81,18 @@ export default async function PublicLandingPage({
   const checkoutHref = `/f/${slug}/checkout`;
   const pixel = getMetaPublicConfig(funnel.workspace_id);
 
+  /**
+   * Los visitantes y las compras reales de este funnel.
+   *
+   * Solo se leen si la página tiene algún bloque que los use: son dos consultas
+   * más, y la enorme mayoría de las páginas no llevan ni la barra de urgencia
+   * ni las compras en vivo.
+   */
+  const usaProof = sections.some(
+    (section) => section.type === "urgency_bar" || section.type === "live_purchases",
+  );
+  const live = usaProof ? getLiveProof(funnel.workspace_id, funnel.id) : undefined;
+
   const priceLabel = offer ? formatMoney(offer.price, offer.currency) : undefined;
   const compareLabel = offer?.compare_at_price
     ? formatMoney(offer.compare_at_price, offer.currency)
@@ -119,9 +132,10 @@ export default async function PublicLandingPage({
             <LandingSectionView
               key={section.id}
               section={section}
-                ctaHref={checkoutHref}
+              ctaHref={checkoutHref}
               priceLabel={priceLabel}
               compareLabel={compareLabel}
+              live={live}
             />
           ))
         )}

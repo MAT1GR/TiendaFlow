@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { Icon } from "@/components/ui/icon";
-import { cn } from "@/lib/utils";
+import { cn, relativeTime } from "@/lib/utils";
 
 /**
  * Renderizador de secciones de landing.
@@ -328,6 +328,77 @@ export const SECTION_LIBRARY: Array<{
     group: "Para sumar confianza",
     icon: "clock",
     defaults: { title: "La oferta cierra pronto", text: "Definí la fecha real de cierre." },
+  },
+  /*
+   * Los dos bloques espejo.
+   *
+   * Son los que más trabajan en una página de infoproducto y van casi siempre
+   * juntos: primero la persona se reconoce en el problema, después se ve del
+   * otro lado. Cada ítem son dos líneas —la situación y su consecuencia— y esa
+   * segunda línea es la diferencia entre un bullet de cuatro palabras que nadie
+   * lee y una frase donde alguien dice "soy yo".
+   */
+  {
+    type: "para_vos_si",
+    label: "Esto es para vos si…",
+    emoji: "🙋",
+    group: "Recomendadas",
+    icon: "check",
+    defaults: {
+      title: "Esto es para vos si…",
+      items: [
+        {
+          line1: "Ya intentaste arrancar por tu cuenta, pero nunca pasás del primer día",
+          line2: "porque no tenés un orden claro y terminás dejándolo para la semana que viene.",
+        },
+        {
+          line1: "Juntás tutoriales y capturas, pero cuando llega el momento no sabés cuál usar",
+          line2: "porque cada uno dice algo distinto y terminás más confundido que al principio.",
+        },
+      ],
+    },
+  },
+  {
+    type: "vas_a_lograr",
+    label: "Vas a lograr…",
+    emoji: "🎯",
+    group: "Recomendadas",
+    icon: "star",
+    defaults: {
+      title: "En 30 días vas a lograr…",
+      items: [
+        {
+          line1: "Tener tu primer resultado terminado y listo para mostrar",
+          line2: "sin improvisar sobre la marcha y con un paso a paso que podés repetir.",
+        },
+        {
+          line1: "Saber exactamente qué hacer cada vez que te sentás a trabajar en esto",
+          line2: "sin perder la mañana buscando por dónde empezar y con tiempo de sobra.",
+        },
+      ],
+    },
+  },
+  {
+    type: "urgency_bar",
+    label: "Barra de urgencia",
+    emoji: "🔥",
+    group: "Para sumar confianza",
+    icon: "clock",
+    defaults: {
+      message: "El precio de lanzamiento está por subir",
+      note: "Escribí el motivo real por el que conviene comprar hoy.",
+    },
+  },
+  {
+    type: "live_purchases",
+    label: "Compras en vivo",
+    emoji: "🔔",
+    group: "Para sumar confianza",
+    icon: "star",
+    defaults: {
+      title: "Últimas compras",
+      empty_note: "Cuando tengas tu primera venta, va a aparecer acá sola.",
+    },
   },
   {
     type: "social_proof",
@@ -702,16 +773,35 @@ function Figura({
 
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Lo que está pasando en la página ahora mismo, con datos reales.
+ *
+ * Es el único dato que un bloque no puede sacar de su propio contenido: la
+ * gente que está mirando y las compras que ya se hicieron los sabe el servidor,
+ * no el vendedor. Viaja aparte del `content` justamente por eso — nadie lo
+ * puede editar a mano, que es lo que lo hace valer.
+ *
+ * Cuando no viene (el editor, una vista previa), los bloques que dependen de él
+ * se dibujan explicando qué van a mostrar en vez de inventar un número.
+ */
+export interface LiveProofData {
+  viewers: number;
+  purchases: Array<{ name: string; place: string | null; at: string }>;
+}
+
 export function LandingSectionView({
   section,
   ctaHref,
   priceLabel,
   compareLabel,
+  live,
 }: {
   section: SectionData;
   ctaHref?: string;
   priceLabel?: string;
   compareLabel?: string;
+  /** Visitantes y compras reales del funnel. Sin esto los bloques en vivo no afirman nada. */
+  live?: LiveProofData;
   /** @deprecated El color ahora sale del tema de la página. */
   accent?: string;
 }) {
@@ -1635,6 +1725,195 @@ export function LandingSectionView({
           </p>
         </Band>
       );
+
+    /* ------------------------------------------------ los dos bloques espejo */
+
+    /*
+     * "Esto es para vos si…" y "Vas a lograr…" son el mismo bloque dado vuelta,
+     * así que comparten el renderizador. Lo único que cambia es el color de la
+     * marca de cada ítem: el problema va en gris, el resultado en el color de
+     * la marca. Puestos uno debajo del otro, ese cambio de color es lo que hace
+     * legible el antes y el después sin escribir la palabra "antes".
+     */
+    case "para_vos_si":
+    case "vas_a_lograr": {
+      const esResultado = section.type === "vas_a_lograr";
+      const items = cards(c, "items").filter((item) => item.line1 || item.line2);
+
+      return (
+        <Band tono={esResultado ? undefined : "surface"}>
+          <Titulo>
+            {str(c, "title", esResultado ? "Vas a lograr…" : "Esto es para vos si…")}
+          </Titulo>
+          {str(c, "subtitle") ? <Bajada>{str(c, "subtitle")}</Bajada> : null}
+
+          <ul className="mt-8 flex flex-col gap-3">
+            {items.map((item, index) => (
+              <li key={index}>
+                <Caja className="flex items-start gap-3.5">
+                  <span
+                    className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full"
+                    style={{
+                      backgroundColor: esResultado ? "var(--tf-accent)" : "var(--tf-line)",
+                      color: esResultado ? "var(--tf-on-accent)" : "var(--tf-muted)",
+                    }}
+                    aria-hidden="true"
+                  >
+                    <Icon name="check" size={14} />
+                  </span>
+
+                  <span className="min-w-0 flex-1">
+                    <span
+                      className="block text-[15.5px] font-bold leading-snug"
+                      style={{ color: "var(--tf-text)" }}
+                    >
+                      {item.line1}
+                    </span>
+                    {item.line2 ? (
+                      <span
+                        className="mt-1 block text-[14px] leading-relaxed"
+                        style={{ color: "var(--tf-muted)" }}
+                      >
+                        {item.line2}
+                      </span>
+                    ) : null}
+                  </span>
+                </Caja>
+              </li>
+            ))}
+          </ul>
+        </Band>
+      );
+    }
+
+    /* --------------------------------------------- urgencia y prueba en vivo */
+
+    /*
+     * La barra de urgencia dice por qué conviene hoy, y al lado —solo si
+     * realmente hay gente— cuántas personas están mirando la página en este
+     * momento. El número sale de las sesiones del funnel en la última media
+     * hora: si hay una sola, no se muestra nada. Un "1 persona está viendo"
+     * dice la verdad y resta.
+     */
+    case "urgency_bar": {
+      const mensaje = str(c, "message", "El precio de lanzamiento está por subir");
+      const viendo = live?.viewers ?? 0;
+
+      return (
+        <section className="px-5 py-4">
+          <div className="mx-auto flex w-full max-w-3xl flex-wrap items-center justify-center gap-2.5">
+            <span
+              className="inline-flex items-center gap-2 px-4 py-2 text-[13.5px] font-extrabold"
+              style={{
+                backgroundColor: "var(--tf-accent)",
+                color: "var(--tf-on-accent)",
+                borderRadius: "var(--tf-radius)",
+              }}
+            >
+              <Icon name="clock" size={15} />
+              {mensaje}
+            </span>
+
+            {viendo > 1 ? (
+              <span
+                className="inline-flex items-center gap-2 px-4 py-2 text-[13.5px] font-semibold"
+                style={{
+                  backgroundColor: "var(--tf-surface)",
+                  color: "var(--tf-muted)",
+                  borderRadius: "var(--tf-radius)",
+                }}
+              >
+                <span
+                  className="tf-latido size-2 rounded-full"
+                  style={{ backgroundColor: "var(--tf-accent)" }}
+                  aria-hidden="true"
+                />
+                {viendo} personas están viendo esta página
+              </span>
+            ) : null}
+          </div>
+
+          {str(c, "note") ? (
+            <p
+              className="mx-auto mt-2 max-w-3xl text-center text-[12.5px]"
+              style={{ color: "var(--tf-muted)" }}
+            >
+              {str(c, "note")}
+            </p>
+          ) : null}
+        </section>
+      );
+    }
+
+    /*
+     * Las compras en vivo, con las ventas que realmente ocurrieron.
+     *
+     * Sin ventas el bloque no se dibuja en la página pública: una página que
+     * nunca vendió no puede mostrar compradores. En el editor sí se dibuja, con
+     * la nota de qué va a aparecer ahí, porque si no el vendedor agrega el
+     * bloque, no ve nada y cree que está roto.
+     */
+    case "live_purchases": {
+      const compras = live?.purchases ?? [];
+
+      if (compras.length === 0) {
+        if (live) return null;
+        return (
+          <Band className="py-8">
+            <p
+              className="border border-dashed px-5 py-4 text-center text-[13.5px]"
+              style={{
+                borderColor: "var(--tf-line)",
+                color: "var(--tf-muted)",
+                borderRadius: "var(--tf-radius)",
+              }}
+            >
+              {str(c, "empty_note", "Cuando tengas tu primera venta, va a aparecer acá sola.")}
+            </p>
+          </Band>
+        );
+      }
+
+      return (
+        <Band className="py-9">
+          <Titulo>{str(c, "title", "Últimas compras")}</Titulo>
+
+          <ul className="mt-7 flex flex-col gap-2">
+            {compras.map((compra, index) => (
+              <li key={index}>
+                <Caja className="flex items-center gap-3 !py-3">
+                  <span
+                    className="grid size-9 shrink-0 place-items-center rounded-full"
+                    style={{
+                      backgroundColor: "var(--tf-accent)",
+                      color: "var(--tf-on-accent)",
+                    }}
+                    aria-hidden="true"
+                  >
+                    <Icon name="check" size={16} />
+                  </span>
+
+                  <span className="min-w-0 flex-1 text-[14px]" style={{ color: "var(--tf-text)" }}>
+                    <strong className="font-bold">{compra.name}</strong>
+                    {compra.place ? (
+                      <span style={{ color: "var(--tf-muted)" }}> · {compra.place}</span>
+                    ) : null}
+                    <span style={{ color: "var(--tf-muted)" }}> compró este producto</span>
+                  </span>
+
+                  <span
+                    className="shrink-0 text-[12px] font-semibold"
+                    style={{ color: "var(--tf-muted)" }}
+                  >
+                    {relativeTime(compra.at)}
+                  </span>
+                </Caja>
+              </li>
+            ))}
+          </ul>
+        </Band>
+      );
+    }
 
     case "video":
       return (
