@@ -115,7 +115,7 @@ export function generateProductDraft(input: ProductBriefInput): Promise<AiResult
     system: SYSTEM_BASE,
     schemaHint:
       '{ titles: string[5], subtitle, positioning, description, short_description, audience, main_problem, transformation, benefits: string[6], outline: [{chapter, summary, bullets: string[3]}], faq: [{question, answer}], bonus_ideas: string[4], offer_ideas: string[3] }',
-    maxTokens: 4000,
+    maxTokens: 9000,
     prompt: `A partir de lo que escribió el vendedor, armá la carta de ventas completa de su producto digital.
 
 Nombre que le puso: ${input.productName?.trim() || "todavía no tiene"}
@@ -435,50 +435,77 @@ export interface LandingBriefInput {
 }
 
 /**
- * Qué campos lleva cada bloque.
+ * Qué campos lleva cada sección, y con cuánto texto.
  *
- * Antes esta lista estaba escrita a mano dentro del prompt, con los 13 bloques
- * del estilo clásico numerados. Ahora que el vendedor puede elegir el estilo de
- * su página, el prompt se arma con los bloques de SU estilo: pedirle al modelo
- * bloques que la página no tiene es gastar tokens y arriesgar que devuelva
- * secciones que después hay que tirar.
+ * La extensión no es un detalle de estilo: la estructura está calibrada para
+ * ella. Una descripción de dos frases entra en su tarjeta y se lee de un golpe
+ * de vista; la misma idea en seis frases no rompe nada, pero convierte una
+ * página que se escanea en veinte segundos en un artículo que nadie termina.
+ * Por eso cada campo dice cuántas palabras espera y no solo qué va adentro.
  */
 const BLOCK_SPECS: Record<string, string> = {
-  hero: "eyebrow, headline, subheadline, cta, pills[] (3 frases cortas), social, trust",
-  stats: "items[{value, label}] (4), highlights[{title, subtitle, text}] (3)",
-  problems: "title, subtitle, items[] (3 o 4 dolores concretos, en segunda persona), closing",
-  gallery: "kicker, title, subtitle, featured_alt, images[{alt}] (6), note",
-  solution:
-    "badge, title, subtitle, text, tags[] (4), highlight, stats[{value, label}] (3), features[] (4)",
-  modules: "kicker, title, box_title, items[{title, description}] (4 a 6), metrics[{value, label}] (2)",
-  bonuses: "kicker, title, items[{name, description, badge}], footer_note",
+  announcement_bar:
+    "message (4 a 7 palabras, el motivo real por el que conviene hoy). timer_label. " +
+    "Dejá deadline VACÍO: la fecha de cierre la pone el vendedor",
+
+  hero:
+    "headline (10 a 13 palabras: el resultado concreto, con el verbo adelante) · " +
+    "subheadline (15 a 20 palabras: qué es, para quién y cómo lo consigue) · " +
+    "product_name (el nombre tal cual) · ebook_label · " +
+    "urgency_text (5 a 8 palabras, cierto: qué pasa al comprar) · " +
+    "cta (3 a 6 palabras) · trust[] (3, de 2 palabras cada uno) · viewers_note. " +
+    "Dejá VACÍOS rating_value, rating_note, savings, slots_note y deadline: son datos, " +
+    "no copy. bonuses[] va con un {name} por bono, sin precios",
+
+  bonuses:
+    "kicker (3 a 5 palabras en mayúsculas) · title (6 a 9 palabras) · " +
+    "items[{name, description}] uno por bono — name de 5 a 8 palabras, description de " +
+    "25 a 35 palabras en DOS frases: la primera dice qué es, la segunda para qué le sirve. " +
+    "Dejá value y total_value vacíos",
+
+  benefits:
+    "title (4 a 6 palabras, en pregunta) · subtitle (6 a 9 palabras) · " +
+    "items[{emoji, title, description}] EXACTAMENTE 4 — un emoji, title de 3 a 5 palabras y " +
+    "description de 20 a 28 palabras en DOS frases: qué se lleva y qué le permite hacer",
+
+  problems:
+    "title (3 a 5 palabras, en pregunta) · subtitle (10 a 14 palabras) · " +
+    "items[{title, description}] EXACTAMENTE 4 — title de 7 a 11 palabras con la situación " +
+    "en segunda persona, description de 14 a 20 palabras diciendo en qué termina y por qué. " +
+    "closing (9 a 13 palabras)",
+
+  social_proof:
+    "kicker · title (6 a 10 palabras) · question (la pregunta que abre el chat, 6 a 9 " +
+    "palabras) · closing_reply. Dejá items[] y stats[] VACÍOS: los testimonios los carga el " +
+    "vendedor con lo que realmente le escribieron",
+
   pricing:
-    "title, badge, product_name, subtitle, price_label, compare_label, note, includes[] (6), cta, trust[] (3)",
-  testimonials: "kicker, title, subtitle, items[] vacío y placeholder true",
-  guarantee: "title, text, seal, note",
-  faq: "kicker, title, items[{question, answer}] (5 preguntas reales de objeción)",
-  cta: "kicker, headline, subheadline, cta, micro, trust[] (3)",
-  footer: "brand, text, links[] (3)",
-  benefits: "title, items[] (6 resultados concretos, en segunda persona)",
+    "title (4 a 6 palabras) · subtitle (7 a 10 palabras) · today_label · " +
+    "note (5 a 8 palabras) · cta (4 a 6 palabras) · trust_note (4 a 7 palabras). " +
+    "Dejá items, total_value y savings como vienen: son precios, los pone la app",
+
   features:
-    "title, items[{title, description}] (3 pasos, del pago al primer resultado, numerados en el title)",
-  comparison:
-    "title, without_title, with_title, without_items[] (5), with_items[] (5) — en espejo, punto por punto",
-  countdown: "title, text (sin inventar una fecha: decile al vendedor que ponga la suya)",
-  para_vos_si:
-    'title ("Esto es para vos si…"), items[{line1, line2}] (5) — line1: situación real + lo que ya intentó y falló; line2: por qué le pasa y en qué termina. Dos líneas, siempre las dos',
-  vas_a_lograr:
-    'title ("En 30 días vas a lograr…", con el plazo real), items[{line1, line2}] (5) — line1: acción + resultado concreto; line2: sin qué dolor y con qué beneficio. En espejo con para_vos_si',
-  urgency_bar:
-    "message (por qué conviene ahora, motivo verdadero: el precio de lanzamiento, el cierre que definió el vendedor), note (opcional, 60 caracteres) — sin cupos ni cantidades inventadas",
-  live_purchases:
-    "title, empty_note (qué se muestra mientras todavía no hay ventas). No escribas compradores: los pone la app con las ventas reales",
-  headline: "text",
-  subheadline: "text",
-  mockup: "title, caption",
-  social_proof: "text, placeholder true",
-  video: "title, url vacío",
-  image: "alt, url vacío",
+    "title (3 a 6 palabras) · subtitle (4 a 6 palabras) · " +
+    "items[{title, description}] EXACTAMENTE 3 — title \"Paso 1/2/3\", description de 12 a 18 " +
+    "palabras en UNA frase con la acción concreta de ese paso",
+
+  guarantee:
+    "title (4 a 7 palabras) · text (28 a 38 palabras en DOS frases: qué puede hacer si no le " +
+    "sirve y qué le devuelven) · seal (4 a 7 palabras)",
+
+  faq:
+    "title · subtitle (3 a 5 palabras) · items[{question, answer}] EXACTAMENTE 5 — question " +
+    "de 7 a 12 palabras con la objeción tal como la pensaría, answer de 25 a 35 palabras en " +
+    "DOS frases: la primera contesta y la segunda saca la duda que queda atrás",
+
+  cta:
+    "headline (9 a 13 palabras: comprar hoy + el dolor que deja de tener) · " +
+    "bonus_note (3 a 6 palabras) · cta (3 a 6 palabras) · trust[] (2, de 2 palabras). " +
+    "Dejá savings vacío. bonuses[] con un {name} por bono",
+
+  footer: "brand (el nombre del negocio en mayúsculas) · text (una línea de copyright)",
+
+  sticky_cta: "timer_label · pack_label (3 a 5 palabras en mayúsculas) · cta (2 a 4 palabras)",
 };
 
 export function generateLandingDraft(input: LandingBriefInput): Promise<AiResult<LandingDraft>> {
@@ -570,72 +597,70 @@ ${input.bonuses
 ${input.guarantee ? `Garantía: ${input.guarantee}` : ""}
 ${
   input.hasCover
-    ? "Portada: el vendedor cargó la imagen de su producto. Aparece sola en el encabezado, en la presentación, en la tarjeta de precio y en el último llamado. No escribas URLs ni describas la imagen: ya está puesta."
-    : "Portada: todavía no cargó ninguna imagen. La página va a salir sin fotos, así que el texto tiene que sostenerse solo — más razón para que sea corto y con listas."
+    ? "Portada: el vendedor cargó la imagen de su producto. Va sola en el encabezado, a media columna al lado de la tarjeta de precio. No escribas URLs ni describas la imagen: ya está puesta."
+    : "Portada: todavía no cargó ninguna imagen. El encabezado va a salir con un hueco en vez de la portada, así que el texto tiene que sostenerse solo."
 }
 
-ESTO ES DISEÑO, NO UN ARTÍCULO
-Una landing se escanea de arriba abajo en veinte segundos, casi siempre en un
-teléfono. Lo que convierte es la composición: títulos cortos, bullets, números,
-tarjetas, aire entre secciones y una imagen que se entienda de un vistazo.
-Nunca escribas bloques de texto. Cada sección tiene que poder leerse de un
-golpe de vista. Si dudás entre una frase más y una frase menos, va la de menos.
+ESTO ES UNA PÁGINA, NO UN ARTÍCULO
+Se escanea de arriba abajo en veinte segundos, casi siempre en un teléfono. Lo
+que convierte es la composición: títulos cortos, tarjetas, listas, números y aire
+entre secciones. Nunca escribas bloques de texto corridos.
 
-CADA SECCIÓN RESPONDE UNA PREGUNTA. UNA SOLA.
-· hero — ¿Qué es esto y qué consigo?${input.hasCover ? " (el titular comparte el ancho con la portada: dos líneas como máximo)" : ""}
-· problems — ¿Por qué lo necesito?
-· solution — ¿Cómo me ayuda?
-· modules — ¿Qué voy a recibir?
-· bonuses — ¿Qué más obtengo?
-· pricing — ¿Por qué me conviene comprarlo ahora?
-· testimonials / guarantee — ¿Por qué debería confiar?
-· faq — ¿Qué dudas me quedan?
-· cta — el último empujón.
-Si una idea ya se dijo en otra sección, no se repite: se corta.
-
-Devolvé EXACTAMENTE estos ${bloques.length} bloques, en este orden y con estos campos.
-Ni uno más: no agregues secciones para ocupar espacio.
+LA ESTRUCTURA ES SIEMPRE LA MISMA
+Todas las páginas tienen estas ${bloques.length} secciones, en este orden. No es
+una sugerencia: es la página. No agregues, no saques y no reordenes.
 
 ${bloques.map((tipo, i) => `${i + 1}. ${tipo} — ${BLOCK_SPECS[tipo] ?? "los campos que corresponda"}`).join("\n")}
 
-LONGITUD — la regla que más se incumple, leela dos veces:
-· Escribí CORTO. Si una frase dice lo mismo con la mitad de las palabras, va con
-  la mitad. Preferí punto antes que coma.
-· Una idea por campo. Nada de encadenar con "y además", "también", "por si fuera poco".
-· Contá los caracteres antes de devolver. Máximos por campo:
-  - headline / title / box_title: 60 caracteres.
-  - subheadline / subtitle / promise: 100 caracteres.
-  - eyebrow / kicker / badge / seal / price_label / compare_label: 30 caracteres.
-  - cta: 25 caracteres.
-  - pills, tags, features, includes, trust, links: 35 caracteres cada uno.
-  - items de "problems": 90 caracteres cada uno, una sola frase.
-  - closing de "problems", micro de "cta", note, footer_note, social: 90 caracteres.
-  - description de "modules" y "bonuses", title de "highlights": 110 caracteres.
-  - text de "solution", "guarantee" y "highlights": 200 caracteres.
-  - question de "faq": 60 caracteres. answer de "faq": 160 caracteres, dos frases máximo.
-  - label de "stats" y "metrics": una o dos palabras. value: 4 caracteres.
-· Sin adjetivos de relleno: "increíble", "revolucionario", "único en su tipo",
-  "la mejor herramienta del mercado". Si se puede borrar sin perder sentido, se borra.
-· Si te falta contenido para llenar un campo, dejalo corto. Nunca lo estires.
+LA EXTENSIÓN ES PARTE DE LA ESTRUCTURA
+Cada campo de arriba dice cuántas palabras espera. Respetalo: el diseño está
+calibrado para esa densidad. Contá las palabras antes de devolver.
+· Donde dice DOS frases, van dos. Ni una ni tres.
+· Donde dice EXACTAMENTE 4, van cuatro. No tres porque se te acabaron las ideas
+  ni cinco porque te sobró una.
+· Un campo por debajo del mínimo deja la tarjeta vacía; uno por encima del
+  máximo la desborda y la página deja de parecerse a sí misma.
+· Si te falta contenido real para llegar al mínimo, escribí sobre otro ángulo
+  del mismo producto. No estires con adjetivos.
+En total, la página entera tiene que quedar entre 900 y 1.200 palabras.
 
-Reglas:
-· Cada headline tiene que ser específico y hablarle a esa audiencia, no genérico.
-· En "problems" escribí dolores que la persona reconozca como propios, no categorías.
-  Tres o cuatro, no más: son tarjetas, no una lista de lamentos.
-· En "faq" van cinco preguntas: las que frenan la compra, no las decorativas.
+CADA SECCIÓN RESPONDE UNA PREGUNTA. UNA SOLA.
+· announcement_bar — ¿por qué leer esto ahora?
+· hero — ¿qué es, cuánto sale y qué me llevo?
+· bonuses — ¿qué más entra además del producto?
+· benefits — ¿qué hay adentro?
+· problems — ¿por qué me hace falta? (tiene que reconocerse)
+· social_proof — ¿a otros como yo les sirvió?
+· pricing — ¿cuánto es todo junto?
+· features — ¿cómo lo uso?
+· guarantee — ¿qué pasa si no me sirve?
+· faq — ¿qué dudas me quedan?
+· cta — el último empujón.
+Si una idea ya se dijo en otra sección, no se repite: se corta.
+
+CÓMO SE ESCRIBE
+· Voseo rioplatense, en segunda persona. Hablale a UNA persona.
+· El verbo adelante: "Estandarizá tu preparación" antes que "La estandarización
+  de tu preparación".
+· En "problems" van dolores que la persona reconozca como propios, escritos como
+  los pensaría ella, no como los describiría un vendedor.
+· En "faq" van las cinco preguntas que frenan la compra, no las decorativas.
+· Sin adjetivos de relleno: "increíble", "revolucionario", "único en su tipo".
+  Si se puede borrar sin perder sentido, se borra.
+
+LO QUE NO PODÉS ESCRIBIR
+· LOS CAMPOS QUE SON DATOS VAN VACÍOS, no con un ejemplo verosímil. Un puntaje
+  ("4,9"), una cantidad de ventas ("500+"), un valor tachado, una cantidad de
+  cupos o una fecha de cierre son afirmaciones sobre el mundo, no copy. Si el
+  vendedor no las escribió, no existen. Los completa él desde el panel.
 · PROHIBIDO inventar cantidades de personas, alumnos, ventas, descargas, años de
-  experiencia o porcentajes de resultados. Nada de "+1.500 personas ya lo usan",
-  "el 97% lo logra" ni "miles de clientes". Si el dato no está más arriba, NO EXISTE
-  y no se escribe. Esto vale para TODOS los campos, incluido "social".
-· El campo "social" describe qué es el material (por ejemplo "Material digital para
-  consultar siempre"), nunca cuánta gente lo compró.
-· Los números de "stats" y "metrics" tienen que salir de los datos de arriba. Si no
-  tenés un número real, usá algo verificable como "100%" digital, "24/7" de acceso o
-  la cantidad de beneficios y bonos que te pasé.
-· NUNCA inventes testimonios: "testimonials" va con items vacío y placeholder en true.
-· No escribas URLs ni rutas de imágenes en ningún campo: las imágenes las pone la app.
+  experiencia o porcentajes de resultados. Nada de "+1.500 personas ya lo usan"
+  ni "el 97% lo logra". Si el dato no está más arriba, NO EXISTE.
+· NUNCA inventes testimonios. "social_proof" va con items[] y stats[] vacíos.
+  Un testimonio falso es un problema legal, no de copy.
+· No escribas URLs ni rutas de imágenes: las imágenes las pone la app.
 · No nombres medios de pago concretos: no sabés cuál tiene configurado.
-· Escribí en voseo rioplatense.
+· No prometas resultados garantizados ni plazos que el vendedor no definió.
 
 ${playbook("pagina", "items", "titulares")}`,
     fallback: (): LandingDraft => ({ sections: base }),

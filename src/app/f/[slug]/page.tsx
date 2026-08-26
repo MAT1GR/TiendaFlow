@@ -18,7 +18,7 @@ import {
   listFunnelSteps,
   listLandingSections,
 } from "@/lib/repo";
-import { formatMoney, parseJson, toLines } from "@/lib/utils";
+import { cn, formatMoney, parseJson, toLines } from "@/lib/utils";
 
 export async function generateMetadata({
   params,
@@ -93,6 +93,17 @@ export default async function PublicLandingPage({
   );
   const live = usaProof ? getLiveProof(funnel.workspace_id, funnel.id) : undefined;
 
+  /*
+   * La barra de compra fija de abajo, o la del bloque. Nunca las dos.
+   *
+   * Esta página ponía sola un botón fijo en celular. Desde que existe el bloque
+   * "botón que te sigue" —que el vendedor coloca donde quiere y se ve también
+   * en computadora— tener las dos daba dos barras apiladas en el teléfono, una
+   * tapando a la otra. Si la página trae la suya, manda la suya.
+   */
+  const barraAutomatica =
+    Boolean(offer) && !sections.some((section) => section.type === "sticky_cta");
+
   const priceLabel = offer ? formatMoney(offer.price, offer.currency) : undefined;
   const compareLabel = offer?.compare_at_price
     ? formatMoney(offer.compare_at_price, offer.currency)
@@ -117,7 +128,7 @@ export default async function PublicLandingPage({
         página se ve bien acá a pantalla completa y adentro de la vista previa
         del editor, que es apenas una columna de 390px.
       */}
-      <main className="@container pb-24" style={themeVars(theme)}>
+      <main className={cn("@container", barraAutomatica && "pb-24")} style={themeVars(theme)}>
         {sections.length === 0 ? (
           <FallbackLanding
             title={offer?.headline ?? product?.name ?? funnel.name}
@@ -142,7 +153,7 @@ export default async function PublicLandingPage({
       </main>
 
       {/* CTA fijo en mobile: la mayor parte del tráfico de Meta llega desde el celular. */}
-      {offer ? (
+      {barraAutomatica && offer ? (
         <div
           className="fixed inset-x-0 bottom-0 z-40 border-t p-3 backdrop-blur-md sm:hidden"
           style={{ ...themeVars(theme), borderColor: "var(--tf-line)" }}

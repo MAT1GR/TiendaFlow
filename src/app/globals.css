@@ -303,6 +303,88 @@
   animation: tf-puntos 1.4s steps(1, end) infinite;
 }
 
+/* -------------------------------------------------------------------------- */
+/* El botón de las landings                                                    */
+/* -------------------------------------------------------------------------- */
+
+/* Tres estilos de botón, un solo componente.
+   El tema publica `--tf-btn-*` (ver `theme.ts`) y el botón las consume: así una
+   plantilla con pastilla de relieve y otra con brillo comparten renderizador y
+   se ven distintas, que es lo que hace que una página se reconozca. */
+.tf-cta {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--tf-btn-radius, var(--tf-radius, 16px));
+  box-shadow: var(--tf-btn-shadow, none);
+  letter-spacing: var(--tf-btn-tracking, 0.01em);
+  text-transform: var(--tf-btn-case, none);
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+/* Se hunde exactamente lo que mide su sombra: el botón se apoya en la página en
+   vez de flotar sobre ella. En el estilo sólido `--tf-btn-lift` es 0 y esto no
+   hace nada. */
+.tf-cta:active {
+  transform: translateY(var(--tf-btn-lift, 0px));
+  box-shadow: none;
+}
+
+/* El brillo que cruza el botón cada cuatro segundos. Está siempre en el DOM y
+   lo que cambia es su opacidad: sin un pseudo-elemento condicional por estilo,
+   y con `--tf-btn-shine: 0` no se ve nada. */
+@keyframes tf-brillo {
+  0% {
+    transform: translateX(-160%) skewX(-25deg);
+  }
+  22%,
+  100% {
+    transform: translateX(320%) skewX(-25deg);
+  }
+}
+
+.tf-cta::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: 45%;
+  pointer-events: none;
+  opacity: var(--tf-btn-shine, 0);
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.28), transparent);
+  animation: tf-brillo 4s ease-in-out infinite;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Carrusel de testimonios                                                     */
+/* -------------------------------------------------------------------------- */
+
+/* Deslizable de verdad, no una animación en bucle.
+   La referencia lo resolvía con un `@keyframes` que corría la tira sola cada
+   seis segundos: se ve bien y es inusable, porque no podés parar a leer el que
+   te interesa ni volver al anterior. Con scroll-snap el que decide es el que
+   lee, funciona con el dedo, con la rueda y con el teclado, y no hace falta
+   una línea de JavaScript. */
+.tf-carrusel {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 1px;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.tf-carrusel::-webkit-scrollbar {
+  display: none;
+}
+
+.tf-carrusel > * {
+  flex: 0 0 min(100%, 22rem);
+  scroll-snap-align: center;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

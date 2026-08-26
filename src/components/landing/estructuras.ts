@@ -1,150 +1,95 @@
 /**
- * Los estilos de página.
+ * La estructura de una página de venta.
  *
- * Una página de venta no es una sola cosa. La misma oferta necesita un orden
- * distinto según a quién le llega: alguien que viene de un anuncio frío no
- * arranca leyendo el precio, y alguien que ya te conoce no necesita que le
- * expliques el problema durante tres pantallas.
+ * Es una sola y es siempre la misma. No hay estilos alternativos ni plantillas
+ * a elegir: toda página que sale de TiendaFlow tiene estos trece bloques, en
+ * este orden, con la misma densidad de texto en cada campo. Lo único que cambia
+ * de una página a otra es el contenido — el producto, el precio, los bonos, los
+ * dolores de esa audiencia.
  *
- * Cada estilo es un orden de bloques, no un diseño aparte. Los bloques son los
- * mismos de siempre y los colores los pone el tema: acá lo único que cambia es
- * qué se muestra y en qué secuencia. Por eso cambiar de estilo no rompe nada de
- * lo que el vendedor ya escribió — los bloques que tenía se reordenan, los que
- * faltan se agregan y los que sobran quedan al final.
+ * La decisión de fondo es que elegir la estructura no es trabajo del vendedor.
+ * Un selector con ocho órdenes distintos le pide que adivine cuál convierte, y
+ * la respuesta correcta ya se sabe: es esta. Está calcada de una página de
+ * infoproducto que vende, y su orden responde una objeción por sección, en el
+ * orden en que aparecen cuando alguien llega desde un anuncio:
+ *
+ *   1. announcement_bar — hay una razón para leer esto ahora.
+ *   2. hero            — qué es, cuánto sale y qué me llevo. Todo junto, arriba.
+ *   3. bonuses         — además del producto, esto otro.
+ *   4. benefits        — qué hay adentro.
+ *   5. problems        — por qué me hace falta (me reconozco).
+ *   6. social_proof    — a otros como yo les sirvió.
+ *   7. pricing         — la cuenta completa, sobre fondo oscuro.
+ *   8. features        — cómo lo uso, en tres pasos.
+ *   9. guarantee       — qué pasa si no me sirve.
+ *  10. faq             — las cinco dudas que frenan la compra.
+ *  11. cta             — el último empujón, con el precio de nuevo.
+ *  12. footer          — legales.
+ *  13. sticky_cta      — el botón que sigue al que lee.
+ *
+ * El precio aparece cuatro veces (hero, pricing, cta, sticky) y los bonos tres.
+ * No es repetición por descuido: en una página que se lee en diagonal, la
+ * oferta tiene que estar visible en cualquier punto donde alguien decida.
  */
 
 export interface LandingLayout {
   id: string;
   label: string;
-  /** Una línea que diga para qué caso sirve. Sin jerga. */
+  /** Una línea que diga qué hace la página. Sin jerga. */
   blurb: string;
   structure: readonly string[];
+  /** El preset de `theme.ts` con el que se dibuja. */
+  preset: string;
 }
 
+export const LANDING_LAYOUT: LandingLayout = {
+  id: "venta_directa",
+  label: "Venta directa",
+  blurb: "La estructura completa: oferta arriba, prueba en el medio y la cuenta al final.",
+  preset: "venta",
+  structure: [
+    "announcement_bar",
+    "hero",
+    "bonuses",
+    "benefits",
+    "problems",
+    "social_proof",
+    "pricing",
+    "features",
+    "guarantee",
+    "faq",
+    "cta",
+    "footer",
+    "sticky_cta",
+  ],
+};
+
 /**
- * Ningún estilo arranca con bloques de relleno.
- *
- * "Los números de tu oferta" y la galería de seis huecos salían en la página
- * clásica aunque el vendedor no tuviera ni un número real ni una sola imagen
- * cargada, y una página con seis rectángulos grises y un "100% digital" se lee
- * como plantilla, no como oferta. Siguen en la biblioteca de bloques para el
- * que los quiera: lo que cambia es que ya no vienen puestos por defecto.
- *
- * Cada bloque de esta lista responde una pregunta del que está leyendo:
- * qué es y qué consigo (hero) · por qué lo necesito (problems) · cómo me ayuda
- * (solution) · qué voy a recibir (modules) · qué más obtengo (bonuses) · por
- * qué conviene ahora (pricing) · por qué te creo (testimonials, guarantee) ·
- * qué dudas me quedan (faq) · y el último empujón (cta).
+ * Sigue exportándose como lista porque el editor la recorre para dibujar el
+ * panel, y porque tener el tipo en plural deja la puerta abierta sin obligar a
+ * nadie a elegir hoy.
  */
-export const LANDING_LAYOUTS: LandingLayout[] = [
-  {
-    id: "clasica",
-    label: "Clásica",
-    blurb: "El recorrido completo: problema, solución, prueba y precio.",
-    structure: [
-      "hero",
-      "problems",
-      "solution",
-      "modules",
-      "bonuses",
-      "pricing",
-      "testimonials",
-      "guarantee",
-      "faq",
-      "cta",
-      "footer",
-    ],
-  },
-  {
-    id: "lanzamiento",
-    label: "Lanzamiento",
-    blurb: "Con contador y precio arriba. Para una promo con fecha de cierre.",
-    structure: [
-      "countdown",
-      "hero",
-      "problems",
-      "benefits",
-      "pricing",
-      "bonuses",
-      "comparison",
-      "testimonials",
-      "guarantee",
-      "faq",
-      "cta",
-      "footer",
-    ],
-  },
-  /*
-   * El orden de una página de infoproducto que ya vende.
-   *
-   * No es una variante estética de la clásica: cambia lo que hace la página. En
-   * la clásica el vendedor explica el problema y después su solución; acá la
-   * persona primero se reconoce ("esto es para vos si…") y después se ve del
-   * otro lado ("en 30 días vas a lograr…"), y recién ahí aparece el producto.
-   * Es el orden que usan las páginas de ebooks y cursos de precio bajo, donde
-   * el que llega viene de un anuncio y decide en veinte segundos.
-   *
-   * La barra de urgencia va arriba de todo y las compras en vivo justo antes
-   * del precio, que es donde la duda pesa más. Las dos se alimentan de datos
-   * reales del funnel: si no hay gente mirando ni ventas hechas, no dicen nada.
-   */
-  {
-    id: "infoproducto",
-    label: "Infoproducto",
-    blurb: "Para ebooks y cursos de precio bajo. La persona se reconoce, se ve del otro lado y compra.",
-    structure: [
-      "urgency_bar",
-      "hero",
-      "para_vos_si",
-      "vas_a_lograr",
-      "bonuses",
-      "solution",
-      "modules",
-      "live_purchases",
-      "pricing",
-      "guarantee",
-      "testimonials",
-      "faq",
-      "cta",
-      "footer",
-    ],
-  },
-  {
-    id: "express",
-    label: "Express",
-    blurb: "Corta y al grano. Para gente que ya te conoce.",
-    structure: [
-      "hero",
-      "problems",
-      "solution",
-      "benefits",
-      "pricing",
-      "guarantee",
-      "faq",
-      "cta",
-      "footer",
-    ],
-  },
-];
+export const LANDING_LAYOUTS: LandingLayout[] = [LANDING_LAYOUT];
 
-export const DEFAULT_LAYOUT = LANDING_LAYOUTS[0];
+export const DEFAULT_LAYOUT = LANDING_LAYOUT;
 
-/** El estilo con ese id, o el clásico si el id no existe (o es de otra versión). */
-export function findLayout(id: unknown): LandingLayout {
-  return LANDING_LAYOUTS.find((layout) => layout.id === id) ?? DEFAULT_LAYOUT;
+/** Siempre la misma. El id se acepta por compatibilidad con páginas viejas. */
+export function findLayout(_id?: unknown): LandingLayout {
+  return LANDING_LAYOUT;
 }
 
 /**
- * Reordena las secciones existentes según un estilo, sin perder ninguna.
+ * Reordena las secciones existentes según la estructura, sin perder ninguna.
  *
  * Tres reglas, en este orden:
  *
- *  1. Los bloques que el estilo pide y el vendedor ya tiene se reubican con su
- *     contenido intacto. Si tenía dos del mismo tipo, van los dos.
- *  2. Los que el estilo pide y no existen se crean con su contenido de ejemplo,
- *     igual que si los hubiera agregado a mano.
- *  3. Los que tenía y el estilo no incluye NO se borran: quedan al final. Un
- *     cambio de estilo no puede hacer desaparecer texto que alguien escribió.
+ *  1. Los bloques que la estructura pide y el vendedor ya tiene se reubican con
+ *     su contenido intacto. Si tenía dos del mismo tipo, van los dos.
+ *  2. Los que la estructura pide y no existen se crean con su contenido de
+ *     ejemplo, igual que si los hubiera agregado a mano.
+ *  3. Los que tenía y la estructura no incluye NO se borran: quedan al final.
+ *     Una página armada con una versión anterior de la app no puede perder
+ *     texto que alguien escribió solo porque cambió el orden canónico.
  */
 export function applyLayout<T extends { type: string }>(
   sections: T[],
@@ -169,7 +114,7 @@ export function applyLayout<T extends { type: string }>(
     }
   }
 
-  // Lo que el estilo no contempla va al final, en el orden original.
+  // Lo que la estructura no contempla va al final, en el orden original.
   for (const section of sections) {
     if (porTipo.has(section.type)) resultado.push(section);
   }

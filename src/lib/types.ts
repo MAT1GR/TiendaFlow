@@ -57,7 +57,23 @@ export type LandingSectionType =
   | "vas_a_lograr"
   /* Urgencia y prueba social en vivo, alimentadas con datos reales del funnel. */
   | "urgency_bar"
-  | "live_purchases";
+  | "live_purchases"
+  /*
+   * Los bloques de las plantillas maestras.
+   *
+   * Salieron de reproducir páginas de infoproducto que ya venden y que no se
+   * podían armar con lo que había: la tabla que suma el valor del pack, los
+   * planes en columnas, la tarjeta de quién escribió el material, las páginas
+   * reales del interior, las capturas de las reseñas, el botón que sigue al que
+   * lee y la banda de aviso con la fecha de hoy.
+   */
+  | "pack"
+  | "plans"
+  | "author"
+  | "peek"
+  | "proof_shots"
+  | "sticky_cta"
+  | "promo_banner";
 
 export type IntegrationProvider =
   | "meta"

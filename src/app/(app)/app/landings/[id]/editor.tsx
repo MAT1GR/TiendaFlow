@@ -17,8 +17,8 @@ import { useAiProgress } from "@/components/app/ai-progress";
 import { PantallaSelector } from "@/components/app/experience-steps";
 import { FlowContinue, type FlowNext } from "@/components/app/flow-continue";
 import { LandingSectionView, SECTION_LIBRARY, type SectionData } from "@/components/landing/blocks";
-import { applyLayout, type LandingLayout } from "@/components/landing/estructuras";
-import { readTheme, themeVars, type LandingTheme } from "@/components/landing/theme";
+import { LANDING_LAYOUT, applyLayout, type LandingLayout } from "@/components/landing/estructuras";
+import { findPreset, readTheme, themeVars, type LandingTheme } from "@/components/landing/theme";
 import { Alert, TemplateNotice } from "@/components/ui/feedback";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { Badge, Button, Drawer, LinkButton, Modal, useToast } from "@/components/ui/primitives";
@@ -109,6 +109,18 @@ export function LandingEditor({
   // sin guardar ni recargar, que es la única forma de elegir bien un color.
   const [theme, setTheme] = useState<LandingTheme>(() => readTheme(page.theme));
 
+  /*
+   * Cuántas secciones de la estructura no están en la página.
+   *
+   * Una página creada con este editor las tiene todas desde el minuto cero; las
+   * que faltan son de páginas armadas antes de que la estructura fuera única.
+   * El panel de diseño lo usa para ofrecer completarlas, y cuando no falta
+   * ninguna no dice nada: un aviso permanente que no se puede resolver es ruido.
+   */
+  const faltantes = LANDING_LAYOUT.structure.filter(
+    (type) => !sections.some((section) => section.type === type),
+  ).length;
+
   const selected = sections.find((section) => section.id === selectedId) ?? null;
   const selectedBlock = selected
     ? SECTION_LIBRARY.find((item) => item.type === selected.type)
@@ -196,25 +208,40 @@ export function LandingEditor({
   }
 
   /**
-   * Cambia el estilo de la página.
+   * Cambia el estilo o la plantilla de la página.
    *
-   * Reordena lo que ya hay, agrega los bloques que el estilo pide y deja al
-   * final los que no contempla. Nada de lo que el vendedor escribió se pierde:
-   * si el estilo nuevo no usa un bloque, ese bloque baja, no desaparece.
+   * Reordena lo que ya hay, agrega los bloques que pide y deja al final los que
+   * no contempla. Nada de lo que el vendedor escribió se pierde: si el estilo
+   * nuevo no usa un bloque, ese bloque baja, no desaparece.
+   *
+   * Cuando es una plantilla —y no solo un orden— viene además con su paleta,
+   * su tipografía y su botón. Es a propósito: la mitad de lo que hace
+   * reconocible a una página de venta no es qué bloques tiene sino cómo se ven,
+   * y aplicar la estructura sin la identidad da una página que se parece a la
+   * referencia en el esqueleto y a ninguna otra cosa en la pantalla.
    */
   function aplicarEstilo(layout: LandingLayout) {
     const antes = sections.length;
     const next = applyLayout(sections, layout, nuevaSeccion);
     mutate(next);
-    setTheme((current) => ({ ...current, layout: layout.id }));
+
+    setTheme((current) =>
+      layout.preset
+        ? { ...findPreset(layout.preset), layout: layout.id }
+        : { ...current, layout: layout.id },
+    );
     setDirty(true);
 
     const agregados = next.length - antes;
+    const reordenado = agregados
+      ? `Reordenamos tu página y sumamos ${agregados} ${agregados === 1 ? "bloque" : "bloques"}. Revisalos antes de publicar.`
+      : "Reordenamos los bloques que ya tenías.";
+
     toast.toast({
-      title: `Estilo ${layout.label}`,
-      description: agregados
-        ? `Reordenamos tu página y sumamos ${agregados} ${agregados === 1 ? "bloque" : "bloques"}. Revisalos antes de publicar.`
-        : "Reordenamos los bloques que ya tenías.",
+      title: layout.preset ? `Plantilla ${layout.label}` : `Estilo ${layout.label}`,
+      description: layout.preset
+        ? `${reordenado} También aplicamos su paleta y su tipografía: podés cambiarlas abajo.`
+        : reordenado,
       tone: "info",
     });
   }
@@ -615,6 +642,7 @@ export function LandingEditor({
         }
       >
         <DesignPanel
+          faltantes={faltantes}
           theme={theme}
           onChange={(next) => {
             setTheme(next);
@@ -925,6 +953,7 @@ function Preview({
           section={section}
           priceLabel={offer?.priceLabel}
           compareLabel={offer?.compareLabel ?? undefined}
+          editor
         />
       </button>
     ))

@@ -1,5 +1,29 @@
 import type { ReactNode } from "react";
 
+import { LANDING_LAYOUT } from "@/components/landing/estructuras";
+import {
+  Bajada,
+  Band,
+  Caja,
+  Cta,
+  Figura,
+  Hueco,
+  Kicker,
+  Multiline,
+  Numero,
+  Pastilla,
+  Precio,
+  Titulo,
+  cards,
+  lines,
+  str,
+  type LiveProofData,
+} from "@/components/landing/piezas";
+import {
+  SECCIONES_CANONICAS,
+  SeccionCanonica,
+} from "@/components/landing/secciones";
+import { FechaDeHoy, Reloj } from "@/components/landing/reloj";
 import { Icon } from "@/components/ui/icon";
 import { cn, relativeTime } from "@/lib/utils";
 
@@ -27,7 +51,7 @@ export const SECTION_LIBRARY: Array<{
   label: string;
   /** El emoji con el que se lo reconoce en la lista de secciones. */
   emoji: string;
-  group: "Recomendadas" | "Para sumar confianza" | "Imágenes y video" | "Texto suelto";
+  group: "La estructura" | "Bloques sueltos";
   icon: Parameters<typeof Icon>[0]["name"];
   defaults: Record<string, unknown>;
 }> = [
@@ -36,25 +60,35 @@ export const SECTION_LIBRARY: Array<{
     type: "hero",
     label: "Encabezado",
     emoji: "🎯",
-    group: "Recomendadas",
+    group: "La estructura",
     icon: "star",
     defaults: {
-      eyebrow: "PARA QUIENES…",
-      headline: "El resultado que promete tu producto",
-      subheadline: "Una línea que explique cómo lo consigue, y para quién es.",
-      cta: "Quiero empezar",
+      headline: "El resultado concreto que consigue quien compra esto",
+      subheadline:
+        "Una línea que diga qué es, para quién es y por qué le sirve, sin adjetivos de relleno.",
       image: "",
       image_alt: "Portada del producto",
-      pills: ["Acceso inmediato", "Pago único", "Desde cero"],
-      social: "Material descargable para consultar siempre",
-      trust: "Garantía de 7 días · Pago único · Acceso digital inmediato",
+      ebook_label: "EBOOK:",
+      product_name: "Tu producto",
+      rating_value: "",
+      rating_note: "",
+      urgency_text: "Acceso inmediato al confirmar el pago.",
+      bonuses: [],
+      savings: "",
+      slots_note: "",
+      deadline: "",
+      timer_label: "Oferta termina en",
+      expired: "La oferta cerró",
+      cta: "Quiero mi acceso",
+      trust: ["Entrega inmediata", "Pago seguro", "Garantía"],
+      viewers_note: "viendo este producto ahora",
     },
   },
   {
     type: "stats",
     label: "Los números de tu oferta",
     emoji: "🔢",
-    group: "Para sumar confianza",
+    group: "Bloques sueltos",
     icon: "chart",
     defaults: {
       items: [
@@ -76,24 +110,26 @@ export const SECTION_LIBRARY: Array<{
     type: "problems",
     label: "El problema",
     emoji: "😕",
-    group: "Recomendadas",
+    group: "La estructura",
     icon: "warning",
     defaults: {
-      title: "Querés lograrlo.",
-      subtitle: "Pero no sabés por dónde empezar.",
+      title: "¿Te sentís identificado?",
+      subtitle: "Si alguno de estos problemas te suena familiar, esto es para vos",
       items: [
-        "Guardás ideas por todos lados y cuando llega el momento no sabés cuál usar.",
-        "Improvisás sobre la marcha y el resultado nunca se parece a lo que imaginabas.",
-        "Creés que necesitás experiencia o herramientas caras para lograr algo bueno.",
+        {
+          title: "La situación que vive hoy",
+          description:
+            "Una o dos frases donde se reconozca: qué hace, en qué termina y por qué le pasa.",
+        },
       ],
-      closing: "El problema no es tu capacidad.\nEs empezar sin una referencia clara.",
+      closing: 'Si respondiste "sí" a alguna de estas… tenemos la solución.',
     },
   },
   {
     type: "gallery",
     label: "Galería de imágenes",
     emoji: "📸",
-    group: "Imágenes y video",
+    group: "Bloques sueltos",
     icon: "image",
     defaults: {
       kicker: "IMAGINÁ TODO LO QUE PODÉS LOGRAR",
@@ -117,7 +153,7 @@ export const SECTION_LIBRARY: Array<{
     type: "solution",
     label: "La solución",
     emoji: "💡",
-    group: "Recomendadas",
+    group: "Bloques sueltos",
     icon: "sparkles",
     defaults: {
       badge: "UNA BIBLIOTECA PARA USAR UNA Y OTRA VEZ",
@@ -140,7 +176,7 @@ export const SECTION_LIBRARY: Array<{
     type: "modules",
     label: "Qué recibís",
     emoji: "📕",
-    group: "Recomendadas",
+    group: "Bloques sueltos",
     icon: "layers",
     defaults: {
       kicker: "TODO INCLUIDO EN UN SOLO ACCESO",
@@ -161,55 +197,56 @@ export const SECTION_LIBRARY: Array<{
     type: "bonuses",
     label: "Bonos",
     emoji: "🎁",
-    group: "Recomendadas",
+    group: "La estructura",
     icon: "gift",
     defaults: {
-      kicker: "RECURSOS COMPLEMENTARIOS",
-      title: "Además te llevás estos bonos",
-      items: [{ name: "Bono 1", description: "Qué incluye.", badge: "INCLUIDO" }],
-      footer_note: "Todos incluidos con tu acceso, sin pagos mensuales.",
+      kicker: "BONOS GRATIS INCLUIDOS",
+      title: "Además del producto, te llevás estos regalos",
+      subtitle: "",
+      items: [],
+      total_label: "Estos bonos tienen un valor total de",
+      total_value: "",
     },
   },
   {
     type: "pricing",
-    label: "Precio",
+    label: "La cuenta completa",
     emoji: "💰",
-    group: "Recomendadas",
+    group: "La estructura",
     icon: "tag",
     defaults: {
-      title: "Empezá hoy",
-      badge: "ACCESO COMPLETO",
-      image: "",
-      image_alt: "Portada del producto",
-      product_name: "Tu producto",
-      subtitle: "Todo lo que incluye, en una línea",
-      price_label: "$0",
-      compare_label: "",
-      note: "Pago único, sin suscripciones",
-      includes: ["Lo principal que te llevás", "El segundo entregable", "Acceso inmediato"],
-      cta: "Quiero mi acceso",
-      trust: ["Pago único", "Acceso inmediato", "Garantía de 7 días"],
+      title: "Todo lo que incluye tu compra",
+      subtitle: "Acceso inmediato a todo esto por un único pago",
+      items: [],
+      total_label: "Valor total regular",
+      total_value: "",
+      today_label: "Oferta de hoy",
+      note: "Precio único · Acceso de por vida",
+      cta: "Quiero mi copia ahora",
+      savings: "",
+      trust_note: "Compra 100% segura",
     },
   },
   {
-    type: "testimonials",
+    type: "social_proof",
     label: "Testimonios",
     emoji: "💬",
-    group: "Recomendadas",
+    group: "La estructura",
     icon: "users",
     defaults: {
-      kicker: "",
+      kicker: "TESTIMONIOS REALES",
       title: "Lo que dicen quienes ya lo tienen",
-      subtitle: "",
-      items: [{ name: "Nombre del cliente", location: "", text: "Reemplazá con un testimonio real." }],
-      placeholder: true,
+      question: "¡Hola! ¿Cómo te fue con el material?",
+      closing_reply: "¡Qué bueno! Me alegra mucho 🔥",
+      items: [],
+      stats: [],
     },
   },
   {
     type: "guarantee",
     label: "Garantía",
     emoji: "🛡️",
-    group: "Recomendadas",
+    group: "La estructura",
     icon: "shield",
     defaults: {
       title: "Probalo con tranquilidad durante 7 días",
@@ -222,41 +259,46 @@ export const SECTION_LIBRARY: Array<{
     type: "faq",
     label: "Preguntas frecuentes",
     emoji: "❓",
-    group: "Recomendadas",
+    group: "La estructura",
     icon: "info",
     defaults: {
-      kicker: "PREGUNTAS FRECUENTES",
-      title: "Todo lo que necesitás saber antes de empezar",
-      items: [{ question: "¿Cómo lo recibo?", answer: "Es digital, te llega por mail al confirmar el pago." }],
+      title: "Preguntas frecuentes",
+      subtitle: "Resolvemos todas tus dudas",
+      items: [
+        {
+          question: "¿Cómo lo recibo y cuándo?",
+          answer:
+            "Dos frases. La primera contesta la pregunta y la segunda saca la duda que queda atrás.",
+        },
+      ],
     },
   },
   {
     type: "cta",
     label: "Último llamado",
     emoji: "🚀",
-    group: "Recomendadas",
+    group: "La estructura",
     icon: "arrowRight",
     defaults: {
-      kicker: "PODÉS EMPEZAR HOY",
-      headline: "No necesitás esperar a estar listo.",
-      subheadline: "Solo necesitás dar el primer paso.",
-      image: "",
-      image_alt: "Portada del producto",
+      headline: "Empezá hoy y dejá de dar vueltas",
+      subheadline: "",
+      bonus_note: "",
+      bonuses: [],
+      savings: "",
       cta: "Quiero mi acceso",
-      micro: "Acceso digital inmediato · Garantía de 7 días",
-      trust: ["Pago único", "Acceso inmediato", "Garantía de 7 días"],
+      trust: ["Pago seguro", "Acceso inmediato"],
     },
   },
   {
     type: "footer",
     label: "Pie de página",
     emoji: "🦾",
-    group: "Texto suelto",
+    group: "La estructura",
     icon: "file",
     defaults: {
       brand: "TU MARCA",
       text: "© Tu marca. Todos los derechos reservados.",
-      links: ["Términos y condiciones", "Política de privacidad", "Contacto"],
+      legal: [],
     },
   },
 
@@ -265,7 +307,7 @@ export const SECTION_LIBRARY: Array<{
     type: "headline",
     label: "Titular suelto",
     emoji: "📝",
-    group: "Texto suelto",
+    group: "Bloques sueltos",
     icon: "edit",
     defaults: { text: "Un titular que rompa la objeción principal" },
   },
@@ -273,29 +315,42 @@ export const SECTION_LIBRARY: Array<{
     type: "subheadline",
     label: "Subtítulo suelto",
     emoji: "📄",
-    group: "Texto suelto",
+    group: "Bloques sueltos",
     icon: "edit",
     defaults: { text: "Una línea de apoyo que sume claridad." },
   },
   {
     type: "benefits",
-    label: "Beneficios",
+    label: "Qué hay adentro",
     emoji: "⭐",
-    group: "Recomendadas",
+    group: "La estructura",
     icon: "check",
-    defaults: { title: "Lo que te llevás", items: ["Primer beneficio", "Segundo beneficio"] },
+    defaults: {
+      title: "¿Qué vas a encontrar adentro?",
+      subtitle: "Todo lo que necesitás en un solo lugar",
+      items: [
+        {
+          emoji: "🧾",
+          title: "El primer beneficio",
+          description:
+            "Dos frases: qué se lleva y qué le permite hacer. La segunda cierra con el resultado concreto.",
+        },
+      ],
+    },
   },
   {
     type: "features",
-    label: "Cómo funciona",
+    label: "Cómo lo usás",
     emoji: "🗺️",
-    group: "Para sumar confianza",
+    group: "La estructura",
     icon: "layers",
     defaults: {
-      title: "Cómo funciona",
+      title: "Cómo lo usás",
+      subtitle: "En solo 3 pasos simples",
       items: [
-        { title: "1. Comprás", description: "Pago simple y seguro." },
-        { title: "2. Recibís", description: "Acceso inmediato." },
+        { title: "Paso 1", description: "Una frase con la primera acción concreta." },
+        { title: "Paso 2", description: "Una frase con lo que hace después." },
+        { title: "Paso 3", description: "Una frase con el resultado y cómo lo sostiene." },
       ],
     },
   },
@@ -303,7 +358,7 @@ export const SECTION_LIBRARY: Array<{
     type: "comparison",
     label: "Con esto vs. sin esto",
     emoji: "⚖️",
-    group: "Para sumar confianza",
+    group: "Bloques sueltos",
     icon: "chart",
     defaults: {
       title: "Con esto vs. sin esto",
@@ -317,7 +372,7 @@ export const SECTION_LIBRARY: Array<{
     type: "mockup",
     label: "Mockup del producto",
     emoji: "📦",
-    group: "Imágenes y video",
+    group: "Bloques sueltos",
     icon: "box",
     defaults: { title: "Así se ve por dentro", caption: "Vista del material" },
   },
@@ -325,7 +380,7 @@ export const SECTION_LIBRARY: Array<{
     type: "countdown",
     label: "Contador",
     emoji: "⏱️",
-    group: "Para sumar confianza",
+    group: "Bloques sueltos",
     icon: "clock",
     defaults: { title: "La oferta cierra pronto", text: "Definí la fecha real de cierre." },
   },
@@ -342,7 +397,7 @@ export const SECTION_LIBRARY: Array<{
     type: "para_vos_si",
     label: "Esto es para vos si…",
     emoji: "🙋",
-    group: "Recomendadas",
+    group: "Bloques sueltos",
     icon: "check",
     defaults: {
       title: "Esto es para vos si…",
@@ -362,7 +417,7 @@ export const SECTION_LIBRARY: Array<{
     type: "vas_a_lograr",
     label: "Vas a lograr…",
     emoji: "🎯",
-    group: "Recomendadas",
+    group: "Bloques sueltos",
     icon: "star",
     defaults: {
       title: "En 30 días vas a lograr…",
@@ -382,7 +437,7 @@ export const SECTION_LIBRARY: Array<{
     type: "urgency_bar",
     label: "Barra de urgencia",
     emoji: "🔥",
-    group: "Para sumar confianza",
+    group: "Bloques sueltos",
     icon: "clock",
     defaults: {
       message: "El precio de lanzamiento está por subir",
@@ -393,7 +448,7 @@ export const SECTION_LIBRARY: Array<{
     type: "live_purchases",
     label: "Compras en vivo",
     emoji: "🔔",
-    group: "Para sumar confianza",
+    group: "Bloques sueltos",
     icon: "star",
     defaults: {
       title: "Últimas compras",
@@ -401,18 +456,10 @@ export const SECTION_LIBRARY: Array<{
     },
   },
   {
-    type: "social_proof",
-    label: "Prueba social",
-    emoji: "👍",
-    group: "Para sumar confianza",
-    icon: "star",
-    defaults: { text: "Espacio para prueba social real cuando la tengas.", placeholder: true },
-  },
-  {
     type: "video",
     label: "Video",
     emoji: "🎥",
-    group: "Imágenes y video",
+    group: "Bloques sueltos",
     icon: "video",
     defaults: { title: "Mirá cómo funciona", url: "" },
   },
@@ -420,374 +467,223 @@ export const SECTION_LIBRARY: Array<{
     type: "image",
     label: "Imagen",
     emoji: "🖼️",
-    group: "Imágenes y video",
+    group: "Bloques sueltos",
     icon: "image",
     defaults: { alt: "Descripción de la imagen", url: "" },
   },
+
+  /* --- Los bloques de las plantillas maestras --- */
+
+  /*
+   * El pack: la tabla que suma el valor de todo y lo tacha.
+   *
+   * Es el bloque que hace la diferencia entre "cuesta $18.900" y "vale $46.500
+   * y hoy pagás $18.900". No es una lista de bonos con otro formato: cada fila
+   * lleva su precio, el total se ve arriba del precio de hoy y el ahorro se
+   * dice en pesos y en porcentaje. Sin esa aritmética a la vista, el descuento
+   * es una afirmación; con ella, es una cuenta que el que lee hace solo.
+   *
+   * Los precios de las filas los escribe el vendedor. La app no los inventa ni
+   * los deduce del precio real: un valor tachado que nadie cobró nunca es
+   * publicidad engañosa en casi todos lados donde se vende.
+   */
+  {
+    type: "pack",
+    label: "El pack completo",
+    emoji: "📦",
+    group: "Bloques sueltos",
+    icon: "box",
+    defaults: {
+      kicker: "TODO INCLUIDO",
+      title: "El pack completo",
+      subtitle: "",
+      head: "Esto es todo lo que te llevás hoy",
+      items: [
+        {
+          emoji: "📘",
+          name: "El producto principal",
+          note: "Qué incluye, en una línea.",
+          value: "",
+          core: "si",
+        },
+      ],
+      bonus_intro: "Y además, estos bonos:",
+      total_label: "Valor de todo el pack",
+      total_value: "",
+      save_note: "",
+      now_label: "Tu precio hoy",
+      cta: "Lo quiero",
+      trust: ["Pago único", "Acceso inmediato", "Compra segura"],
+    },
+  },
+
+  /*
+   * Los planes.
+   *
+   * Tres columnas donde el del medio es el que se quiere vender: no por ser el
+   * más caro, sino porque tener uno más chico al lado y uno más grande del otro
+   * le da un marco. Un solo plan es un precio; tres son una decisión, y la
+   * decisión es más fácil de tomar que la de comprar o no comprar.
+   */
+  {
+    type: "plans",
+    label: "Planes",
+    emoji: "🧾",
+    group: "Bloques sueltos",
+    icon: "layers",
+    defaults: {
+      kicker: "",
+      title: "Elegí el plan que te sirve",
+      subtitle: "",
+      items: [
+        {
+          name: "Plan básico",
+          tag: "",
+          price: "",
+          target: "Para empezar",
+          features: "Lo esencial",
+          cta: "Quiero el básico",
+          featured: "",
+        },
+        {
+          name: "Plan completo",
+          tag: "El más elegido",
+          price: "",
+          target: "Todo el material y los bonos",
+          features: "Todo lo del básico\nLos bonos\nAcceso de por vida",
+          cta: "Quiero el completo",
+          featured: "si",
+        },
+      ],
+      note: "",
+    },
+  },
+
+  /*
+   * Quién está detrás.
+   *
+   * En un ebook de salud, crianza o dinero, la pregunta que frena la compra no
+   * es "¿esto sirve?" sino "¿quién me lo está diciendo?". Este bloque existe
+   * para contestarla con cara, nombre y credencial. Va vacío por defecto a
+   * propósito: una credencial inventada es peor que ninguna.
+   */
+  {
+    type: "author",
+    label: "Sobre quién lo escribió",
+    emoji: "✍️",
+    group: "Bloques sueltos",
+    icon: "users",
+    defaults: {
+      eyebrow: "QUIÉN ESTÁ DETRÁS",
+      title: "Sobre la autora",
+      name: "",
+      credential: "",
+      quote: "",
+      image: "",
+      image_alt: "Foto de quien escribió el material",
+      badges: [],
+    },
+  },
+
+  /*
+   * Mirá por dentro.
+   *
+   * Páginas reales del material, no un mockup. Es la respuesta visual a "¿esto
+   * es humo?": dos capturas del interior dicen más que tres párrafos jurando
+   * que hay contenido concreto.
+   */
+  {
+    type: "peek",
+    label: "Mirá por dentro",
+    emoji: "👀",
+    group: "Bloques sueltos",
+    icon: "image",
+    defaults: {
+      kicker: "MIRÁ POR DENTRO",
+      title: "Así se ve el material por dentro",
+      subtitle: "Páginas reales, para que veas que hay contenido concreto.",
+      items: [
+        { url: "", alt: "Una página por dentro", caption: "Una página por dentro" },
+        { url: "", alt: "Otra página por dentro", caption: "Otra página por dentro" },
+      ],
+    },
+  },
+
+  /*
+   * Las capturas de las reseñas.
+   *
+   * Un testimonio tipeado en una tarjeta lo escribe cualquiera. La captura del
+   * mensaje —con su tipografía de WhatsApp, su hora y sus errores— no. Por eso
+   * este bloque es de imágenes y no de texto: el formato ES la prueba.
+   */
+  {
+    type: "proof_shots",
+    label: "Capturas de reseñas",
+    emoji: "📱",
+    group: "Bloques sueltos",
+    icon: "users",
+    defaults: {
+      kicker: "LO QUE NOS ESCRIBEN",
+      title: "Mensajes de quienes ya lo tienen",
+      rating_value: "",
+      rating_count: "",
+      rating_note: "valoraciones",
+      items: [],
+    },
+  },
+
+  /*
+   * El botón que sigue al que lee.
+   *
+   * Se pega abajo de la pantalla desde que el encabezado sale de vista. En una
+   * página larga leída en el teléfono, la distancia entre decidirse y encontrar
+   * dónde comprar es la que se pierde.
+   */
+  {
+    type: "sticky_cta",
+    label: "Botón que te sigue",
+    emoji: "📌",
+    group: "La estructura",
+    icon: "arrowRight",
+    defaults: {
+      timer_label: "Termina en",
+      deadline: "",
+      expired: "cerrada",
+      pack_label: "",
+      cta: "Descargar ahora",
+    },
+  },
+
+  /*
+   * La banda de aviso.
+   *
+   * Dice una cosa cierta —el precio de lanzamiento, la fecha de cierre— y
+   * puede poner la fecha de hoy sola para que no haya que editarla a mano cada
+   * mañana. Lo que NO hace es contar cupos: "quedan 3 lugares" en un producto
+   * digital que se descarga infinitas veces es mentira, y el bloque no tiene
+   * dónde escribirla.
+   */
+  {
+    type: "announcement_bar",
+    label: "Barra de arriba",
+    emoji: "🔥",
+    group: "La estructura",
+    icon: "clock",
+    defaults: {
+      message: "Oferta por tiempo limitado",
+      timer_label: "Termina en",
+      deadline: "",
+      expired: "La oferta cerró",
+    },
+  },
 ];
 
-/** Los bloques que trae una página nueva, en este orden. */
-export const BASE_STRUCTURE = [
-  "hero",
-  "stats",
-  "problems",
-  "gallery",
-  "solution",
-  "modules",
-  "bonuses",
-  "pricing",
-  "testimonials",
-  "guarantee",
-  "faq",
-  "cta",
-  "footer",
-] as const;
-
-/**
- * El contenido de un bloque es JSON libre: lo escribe el usuario, lo genera un
- * modelo o viene de una versión anterior de la app. Por eso los tres lectores
- * de abajo son totales — devuelven algo razonable para CUALQUIER entrada.
- *
- * No es paranoia: un modelo que devuelve `links: [{text, url}]` donde
- * esperábamos `links: ["Contacto"]` alcanza para tirar abajo la página entera
- * del vendedor. La página tiene que aguantar eso y mostrar lo que se pueda.
- */
-
-/** Cualquier valor, convertido al texto más razonable que se pueda. */
-function toText(value: unknown): string {
-  if (typeof value === "string") return value;
-  if (typeof value === "number") return String(value);
-  if (value && typeof value === "object") {
-    const record = value as Record<string, unknown>;
-    for (const key of ["text", "label", "title", "name", "value", "alt"]) {
-      if (typeof record[key] === "string") return record[key];
-    }
-  }
-  return "";
-}
-
-function str(content: Record<string, unknown>, key: string, fallback = ""): string {
-  const value = content[key];
-  return typeof value === "string" && value ? value : fallback;
-}
-
-/** Una lista de textos, venga como venga. */
-function lines(content: Record<string, unknown>, key: string): string[] {
-  const value = content[key];
-  if (!Array.isArray(value)) return [];
-  return value.map(toText).filter(Boolean);
-}
-
-/** Una lista de tarjetas, con todos sus campos ya convertidos a texto. */
-function cards(content: Record<string, unknown>, key: string): Array<Record<string, string>> {
-  const value = content[key];
-  if (!Array.isArray(value)) return [];
-
-  return value.map((item) => {
-    if (!item || typeof item !== "object") {
-      const text = toText(item);
-      return { title: text, name: text, text, label: text, question: text, alt: text };
-    }
-    const result: Record<string, string> = {};
-    for (const [field, raw] of Object.entries(item as Record<string, unknown>)) {
-      result[field] = toText(raw);
-    }
-    return result;
-  });
-}
-
-/** Los saltos de línea que escribe el usuario se respetan tal cual. */
-function Multiline({ text }: { text: string }) {
-  return (
-    <>
-      {text.split("\n").map((line, index) => (
-        <span key={index} className="block">
-          {line}
-        </span>
-      ))}
-    </>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/* Piezas del sistema de diseño                                                */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Nada de acá abajo escribe un color a mano.
- *
- * Todo sale de las variables del tema, así que cambiar el preset reskinea la
- * página entera sin tocar un solo renderizador.
- */
-
-function Band({
-  children,
-  className,
-  tono,
-  ancho,
-}: {
-  children: ReactNode;
-  className?: string;
-  /** `surface` pinta la banda con el color de tarjeta, para alternar el ritmo. */
-  tono?: "surface";
-  /** Más aire a los costados: lo usa el encabezado cuando va a dos columnas. */
-  ancho?: boolean;
-}) {
-  return (
-    <section
-      className={cn("px-5 py-12 @2xl:px-8 @2xl:py-16", className)}
-      style={tono === "surface" ? { backgroundColor: "var(--tf-surface)" } : undefined}
-    >
-      <div className={cn("mx-auto w-full", ancho ? "max-w-5xl" : "max-w-3xl")}>{children}</div>
-    </section>
-  );
-}
-
-/**
- * La etiqueta de arriba de cada sección.
- *
- * Mayúsculas, muy espaciada y chica. Es el contrapunto del titular —que va
- * apretado y grande— y buena parte del carácter de estas páginas sale de ese
- * contraste.
- */
-function Kicker({ children, className }: { children: string; className?: string }) {
-  if (!children) return null;
-  return (
-    <p
-      className={cn("text-center text-[12px] font-extrabold uppercase", className)}
-      style={{ color: "var(--tf-accent)", letterSpacing: "0.18em" }}
-    >
-      {children}
-    </p>
-  );
-}
-
-function Titulo({
-  children,
-  as = "h2",
-  centrado = true,
-  className,
-}: {
-  children: string;
-  as?: "h1" | "h2";
-  centrado?: boolean;
-  className?: string;
-}) {
-  const Tag = as;
-  return (
-    <Tag
-      className={cn(
-        "mt-3 font-extrabold",
-        as === "h1"
-          ? "text-[clamp(2.1rem,8cqw,3.6rem)] leading-[1.04]"
-          : "text-[clamp(1.5rem,4.6cqw,2.15rem)] leading-[1.18]",
-        centrado && "text-center",
-        className,
-      )}
-      style={{ color: "var(--tf-text)", letterSpacing: as === "h1" ? "-0.045em" : "-0.03em" }}
-    >
-      <Multiline text={children} />
-    </Tag>
-  );
-}
-
-function Bajada({
-  children,
-  centrado = true,
-  className,
-}: {
-  children: string;
-  centrado?: boolean;
-  className?: string;
-}) {
-  if (!children) return null;
-  return (
-    <p
-      className={cn(
-        "mx-auto mt-4 max-w-2xl text-[16px] leading-relaxed @2xl:text-[17px]",
-        centrado && "text-center",
-        className,
-      )}
-      style={{ color: "var(--tf-muted)" }}
-    >
-      <Multiline text={children} />
-    </p>
-  );
-}
-
-function Caja({ children, className }: { children: ReactNode; className?: string }) {
-  return (
-    <div
-      className={cn("border p-5", className)}
-      style={{
-        backgroundColor: "var(--tf-surface)",
-        borderColor: "var(--tf-line)",
-        borderRadius: "var(--tf-radius-lg)",
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-function Pastilla({ children }: { children: ReactNode }) {
-  return (
-    <span
-      className="inline-flex items-center rounded-full border px-3 py-1.5 text-[12.5px] font-semibold"
-      style={{ borderColor: "var(--tf-line)", color: "var(--tf-muted)" }}
-    >
-      {children}
-    </span>
-  );
-}
-
-function Numero({ valor, etiqueta }: { valor: string; etiqueta: string }) {
-  return (
-    <div className="text-center">
-      <p
-        className="text-[clamp(1.75rem,6cqw,2.5rem)] font-extrabold leading-none"
-        style={{ color: "var(--tf-accent)", letterSpacing: "-0.03em" }}
-      >
-        {valor}
-      </p>
-      <p
-        className="mt-2 text-[12px] font-bold uppercase"
-        style={{ color: "var(--tf-muted)", letterSpacing: "0.06em" }}
-      >
-        {etiqueta}
-      </p>
-    </div>
-  );
-}
-
-function Cta({
-  label,
-  href,
-  grande,
-  className: extra,
-}: {
-  label: string;
-  href?: string;
-  grande?: boolean;
-  className?: string;
-}) {
-  const className = cn(
-    "mx-auto mt-8 flex w-full max-w-md items-center justify-center gap-2 text-center font-extrabold transition-transform active:scale-[.985]",
-    grande ? "px-7 py-4.5 text-[16px]" : "px-6 py-3.5 text-[15px]",
-    extra,
-  );
-  const style = {
-    backgroundColor: "var(--tf-accent)",
-    color: "var(--tf-on-accent)",
-    borderRadius: "var(--tf-radius)",
-    letterSpacing: "0.01em",
-  };
-
-  if (!href) {
-    return (
-      <span className={className} style={style} aria-hidden="true">
-        {label}
-      </span>
-    );
-  }
-
-  return (
-    <a href={href} className={className} style={style}>
-      {label}
-      <Icon name="arrowRight" size={18} />
-    </a>
-  );
-}
-
-/**
- * Hueco de imagen.
- *
- * Mientras no haya almacenamiento de archivos conectado, mostramos el texto
- * alternativo: así se entiende qué va en ese lugar en vez de ver un rectángulo
- * gris sin explicación.
- */
-function Hueco({
-  label,
-  className,
-  chico,
-}: {
-  label: string;
-  className?: string;
-  chico?: boolean;
-}) {
-  return (
-    <div
-      className={cn("grid place-items-center border border-dashed p-4 text-center", className)}
-      style={{
-        borderColor: "var(--tf-line)",
-        backgroundColor: "var(--tf-surface)",
-        borderRadius: "var(--tf-radius-lg)",
-        color: "var(--tf-muted)",
-      }}
-    >
-      <div>
-        <Icon name="image" size={chico ? 20 : 30} className="mx-auto opacity-60" />
-        <p className={cn("mt-1.5", chico ? "text-[11.5px]" : "text-[13px]")}>{label}</p>
-      </div>
-    </div>
-  );
-}
-
-/**
- * La imagen de un bloque, esté cargada o no.
- *
- * Con URL dibuja la imagen; sin URL, el mismo hueco de siempre con el texto de
- * qué va ahí. Es un solo componente para los dos casos a propósito: la
- * composición del bloque —el lugar, la proporción, el aire alrededor— no
- * cambia según el vendedor haya subido o no su portada, así que la página no
- * se reacomoda entera el día que la sube.
- *
- * `object-contain` y no `cover`: una portada de ebook es vertical y una foto de
- * producto es horizontal. Recortar la portada para llenar un rectángulo le come
- * el título, que es justo lo que hay que ver.
- */
-function Figura({
-  url,
-  alt,
-  className,
-  chico,
-}: {
-  url: string;
-  alt: string;
-  className?: string;
-  chico?: boolean;
-}) {
-  if (!url) return <Hueco label={alt} className={className} chico={chico} />;
-
-  return (
-    // eslint-disable-next-line @next/next/no-img-element -- la URL la pega el vendedor: puede ser de cualquier dominio.
-    <img
-      src={url}
-      alt={alt}
-      loading="lazy"
-      className={cn("w-full object-contain", className)}
-      style={{ borderRadius: "var(--tf-radius-lg)" }}
-    />
-  );
-}
+/** Los bloques que trae una página nueva. Es la estructura, no una copia. */
+export const BASE_STRUCTURE = LANDING_LAYOUT.structure;
 
 /* -------------------------------------------------------------------------- */
 
-/**
- * Lo que está pasando en la página ahora mismo, con datos reales.
- *
- * Es el único dato que un bloque no puede sacar de su propio contenido: la
- * gente que está mirando y las compras que ya se hicieron los sabe el servidor,
- * no el vendedor. Viaja aparte del `content` justamente por eso — nadie lo
- * puede editar a mano, que es lo que lo hace valer.
- *
- * Cuando no viene (el editor, una vista previa), los bloques que dependen de él
- * se dibujan explicando qué van a mostrar en vez de inventar un número.
- */
-export interface LiveProofData {
-  viewers: number;
-  purchases: Array<{ name: string; place: string | null; at: string }>;
-}
+export type { LiveProofData } from "@/components/landing/piezas";
 
 export function LandingSectionView({
   section,
@@ -795,6 +691,7 @@ export function LandingSectionView({
   priceLabel,
   compareLabel,
   live,
+  editor,
 }: {
   section: SectionData;
   ctaHref?: string;
@@ -802,10 +699,45 @@ export function LandingSectionView({
   compareLabel?: string;
   /** Visitantes y compras reales del funnel. Sin esto los bloques en vivo no afirman nada. */
   live?: LiveProofData;
+  /**
+   * `true` cuando esto es la vista previa del editor y no la página publicada.
+   *
+   * Varios bloques —quién está detrás, las capturas de reseñas, mirá por
+   * dentro, las compras en vivo— no tienen nada que mostrar hasta que el
+   * vendedor carga sus datos, y lo que corresponde hacer es distinto de cada
+   * lado: en su página no se dibujan (dos huecos punteados que dicen "una
+   * página por dentro" son la confesión de que no hay nada por dentro), y en el
+   * editor sí, con la nota de qué falta, porque si no el vendedor agrega el
+   * bloque, no ve nada y cree que está roto.
+   *
+   * Es una bandera explícita y no "¿vino `live`?" a propósito: `live` solo se
+   * consulta cuando la página tiene bloques que lo usan, así que deducir el
+   * modo de ahí hacía que una página sin barra de urgencia se comportara como
+   * el editor.
+   */
+  editor?: boolean;
   /** @deprecated El color ahora sale del tema de la página. */
   accent?: string;
 }) {
   const c = section.content ?? {};
+
+  /*
+   * La estructura canónica se dibuja en `secciones.tsx`.
+   *
+   * Lo que queda en el switch de abajo son los bloques de páginas armadas con
+   * versiones anteriores de la app. No se borran porque una página publicada no
+   * puede perder una sección porque cambió el orden canónico, pero tampoco se
+   * mezclan: las trece secciones que definen cómo se ve una landing de
+   * TiendaFlow viven juntas y se leen de corrido.
+   */
+  if (SECCIONES_CANONICAS.has(section.type)) {
+    return (
+      <SeccionCanonica
+        section={{ type: section.type, content: c }}
+        ctx={{ ctaHref, priceLabel, compareLabel, live, editor }}
+      />
+    );
+  }
 
   switch (section.type) {
     /* ---------------------------------------------------------------- 1 */
@@ -1370,6 +1302,7 @@ export function LandingSectionView({
     /* ---------------------------------------------------------------- 9 */
     case "testimonials": {
       const items = cards(c, "items");
+      const deslizable = str(c, "display") === "slider";
       return (
         <Band>
           <Kicker>{str(c, "kicker")}</Kicker>
@@ -1389,7 +1322,20 @@ export function LandingSectionView({
             </p>
           ) : null}
 
-          <div className="mt-9 grid gap-4 @2xl:grid-cols-2">
+          {/*
+            Dos formatos para el mismo contenido: grilla o deslizable.
+            Con tres testimonios largos la grilla obliga a scrollear media
+            pantalla; el deslizable los pone en una fila y deja que el que lee
+            elija cuántos mira. Es scroll nativo con `scroll-snap`, así que
+            anda con el dedo, con la rueda y con el teclado.
+          */}
+          <div
+            className={
+              deslizable
+                ? "tf-carrusel -mx-5 mt-9 px-5 pb-2"
+                : "mt-9 grid gap-4 @2xl:grid-cols-2"
+            }
+          >
             {items.map((item, index) => (
               <Caja key={index}>
                 <p className="text-[13px] tracking-[0.2em]" style={{ color: "var(--tf-accent)" }}>
@@ -1693,7 +1639,17 @@ export function LandingSectionView({
         </Band>
       );
 
-    case "countdown":
+    /*
+     * El contador.
+     *
+     * Cuenta hacia la fecha que puso el vendedor. Sin fecha se dibuja igual
+     * —con su título y su texto— pero sin reloj: un contador que arranca en
+     * quince minutos cada vez que alguien entra es una mentira que la página
+     * repite todo el día, y no está para eso.
+     */
+    case "countdown": {
+      const deadline = str(c, "deadline");
+
       return (
         <Band className="py-8">
           <div
@@ -1705,10 +1661,20 @@ export function LandingSectionView({
             }}
           >
             <p className="text-[19px] font-extrabold">{str(c, "title")}</p>
-            <p className="mt-2 text-[14px] opacity-80">{str(c, "text")}</p>
+            {str(c, "text") ? (
+              <p className="mt-2 text-[14px] opacity-80">{str(c, "text")}</p>
+            ) : null}
+
+            {deadline ? (
+              <Reloj
+                deadline={deadline}
+                expired={str(c, "expired", "La oferta cerró.")}
+              />
+            ) : null}
           </div>
         </Band>
       );
+    }
 
     case "social_proof":
       return (
@@ -1857,7 +1823,7 @@ export function LandingSectionView({
       const compras = live?.purchases ?? [];
 
       if (compras.length === 0) {
-        if (live) return null;
+        if (!editor) return null;
         return (
           <Band className="py-8">
             <p
@@ -1943,6 +1909,570 @@ export function LandingSectionView({
         <Band>
           <Figura url={str(c, "url")} alt={str(c, "alt", "Imagen")} className="aspect-[16/9]" />
         </Band>
+      );
+
+    /* ------------------------------------ los bloques de plantilla maestra */
+
+    /*
+     * El pack.
+     *
+     * La aritmética a la vista: cada cosa con su valor, el total de todo, el
+     * ahorro y recién ahí el precio de hoy. Ese orden importa — leer $46.500
+     * antes de leer $18.900 es lo que convierte al segundo número en una
+     * oferta en vez de en un costo.
+     *
+     * Las filas marcadas como principales van arriba, después la línea de
+     * "y además" y después los bonos. Es la única jerarquía del bloque y hace
+     * todo el trabajo: separa lo que se compra de lo que se regala.
+     */
+    case "pack": {
+      const items = cards(c, "items").filter((item) => item.name);
+      const principales = items.filter((item) => item.core);
+      const bonos = items.filter((item) => !item.core);
+
+      const fila = (item: Record<string, string>, index: number, destacada: boolean) => (
+        <div
+          key={`${destacada ? "core" : "bono"}-${index}`}
+          className="flex items-start justify-between gap-4 border-b px-5 py-4"
+          style={{
+            borderColor: "var(--tf-line)",
+            backgroundColor: destacada ? "var(--tf-surface)" : undefined,
+          }}
+        >
+          <div className="flex min-w-0 items-start gap-3">
+            {item.emoji ? (
+              <span className="text-[20px] leading-none" aria-hidden="true">
+                {item.emoji}
+              </span>
+            ) : null}
+            <div className="min-w-0">
+              <p className="text-[15px] font-bold" style={{ color: "var(--tf-text)" }}>
+                {item.name}
+              </p>
+              {item.note ? (
+                <p className="mt-1 text-[13px] leading-snug" style={{ color: "var(--tf-muted)" }}>
+                  {item.note}
+                </p>
+              ) : null}
+            </div>
+          </div>
+
+          {item.value || item.value_before ? (
+            <div className="shrink-0 text-right">
+              {item.value_before ? (
+                <span
+                  className="block text-[12px] font-semibold line-through"
+                  style={{ color: "var(--tf-muted)" }}
+                >
+                  {item.value_before}
+                </span>
+              ) : null}
+              {item.value ? (
+                <span
+                  className="block text-[14px] font-extrabold"
+                  style={{ color: destacada ? "var(--tf-accent)" : "var(--tf-accent-2)" }}
+                >
+                  {item.value}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      );
+
+      return (
+        <Band tono="surface">
+          <Kicker>{str(c, "kicker")}</Kicker>
+          <Titulo>{str(c, "title", "El pack completo")}</Titulo>
+          <Bajada>{str(c, "subtitle")}</Bajada>
+
+          <div
+            className="mx-auto mt-9 max-w-lg overflow-hidden border-2"
+            style={{
+              borderColor: "var(--tf-accent)",
+              backgroundColor: "var(--tf-bg)",
+              borderRadius: "var(--tf-radius-lg)",
+            }}
+          >
+            {str(c, "head") ? (
+              <p
+                className="px-5 py-3.5 text-center text-[13.5px] font-extrabold uppercase"
+                style={{
+                  backgroundColor: "var(--tf-accent)",
+                  color: "var(--tf-on-accent)",
+                  letterSpacing: "0.06em",
+                }}
+              >
+                {str(c, "head")}
+              </p>
+            ) : null}
+
+            {principales.map((item, index) => fila(item, index, true))}
+
+            {bonos.length > 0 && str(c, "bonus_intro") ? (
+              <p
+                className="border-b px-5 py-3 text-center text-[13.5px] font-bold"
+                style={{
+                  borderColor: "var(--tf-line)",
+                  backgroundColor: "var(--tf-surface)",
+                  color: "var(--tf-text)",
+                }}
+              >
+                {str(c, "bonus_intro")}
+              </p>
+            ) : null}
+
+            {bonos.map((item, index) => fila(item, index, false))}
+
+            <div className="p-5">
+              {str(c, "total_value") ? (
+                <div
+                  className="flex items-center justify-between gap-3 pb-3 text-[14px] font-semibold"
+                  style={{ color: "var(--tf-muted)" }}
+                >
+                  <span>{str(c, "total_label", "Valor de todo el pack")}</span>
+                  <s>{str(c, "total_value")}</s>
+                </div>
+              ) : null}
+
+              {str(c, "save_note") ? (
+                <p
+                  className="mb-4 border border-dashed px-4 py-2.5 text-center text-[13.5px] font-bold"
+                  style={{
+                    borderColor: "var(--tf-accent-2)",
+                    color: "var(--tf-accent-2)",
+                    borderRadius: "var(--tf-radius)",
+                  }}
+                >
+                  {str(c, "save_note")}
+                </p>
+              ) : null}
+
+              <div
+                className="flex flex-wrap items-center justify-between gap-3 border-2 px-5 py-4"
+                style={{
+                  borderColor: "var(--tf-accent)",
+                  backgroundColor: "var(--tf-surface)",
+                  borderRadius: "var(--tf-radius)",
+                }}
+              >
+                <span
+                  className="text-[15px] font-extrabold uppercase"
+                  style={{ color: "var(--tf-text)", letterSpacing: "0.04em" }}
+                >
+                  {str(c, "now_label", "Tu precio hoy")}
+                </span>
+                <Precio
+                  valor={priceLabel ?? str(c, "price_label", "$0")}
+                  tachado={compareLabel ?? str(c, "compare_label")}
+                />
+              </div>
+
+              <Cta
+                label={str(c, "cta", "Lo quiero")}
+                href={ctaHref}
+                sub={str(c, "cta_sub")}
+                grande
+              />
+
+              {lines(c, "trust").length > 0 ? (
+                <ul className="mt-5 flex flex-wrap justify-center gap-x-5 gap-y-2">
+                  {lines(c, "trust").map((item, index) => (
+                    <li
+                      key={index}
+                      className="flex items-center gap-1.5 text-[12.5px] font-semibold"
+                      style={{ color: "var(--tf-muted)" }}
+                    >
+                      <Icon name="check" size={13} />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          </div>
+        </Band>
+      );
+    }
+
+    /*
+     * Los planes.
+     *
+     * Cada columna toma un color distinto del tema —acento, segundo acento y
+     * acento oscuro— en vez de repetir el mismo tres veces. Es lo que hace que
+     * se lean como tres opciones y no como la misma tarjeta clonada, y sale
+     * del tema, así que sigue cambiando con la paleta.
+     */
+    case "plans": {
+      const items = cards(c, "items").filter((item) => item.name);
+      const colores = ["var(--tf-accent)", "var(--tf-accent-2)", "var(--tf-accent-deep)"];
+
+      return (
+        <Band ancho>
+          <Kicker>{str(c, "kicker")}</Kicker>
+          <Titulo>{str(c, "title", "Elegí tu plan")}</Titulo>
+          <Bajada>{str(c, "subtitle")}</Bajada>
+
+          <div
+            className={cn(
+              "mt-9 grid gap-5",
+              items.length === 2 ? "@2xl:grid-cols-2" : "@2xl:grid-cols-2 @4xl:grid-cols-3",
+            )}
+          >
+            {items.map((item, index) => {
+              const color = colores[index % colores.length];
+              const destacado = Boolean(item.featured);
+
+              return (
+                <div
+                  key={index}
+                  className={cn("flex flex-col border p-5", destacado && "border-2")}
+                  style={{
+                    borderColor: destacado ? color : "var(--tf-line)",
+                    backgroundColor: "var(--tf-surface)",
+                    borderRadius: "var(--tf-radius-lg)",
+                  }}
+                >
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-[17px] font-extrabold" style={{ color: "var(--tf-text)" }}>
+                        {item.name}
+                      </p>
+                      {item.tag ? (
+                        <span
+                          className="mt-1 inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-extrabold uppercase"
+                          style={{
+                            backgroundColor: color,
+                            color: "var(--tf-on-accent)",
+                            letterSpacing: "0.05em",
+                          }}
+                        >
+                          {item.tag}
+                        </span>
+                      ) : null}
+                    </div>
+                    {item.price ? (
+                      <span
+                        className="text-[26px] font-extrabold leading-none"
+                        style={{ color, letterSpacing: "-0.03em" }}
+                      >
+                        {item.price}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {item.target ? (
+                    <p className="mt-3 text-[13.5px]" style={{ color: "var(--tf-muted)" }}>
+                      {item.target}
+                    </p>
+                  ) : null}
+
+                  <ul
+                    className="mt-4 flex flex-1 flex-col gap-2.5 border-t pt-4"
+                    style={{ borderColor: "var(--tf-line)" }}
+                  >
+                    {(item.features ?? "")
+                      .split("\n")
+                      .map((linea) => linea.trim())
+                      .filter(Boolean)
+                      .map((linea, i) => (
+                        <li key={i} className="flex items-start gap-2.5">
+                          <span className="mt-0.5 shrink-0" style={{ color }} aria-hidden="true">
+                            <Icon name="check" size={15} />
+                          </span>
+                          <span
+                            className="text-[14px] leading-snug"
+                            style={{ color: "var(--tf-text)" }}
+                          >
+                            {linea}
+                          </span>
+                        </li>
+                      ))}
+                  </ul>
+
+                  <div className="mt-5">
+                    <Cta label={item.cta || "Lo quiero"} href={ctaHref} suelto />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {str(c, "note") ? (
+            <p className="mt-6 text-center text-[13px]" style={{ color: "var(--tf-muted)" }}>
+              {str(c, "note")}
+            </p>
+          ) : null}
+        </Band>
+      );
+    }
+
+    /*
+     * Quién está detrás.
+     *
+     * Sin nombre ni frase no se dibuja la tarjeta: un bloque de autoría vacío
+     * con una silueta gris resta más de lo que suma, porque dice que hay
+     * alguien detrás y no lo muestra. En el editor sí aparece —con la nota de
+     * qué falta— para que el vendedor sepa por qué no lo ve en su página.
+     */
+    case "author": {
+      const nombre = str(c, "name");
+      const badges = lines(c, "badges");
+
+      if (!nombre && !str(c, "quote")) {
+        if (!editor) return null;
+        return (
+          <Band className="py-8">
+            <p
+              className="border border-dashed px-5 py-4 text-center text-[13.5px]"
+              style={{
+                borderColor: "var(--tf-line)",
+                color: "var(--tf-muted)",
+                borderRadius: "var(--tf-radius)",
+              }}
+            >
+              Contá quién escribió el material: nombre, formación y una frase suya. Mientras esté
+              vacío, este bloque no sale en tu página.
+            </p>
+          </Band>
+        );
+      }
+
+      return (
+        <Band ancho tono="surface">
+          <div className="grid items-center gap-7 @2xl:grid-cols-[minmax(0,17rem)_1fr]">
+            <Figura
+              url={str(c, "image")}
+              alt={str(c, "image_alt", "Foto de quien escribió el material")}
+              className="mx-auto aspect-square max-w-[17rem] object-cover"
+            />
+
+            <div>
+              <Kicker className="!text-left">{str(c, "eyebrow")}</Kicker>
+              <Titulo centrado={false} className="!mt-2">
+                {str(c, "title", "Quién está detrás")}
+              </Titulo>
+
+              {nombre ? (
+                <p className="mt-3 text-[15.5px]" style={{ color: "var(--tf-muted)" }}>
+                  <strong style={{ color: "var(--tf-text)" }}>{nombre}</strong>
+                  {str(c, "credential") ? ` — ${str(c, "credential")}` : ""}
+                </p>
+              ) : null}
+
+              {str(c, "quote") ? (
+                <blockquote
+                  className="mt-4 border-l-4 pl-4 text-[16px] font-semibold italic leading-relaxed"
+                  style={{ borderColor: "var(--tf-accent)", color: "var(--tf-text)" }}
+                >
+                  <Multiline text={str(c, "quote")} />
+                </blockquote>
+              ) : null}
+
+              {badges.length > 0 ? (
+                <ul className="mt-5 flex flex-wrap gap-2">
+                  {badges.map((badge, index) => (
+                    <li key={index}>
+                      <Pastilla>{badge}</Pastilla>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          </div>
+        </Band>
+      );
+    }
+
+    /*
+     * Mirá por dentro.
+     *
+     * `object-cover` y no `contain`, al revés que el resto de las imágenes de
+     * la página: acá no se muestra una portada entera sino un pedazo del
+     * interior, y que se corte es parte de que se lea como un vistazo.
+     */
+    case "peek": {
+      const items = cards(c, "items").filter((item) => editor || item.url);
+
+      // Dos huecos punteados con la leyenda "una página por dentro" son, en una
+      // página publicada, la confesión de que no hay nada por dentro.
+      if (items.length === 0) return null;
+
+      return (
+        <Band ancho>
+          <Kicker>{str(c, "kicker")}</Kicker>
+          <Titulo>{str(c, "title", "Mirá por dentro")}</Titulo>
+          <Bajada>{str(c, "subtitle")}</Bajada>
+
+          <div className="mt-9 grid gap-4 @2xl:grid-cols-2">
+            {items.map((item, index) => (
+              <div key={index} className="relative">
+                <Figura
+                  url={item.url}
+                  alt={item.alt || "Una página del material"}
+                  className="aspect-[4/3] object-cover"
+                />
+                {item.caption && item.url ? (
+                  <span
+                    className="absolute bottom-3 left-3 rounded-full px-3 py-1.5 text-[12px] font-bold"
+                    style={{ backgroundColor: "var(--tf-text)", color: "var(--tf-bg)" }}
+                  >
+                    {item.caption}
+                  </span>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </Band>
+      );
+    }
+
+    /*
+     * Las capturas de reseñas.
+     *
+     * La imagen va con su alto natural, sin recorte: una captura de WhatsApp
+     * cortada arriba pierde el nombre y abajo pierde la hora, que son las dos
+     * cosas que la hacen creíble.
+     *
+     * La franja de puntaje solo aparece si el vendedor cargó el número. No hay
+     * valor por defecto: un "4,9/5" que la app pone sola es una calificación
+     * inventada.
+     */
+    case "proof_shots": {
+      const items = cards(c, "items").filter((item) => item.url);
+      const puntaje = str(c, "rating_value");
+
+      // Sin una sola captura no hay prueba: en la página publicada el bloque no
+      // existe. En el editor sí, con la nota de qué hay que subir.
+      if (!editor && items.length === 0) return null;
+
+      return (
+        <Band ancho tono="surface">
+          <Kicker>{str(c, "kicker")}</Kicker>
+          <Titulo>{str(c, "title", "Lo que nos escriben")}</Titulo>
+
+          {puntaje ? (
+            <div
+              className="mx-auto mt-6 flex w-fit flex-wrap items-center justify-center gap-x-6 gap-y-2 rounded-full border px-6 py-3"
+              style={{ borderColor: "var(--tf-line)", backgroundColor: "var(--tf-bg)" }}
+            >
+              <span className="text-center leading-tight">
+                <span
+                  className="block text-[20px] font-extrabold"
+                  style={{ color: "var(--tf-text)" }}
+                >
+                  {puntaje}
+                </span>
+                <span
+                  className="block text-[13px] tracking-[0.2em]"
+                  style={{ color: "var(--tf-accent)" }}
+                >
+                  ★★★★★
+                </span>
+              </span>
+              {str(c, "rating_count") ? (
+                <span className="text-[12.5px] font-bold" style={{ color: "var(--tf-muted)" }}>
+                  {str(c, "rating_count")} {str(c, "rating_note", "valoraciones")}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
+
+          {items.length === 0 ? (
+            <p
+              className="mx-auto mt-8 max-w-xl border border-dashed px-4 py-3 text-center text-[13px]"
+              style={{
+                borderColor: "var(--tf-accent)",
+                color: "var(--tf-accent)",
+                borderRadius: "var(--tf-radius)",
+              }}
+            >
+              Subí capturas reales de los mensajes que recibiste. Mientras no haya ninguna, este
+              bloque no sale en tu página.
+            </p>
+          ) : (
+            <div className="mt-8 grid gap-4 @xl:grid-cols-2 @3xl:grid-cols-3">
+              {items.map((item, index) => (
+                // eslint-disable-next-line @next/next/no-img-element -- la URL la pega el vendedor.
+                <img
+                  key={index}
+                  src={item.url}
+                  alt={item.alt || "Mensaje de un cliente"}
+                  loading="lazy"
+                  className="w-full border"
+                  style={{ borderColor: "var(--tf-line)", borderRadius: "var(--tf-radius-lg)" }}
+                />
+              ))}
+            </div>
+          )}
+        </Band>
+      );
+    }
+
+    /*
+     * El botón que sigue al que lee.
+     *
+     * `sticky` y no `fixed`: pegado a la ventana taparía el editor entero y
+     * habría que dibujarlo distinto en la vista previa y en la página real.
+     * Pegado al final de su contenedor hace lo mismo en los dos lados —queda
+     * abajo mientras se scrollea— con un solo renderizador.
+     */
+    case "sticky_cta":
+      return (
+        <div
+          className="sticky bottom-0 z-30 flex flex-wrap items-center justify-between gap-3 border-t px-5 py-3"
+          style={{
+            borderColor: "var(--tf-line)",
+            backgroundColor: "var(--tf-surface)",
+            boxShadow: "0 -8px 24px -12px rgb(0 0 0 / 0.25)",
+          }}
+        >
+          <div className="min-w-0 leading-tight">
+            <Precio valor={priceLabel ?? str(c, "price_label")} chico />
+            {str(c, "note") ? (
+              <span
+                className="block text-[11.5px] font-semibold"
+                style={{ color: "var(--tf-muted)" }}
+              >
+                {str(c, "note")}
+              </span>
+            ) : null}
+          </div>
+
+          <div className="min-w-[9rem] flex-1 @sm:max-w-[15rem]">
+            <Cta
+              label={str(c, "cta", "Lo quiero")}
+              href={ctaHref}
+              suelto
+              className="!py-3 !text-[14px]"
+            />
+          </div>
+        </div>
+      );
+
+    /*
+     * La banda de aviso.
+     *
+     * Con la fecha de hoy puesta sola, para que "solo por hoy" diga qué día es
+     * hoy sin que nadie tenga que entrar a cambiarla todas las mañanas.
+     */
+    case "promo_banner":
+      return (
+        <div
+          className="px-5 py-3.5 text-center"
+          style={{ backgroundColor: "var(--tf-accent-deep)", color: "var(--tf-on-accent)" }}
+        >
+          <p className="text-[14px] font-extrabold">
+            {str(c, "message", "Precio de lanzamiento")}
+            {str(c, "show_date") ? (
+              <span className="font-semibold opacity-90">
+                {" · "}
+                <FechaDeHoy />
+              </span>
+            ) : null}
+          </p>
+          {str(c, "note") ? <p className="mt-1 text-[12px] opacity-80">{str(c, "note")}</p> : null}
+        </div>
       );
 
     default:

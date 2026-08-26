@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { OnboardingWizard } from "@/app/bienvenida/wizard";
 import { Wordmark } from "@/components/ui/icon";
 import { currentUser } from "@/lib/auth";
+import { LANDING_FONTS_HREF } from "@/components/landing/theme";
 
 export const metadata: Metadata = { title: "Bienvenido" };
 
@@ -23,7 +24,7 @@ export default async function OnboardingPage() {
       <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
       <link
         rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,700;0,800;1,700&display=swap"
+        href={LANDING_FONTS_HREF}
       />
 
       <div

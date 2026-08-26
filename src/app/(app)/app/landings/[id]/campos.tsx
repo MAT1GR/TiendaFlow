@@ -3,7 +3,7 @@
 import type { SectionData } from "@/components/landing/blocks";
 import { Alert } from "@/components/ui/feedback";
 import { Icon } from "@/components/ui/icon";
-import { Button, Field, Input, Textarea } from "@/components/ui/primitives";
+import { Button, Field, Input, Select, Textarea } from "@/components/ui/primitives";
 
 
 /**
@@ -19,24 +19,138 @@ interface TextField {
   label: string;
   multiline?: boolean;
   hint?: string;
+  /**
+   * Cómo se edita el campo.
+   *
+   * `datetime` para la fecha de cierre de una oferta —tipearla a mano en un
+   * campo de texto es la forma más segura de que quede mal escrita y el
+   * contador no arranque nunca—, `toggle` para los sí/no, y `select` para los
+   * campos que solo aceptan un puñado de valores.
+   */
+  type?: "datetime" | "toggle" | "select";
+  options?: Array<{ value: string; label: string }>;
 }
 
+/*
+ * Los campos de las trece secciones de la estructura, en orden.
+ *
+ * Debajo quedan los de bloques de páginas armadas con versiones anteriores de
+ * la app: no se borran porque esas páginas siguen publicadas y su contenido
+ * tiene que poder editarse.
+ */
 const TEXT_FIELDS: Record<string, TextField[]> = {
+  announcement_bar: [
+    { key: "message", label: "El aviso", hint: "Tiene que ser cierto. Sin cupos inventados." },
+    {
+      key: "deadline",
+      label: "Cuándo cierra la oferta",
+      type: "datetime",
+      hint: "Sin fecha, la barra sale sin reloj. No pongas una que no vaya a cumplirse.",
+    },
+    { key: "timer_label", label: "Texto antes del reloj" },
+    { key: "expired", label: "Qué decir cuando ya cerró" },
+  ],
   hero: [
-    { key: "eyebrow", label: "Etiqueta de arriba", hint: "Para quién es, en mayúsculas." },
-    { key: "headline", label: "Titular", multiline: true, hint: "Enter corta la línea." },
-    { key: "subheadline", label: "Subtítulo", multiline: true },
-    { key: "image", label: "URL de la imagen", hint: "Se completa sola con la portada de tu producto. Pegá otra si querés cambiarla." },
-    { key: "image_alt", label: "Qué muestra la imagen" },
+    { key: "headline", label: "Titular", multiline: true, hint: "10 a 13 palabras. Enter corta la línea." },
+    { key: "subheadline", label: "Subtítulo", multiline: true, hint: "15 a 20 palabras." },
+    { key: "image", label: "URL de la portada", hint: "Se completa sola con la portada de tu producto." },
+    { key: "image_alt", label: "Qué muestra la portada" },
+    { key: "ebook_label", label: "Etiqueta antes del nombre", hint: 'Por ejemplo: "EBOOK:". Vacío = no sale.' },
+    { key: "product_name", label: "Nombre del producto" },
+    {
+      key: "rating_value",
+      label: "Puntaje",
+      hint: "Solo si es real y lo podés mostrar. Vacío = no salen las estrellas.",
+    },
+    { key: "rating_note", label: "Qué hay al lado del puntaje", hint: 'Por ejemplo: "500+ ventas".' },
+    { key: "urgency_text", label: "Etiqueta de arriba de la tarjeta" },
+    {
+      key: "savings",
+      label: "Cuánto se ahorra",
+      hint: "Escribilo vos con tus números reales. Vacío = no sale.",
+    },
+    {
+      key: "slots_note",
+      label: "Cupos a este precio",
+      hint: "Solo si de verdad limitás la cantidad. Vacío = no sale.",
+    },
+    { key: "deadline", label: "Cuándo cierra la oferta", type: "datetime" },
+    { key: "timer_label", label: "Texto antes del reloj" },
+    { key: "expired", label: "Qué decir cuando ya cerró" },
     { key: "cta", label: "Texto del botón" },
-    { key: "social", label: "Frase de respaldo" },
-    { key: "trust", label: "Línea de confianza", hint: "Garantía, forma de pago, entrega." },
+    { key: "viewers_note", label: "Texto después del número de visitantes" },
+  ],
+  bonuses: [
+    { key: "kicker", label: "Etiqueta de arriba" },
+    { key: "title", label: "Título", multiline: true },
+    { key: "subtitle", label: "Subtítulo", multiline: true },
+    { key: "total_label", label: "Texto antes del valor total" },
+    {
+      key: "total_value",
+      label: "Valor total de los bonos",
+      hint: "La suma de los valores de abajo. Vacío = no sale la línea.",
+    },
+  ],
+  benefits: [
+    { key: "title", label: "Título" },
+    { key: "subtitle", label: "Subtítulo" },
   ],
   problems: [
     { key: "title", label: "Título" },
-    { key: "subtitle", label: "Segunda línea del título" },
+    { key: "subtitle", label: "Subtítulo", multiline: true },
     { key: "closing", label: "Cierre", multiline: true },
   ],
+  social_proof: [
+    { key: "kicker", label: "Etiqueta de arriba" },
+    { key: "title", label: "Título", multiline: true },
+    { key: "question", label: "La pregunta que abre el chat" },
+    { key: "closing_reply", label: "La respuesta que cierra el chat" },
+  ],
+  pricing: [
+    { key: "title", label: "Título", multiline: true },
+    { key: "subtitle", label: "Subtítulo", multiline: true },
+    { key: "total_label", label: "Texto antes del valor de lista" },
+    { key: "total_value", label: "Valor total regular", hint: "Se completa solo con el precio tachado de tu oferta." },
+    { key: "today_label", label: "Etiqueta del precio de hoy" },
+    { key: "note", label: "Nota debajo del precio" },
+    { key: "cta", label: "Texto del botón" },
+    { key: "savings", label: "Cuánto se ahorra", hint: "Con tus números reales. Vacío = no sale." },
+    { key: "trust_note", label: "Línea de confianza del final" },
+  ],
+  features: [
+    { key: "title", label: "Título" },
+    { key: "subtitle", label: "Subtítulo" },
+  ],
+  guarantee: [
+    { key: "title", label: "Título", multiline: true },
+    { key: "text", label: "Texto", multiline: true, hint: "Dos frases: qué puede hacer y qué le devolvés." },
+    { key: "seal", label: "Sello" },
+  ],
+  faq: [
+    { key: "title", label: "Título" },
+    { key: "subtitle", label: "Subtítulo" },
+  ],
+  cta: [
+    { key: "headline", label: "Titular", multiline: true, hint: "9 a 13 palabras." },
+    { key: "subheadline", label: "Subtítulo", multiline: true },
+    { key: "bonus_note", label: "Texto antes de los bonos" },
+    { key: "savings", label: "Cuánto se ahorra", hint: "Con tus números reales. Vacío = no sale." },
+    { key: "cta", label: "Texto del botón" },
+  ],
+  footer: [
+    { key: "brand", label: "Nombre de tu marca" },
+    { key: "text", label: "Texto legal", multiline: true },
+  ],
+  sticky_cta: [
+    { key: "timer_label", label: "Texto antes del reloj" },
+    { key: "deadline", label: "Cuándo cierra la oferta", type: "datetime" },
+    { key: "expired", label: "Qué decir cuando ya cerró" },
+    { key: "pack_label", label: "Qué incluye, en corto", hint: 'Por ejemplo: "EBOOK + 2 BONOS".' },
+    { key: "cta", label: "Texto del botón" },
+  ],
+
+  /* --- Bloques de páginas armadas con versiones anteriores --- */
+
   gallery: [
     { key: "kicker", label: "Etiqueta de arriba" },
     { key: "title", label: "Título", multiline: true },
@@ -60,80 +174,20 @@ const TEXT_FIELDS: Record<string, TextField[]> = {
     { key: "title", label: "Título", multiline: true },
     { key: "box_title", label: "Título de la caja" },
   ],
-  bonuses: [
-    { key: "kicker", label: "Etiqueta de arriba" },
+  para_vos_si: [
     { key: "title", label: "Título" },
-    { key: "footer_note", label: "Nota al pie" },
-  ],
-  pricing: [
-    { key: "title", label: "Título de la sección", multiline: true },
-    { key: "badge", label: "Etiqueta de la tarjeta" },
-    { key: "image", label: "URL de la imagen", hint: "Se completa sola con la portada de tu producto. Pegá otra si querés cambiarla." },
-    { key: "image_alt", label: "Qué muestra la imagen" },
-    { key: "product_name", label: "Nombre del producto" },
-    { key: "subtitle", label: "Qué incluye, en una línea" },
-    { key: "price_label", label: "Precio mostrado" },
-    { key: "compare_label", label: "Precio tachado" },
-    { key: "note", label: "Nota debajo del precio" },
-    { key: "cta", label: "Texto del botón" },
-  ],
-  testimonials: [
-    { key: "kicker", label: "Etiqueta de arriba" },
-    { key: "title", label: "Título", multiline: true },
     { key: "subtitle", label: "Subtítulo", multiline: true },
-  ],
-  guarantee: [
-    { key: "title", label: "Título", multiline: true },
-    { key: "text", label: "Texto", multiline: true },
-    { key: "seal", label: "Sello" },
-    { key: "note", label: "Nota al pie" },
-  ],
-  faq: [
-    { key: "kicker", label: "Etiqueta de arriba" },
-    { key: "title", label: "Título", multiline: true },
-  ],
-  cta: [
-    { key: "kicker", label: "Etiqueta de arriba" },
-    { key: "headline", label: "Titular", multiline: true },
-    { key: "subheadline", label: "Subtítulo", multiline: true },
-    { key: "image", label: "URL de la imagen", hint: "Se completa sola con la portada de tu producto. Pegá otra si querés cambiarla." },
-    { key: "image_alt", label: "Qué muestra la imagen" },
-    { key: "cta", label: "Texto del botón" },
-    { key: "micro", label: "Línea chica debajo del botón" },
-  ],
-  footer: [
-    { key: "brand", label: "Nombre de tu marca" },
-    { key: "text", label: "Texto legal", multiline: true },
   ],
   headline: [{ key: "text", label: "Texto", multiline: true }],
   subheadline: [{ key: "text", label: "Texto", multiline: true }],
-  benefits: [{ key: "title", label: "Título" }],
-  features: [{ key: "title", label: "Título" }],
   comparison: [
     { key: "title", label: "Título" },
     { key: "without_title", label: "Columna sin tu producto — título" },
     { key: "with_title", label: "Columna con tu producto — título" },
   ],
-  countdown: [
-    { key: "title", label: "Título" },
-    { key: "text", label: "Texto", multiline: true },
-  ],
-  social_proof: [{ key: "text", label: "Texto", multiline: true }],
-  para_vos_si: [
-    { key: "title", label: "Título" },
-    { key: "subtitle", label: "Subtítulo", multiline: true },
-  ],
   vas_a_lograr: [
     { key: "title", label: "Título", hint: "Poné el plazo real: \"En 30 días vas a lograr…\"." },
     { key: "subtitle", label: "Subtítulo", multiline: true },
-  ],
-  urgency_bar: [
-    {
-      key: "message",
-      label: "Por qué conviene ahora",
-      hint: "Tiene que ser cierto: el precio de lanzamiento, la fecha que definiste.",
-    },
-    { key: "note", label: "Aclaración debajo", multiline: true },
   ],
   live_purchases: [
     { key: "title", label: "Título" },
@@ -157,23 +211,39 @@ const TEXT_FIELDS: Record<string, TextField[]> = {
     { key: "caption", label: "Epígrafe" },
   ],
   stats: [],
+
+  /* --- Los bloques de las plantillas maestras --- */
+
+  pack: [
+    { key: "kicker", label: "Etiqueta de arriba" },
+    { key: "title", label: "Título", multiline: true },
+    { key: "subtitle", label: "Subtítulo", multiline: true },
+    { key: "head", label: "Título de la tabla" },
+    { key: "bonus_intro", label: "Línea que separa los bonos" },
+    { key: "total_label", label: "Etiqueta del total" },
+    {
+      key: "total_value",
+      label: "Valor de todo el pack",
+      hint: "La suma de las filas. Tiene que ser un precio que hayas cobrado alguna vez.",
+    },
+    { key: "save_note", label: "Cuánto se ahorra" },
+    { key: "now_label", label: "Etiqueta del precio de hoy" },
+    { key: "cta", label: "Texto del botón" },
+    { key: "cta_sub", label: "Línea chica dentro del botón" },
+  ],
 };
 
 /** Campos que son una lista simple: un item por línea. */
 const LINE_FIELDS: Record<string, Array<{ key: string; label: string; hint?: string }>> = {
-  hero: [{ key: "pills", label: "Etiquetas cortas", hint: "Una por línea." }],
-  problems: [{ key: "items", label: "Los problemas", hint: "Uno por línea." }],
+  hero: [{ key: "trust", label: "Sellos debajo del botón", hint: "Uno por línea. Van tres." }],
+  cta: [{ key: "trust", label: "Sellos debajo del botón", hint: "Uno por línea." }],
+
+  /* --- Bloques de páginas armadas con versiones anteriores --- */
+
   solution: [
     { key: "tags", label: "Etiquetas", hint: "Una por línea." },
     { key: "features", label: "Características", hint: "Una por línea." },
   ],
-  pricing: [
-    { key: "includes", label: "Qué incluye", hint: "Uno por línea." },
-    { key: "trust", label: "Sellos de confianza", hint: "Uno por línea." },
-  ],
-  cta: [{ key: "trust", label: "Sellos de confianza", hint: "Uno por línea." }],
-  footer: [{ key: "links", label: "Links del pie", hint: "Uno por línea." }],
-  benefits: [{ key: "items", label: "Beneficios", hint: "Uno por línea." }],
   comparison: [
     { key: "without_items", label: "Columna sin tu producto", hint: "Uno por línea." },
     { key: "with_items", label: "Columna con tu producto", hint: "Uno por línea." },
@@ -184,11 +254,148 @@ const LINE_FIELDS: Record<string, Array<{ key: string; label: string; hint?: str
 interface ObjectList {
   key: string;
   label: string;
-  fields: Array<{ key: string; label: string; multiline?: boolean }>;
+  fields: Array<{ key: string; label: string; multiline?: boolean; toggle?: boolean }>;
   empty: Record<string, string>;
+  hint?: string;
 }
 
 const OBJECT_LISTS: Record<string, ObjectList[]> = {
+  hero: [
+    {
+      key: "bonuses",
+      label: "Los bonos que se ven en el encabezado",
+      hint: "Los mismos que abajo, en corto. El precio tachado es opcional.",
+      fields: [
+        { key: "name", label: "Nombre del bono" },
+        { key: "value_before", label: "Precio tachado" },
+        { key: "value", label: "Qué dice al lado" },
+      ],
+      empty: { name: "", value_before: "", value: "GRATIS" },
+    },
+  ],
+  bonuses: [
+    {
+      key: "items",
+      label: "Los bonos",
+      hint: "La descripción va en dos frases: qué es y para qué le sirve.",
+      fields: [
+        { key: "name", label: "Nombre" },
+        { key: "description", label: "Descripción", multiline: true },
+        { key: "value", label: "Cuánto vale", },
+      ],
+      empty: { name: "", description: "", value: "" },
+    },
+  ],
+  benefits: [
+    {
+      key: "items",
+      label: "Qué hay adentro",
+      hint: "Van cuatro. Cada descripción, dos frases.",
+      fields: [
+        { key: "emoji", label: "Emoji" },
+        { key: "title", label: "Título" },
+        { key: "description", label: "Descripción", multiline: true },
+      ],
+      empty: { emoji: "", title: "", description: "" },
+    },
+  ],
+  problems: [
+    {
+      key: "items",
+      label: "Los problemas",
+      hint: "Van cuatro, escritos como los pensaría la persona.",
+      fields: [
+        { key: "title", label: "La situación" },
+        { key: "description", label: "En qué termina y por qué", multiline: true },
+      ],
+      empty: { title: "", description: "" },
+    },
+  ],
+  social_proof: [
+    {
+      key: "items",
+      label: "Los mensajes",
+      hint: "Solo mensajes reales que hayas recibido, tal como te llegaron.",
+      fields: [
+        { key: "name", label: "Quién lo escribió" },
+        { key: "status", label: "Qué dice debajo del nombre" },
+        { key: "text", label: "El mensaje", multiline: true },
+      ],
+      empty: { name: "", status: "en línea", text: "" },
+    },
+    {
+      key: "stats",
+      label: "Los números del final",
+      hint: "Solo números que puedas respaldar.",
+      fields: [
+        { key: "value", label: "Número" },
+        { key: "label", label: "Qué es" },
+      ],
+      empty: { value: "", label: "" },
+    },
+  ],
+  pricing: [
+    {
+      key: "items",
+      label: "Todo lo que entra",
+      hint: "Se completa solo con tu producto, tus bonos y tu garantía.",
+      fields: [
+        { key: "name", label: "Qué es" },
+        { key: "value", label: "Cuánto vale" },
+      ],
+      empty: { name: "", value: "GRATIS" },
+    },
+  ],
+  features: [
+    {
+      key: "items",
+      label: "Los pasos",
+      hint: "Van tres. Cada uno, una frase.",
+      fields: [
+        { key: "title", label: "Título" },
+        { key: "description", label: "Qué hace en ese paso", multiline: true },
+      ],
+      empty: { title: "", description: "" },
+    },
+  ],
+  faq: [
+    {
+      key: "items",
+      label: "Las preguntas",
+      hint: "Van cinco: las que frenan la compra, no las decorativas.",
+      fields: [
+        { key: "question", label: "Pregunta" },
+        { key: "answer", label: "Respuesta", multiline: true },
+      ],
+      empty: { question: "", answer: "" },
+    },
+  ],
+  cta: [
+    {
+      key: "bonuses",
+      label: "Los bonos que se repiten al final",
+      fields: [
+        { key: "name", label: "Nombre del bono" },
+        { key: "value", label: "Qué dice al lado" },
+      ],
+      empty: { name: "", value: "GRATIS" },
+    },
+  ],
+  footer: [
+    {
+      key: "legal",
+      label: "Los legales",
+      hint: "Se abren y cierran dentro de la página. Un párrafo por línea.",
+      fields: [
+        { key: "title", label: "Título" },
+        { key: "text", label: "Texto", multiline: true },
+      ],
+      empty: { title: "", text: "" },
+    },
+  ],
+
+  /* --- Bloques de páginas armadas con versiones anteriores --- */
+
   stats: [
     {
       key: "items",
@@ -252,60 +459,6 @@ const OBJECT_LISTS: Record<string, ObjectList[]> = {
       empty: { value: "", label: "" },
     },
   ],
-  bonuses: [
-    {
-      key: "items",
-      label: "Los bonos",
-      fields: [
-        { key: "name", label: "Nombre" },
-        { key: "description", label: "Descripción", multiline: true },
-        { key: "badge", label: "Etiqueta" },
-      ],
-      empty: { name: "", description: "", badge: "INCLUIDO" },
-    },
-  ],
-  testimonials: [
-    {
-      key: "items",
-      label: "Los testimonios",
-      fields: [
-        { key: "name", label: "Nombre" },
-        { key: "location", label: "De dónde es" },
-        { key: "text", label: "Testimonio", multiline: true },
-      ],
-      empty: { name: "", location: "", text: "" },
-    },
-  ],
-  faq: [
-    {
-      key: "items",
-      label: "Las preguntas",
-      fields: [
-        { key: "question", label: "Pregunta" },
-        { key: "answer", label: "Respuesta", multiline: true },
-      ],
-      empty: { question: "", answer: "" },
-    },
-  ],
-  features: [
-    {
-      key: "items",
-      label: "Los pasos",
-      fields: [
-        { key: "title", label: "Título" },
-        { key: "description", label: "Descripción", multiline: true },
-      ],
-      empty: { title: "", description: "" },
-    },
-  ],
-  /*
-   * Los dos bloques espejo llevan las dos líneas separadas a propósito.
-   *
-   * En un solo campo con un salto de línea en el medio, la segunda línea se
-   * termina comiendo: alguien escribe el golpe de identificación, le parece que
-   * ya está y sigue. Dos campos con su etiqueta hacen visible que faltaba la
-   * mitad, que es justo la mitad que hace que la persona se reconozca.
-   */
   para_vos_si: [
     {
       key: "items",
@@ -363,22 +516,71 @@ export function SectionProperties({
 
   return (
     <div className="flex flex-col gap-4">
-      {(TEXT_FIELDS[section.type] ?? []).map((field) => (
-        <Field key={field.key} label={field.label} hint={field.hint}>
-          {field.multiline ? (
-            <Textarea
-              rows={3}
-              value={text(field.key)}
-              onChange={(event) => onChange({ [field.key]: event.target.value })}
-            />
-          ) : (
-            <Input
-              value={text(field.key)}
-              onChange={(event) => onChange({ [field.key]: event.target.value })}
-            />
-          )}
-        </Field>
-      ))}
+      {(TEXT_FIELDS[section.type] ?? []).map((field) => {
+        /*
+         * Los sí/no se guardan como texto, no como booleano.
+         *
+         * El contenido de un bloque es JSON que puede venir de una generación
+         * con IA, y un modelo devuelve tanto `true` como `"si"` como `"sí"`.
+         * Con un solo tipo —texto vacío o no vacío— los tres casos caen del
+         * lado correcto y el renderizador no tiene que adivinar.
+         */
+        if (field.type === "toggle") {
+          return (
+            <label
+              key={field.key}
+              className="flex items-start gap-2.5 rounded-xl border border-ink-200 p-3"
+            >
+              <input
+                type="checkbox"
+                checked={Boolean(text(field.key))}
+                onChange={(event) => onChange({ [field.key]: event.target.checked ? "si" : "" })}
+                className="mt-0.5 size-4 accent-brand-600"
+              />
+              <span>
+                <span className="block text-[13px] font-medium text-ink-800">{field.label}</span>
+                {field.hint ? (
+                  <span className="block text-[11.5px] text-ink-500">{field.hint}</span>
+                ) : null}
+              </span>
+            </label>
+          );
+        }
+
+        return (
+          <Field key={field.key} label={field.label} hint={field.hint}>
+            {field.type === "select" ? (
+              <Select
+                value={text(field.key)}
+                onChange={(event) => onChange({ [field.key]: event.target.value })}
+              >
+                {(field.options ?? []).map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </Select>
+            ) : field.type === "datetime" ? (
+              <Input
+                type="datetime-local"
+                value={text(field.key)}
+                onChange={(event) => onChange({ [field.key]: event.target.value })}
+              />
+            ) : field.multiline ? (
+              <Textarea
+                rows={3}
+                value={text(field.key)}
+                onChange={(event) => onChange({ [field.key]: event.target.value })}
+              />
+            ) : (
+              <Input
+                value={text(field.key)}
+                onChange={(event) => onChange({ [field.key]: event.target.value })}
+              />
+            )}
+          </Field>
+        );
+      })}
 
       {(LINE_FIELDS[section.type] ?? []).map((field) => (
         <Field key={field.key} label={field.label} hint={field.hint}>
@@ -390,7 +592,7 @@ export function SectionProperties({
         </Field>
       ))}
 
-      {section.type === "testimonials" ? (
+      {section.type === "social_proof" ? (
         <Alert tone="warning">
           Cargá solo testimonios reales de tus clientes. Inventarlos puede costarte la cuenta
           publicitaria y es ilegal en varios países.
@@ -398,14 +600,14 @@ export function SectionProperties({
       ) : null}
 
       {(OBJECT_LISTS[section.type] ?? []).map((group) => (
-        <Field key={group.key} label={group.label}>
+        <Field key={group.key} label={group.label} hint={group.hint}>
           <ListEditor
             items={cards(group.key)}
             fields={group.fields}
             empty={group.empty}
             onChange={(items) =>
               onChange(
-                section.type === "testimonials"
+                section.type === "social_proof"
                   ? { [group.key]: items, placeholder: false }
                   : { [group.key]: items },
               )
@@ -424,7 +626,7 @@ function ListEditor<T extends Record<string, string>>({
   onChange,
 }: {
   items: T[];
-  fields: Array<{ key: keyof T & string; label: string; multiline?: boolean }>;
+  fields: Array<{ key: keyof T & string; label: string; multiline?: boolean; toggle?: boolean }>;
   empty: T;
   onChange: (items: T[]) => void;
 }) {
@@ -446,7 +648,24 @@ function ListEditor<T extends Record<string, string>>({
             </button>
           </div>
           <div className="flex flex-col gap-2.5">
-            {fields.map((field) => (
+            {fields.map((field) =>
+              field.toggle ? (
+                <label key={field.key} className="flex items-center gap-2.5">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(item[field.key])}
+                    onChange={(event) =>
+                      onChange(
+                        items.map((row, i) =>
+                          i === index ? { ...row, [field.key]: event.target.checked ? "si" : "" } : row,
+                        ),
+                      )
+                    }
+                    className="size-4 accent-brand-600"
+                  />
+                  <span className="text-[12.5px] font-medium text-ink-700">{field.label}</span>
+                </label>
+              ) : (
               <Field key={field.key} label={field.label}>
                 {field.multiline ? (
                   <Textarea
@@ -473,7 +692,8 @@ function ListEditor<T extends Record<string, string>>({
                   />
                 )}
               </Field>
-            ))}
+              ),
+            )}
           </div>
         </div>
       ))}

@@ -115,345 +115,198 @@ export function landingTemplate(input: TemplateInput): TemplateSection[] {
    */
   const cortos = benefits.filter((benefit) => benefit.length <= 42);
 
+  /*
+   * Las trece secciones, en el orden de `estructuras.ts`.
+   *
+   * Cada campo se llena con lo que el vendedor ya cargó en su producto y su
+   * oferta. Donde no hay dato va un texto de ejemplo que se nota que es de
+   * ejemplo, con la extensión que ese campo tiene que tener — un titular de
+   * once palabras, una descripción de dos frases— para que se vea qué hay que
+   * reemplazar y con cuánto.
+   *
+   * Los precios de las filas de valor son la excepción: van vacíos. Cuánto vale
+   * un bono lo sabe el que lo hizo, y un valor tachado que nadie cobró nunca es
+   * publicidad engañosa en casi todos lados donde se vende.
+   */
+  const filasDeBonos = bonuses.map((bonus) => ({
+    name: bonus.name,
+    value: "GRATIS",
+    value_before: "",
+  }));
+
   const content: Record<string, Record<string, unknown>> = {
+    announcement_bar: {
+      message: offer?.compare_at_price ? "Oferta por tiempo limitado" : "Acceso inmediato",
+      timer_label: "Termina en",
+      // Sin una fecha real de cierre no hay reloj. La pone el vendedor.
+      deadline: "",
+      expired: "La oferta cerró",
+    },
+
     hero: {
-      eyebrow: etiqueta(audience),
-      image: cover,
-      image_alt: coverAlt,
       headline: pick(offer?.headline, transformation, productName),
       subheadline: pick(offer?.promise, product?.subtitle, product?.description),
-      cta,
-      pills: cortos.slice(0, 3).length
-        ? cortos.slice(0, 3)
-        : ["Acceso inmediato", "Pago único", "Desde cero"],
-      social: "Material digital para consultar y volver a usar siempre",
-      trust: offer?.guarantee
-        ? `${offer.guarantee} · Pago único · Acceso inmediato`
-        : "Pago único · Acceso digital inmediato",
-    },
-
-    stats: {
-      items: [
-        { value: String(benefits.length || 6), label: "beneficios" },
-        { value: String(bonuses.length || 0), label: "bonos" },
-        { value: "100%", label: "digital" },
-        { value: "24/7", label: "acceso" },
-      ],
-      highlights: [
-        {
-          title: "Todo en un solo lugar",
-          subtitle: "Ordenado y fácil de seguir",
-          text: "No tenés que buscar nada por fuera: está todo adentro y organizado.",
-        },
-        {
-          title: "Para empezar hoy",
-          subtitle: "Sin experiencia previa",
-          text: "Está pensado para que puedas dar el primer paso el mismo día que lo comprás.",
-        },
-        {
-          title: "Tuyo para siempre",
-          subtitle: "Sin suscripciones",
-          text: "Lo pagás una vez y volvés a consultarlo cuando quieras.",
-        },
-      ],
-    },
-
-    problems: {
-      title: transformation ? `Querés ${lower(transformation)}.` : "Querés lograrlo.",
-      subtitle: problem ? `Pero ${lower(problem)}` : "Pero no sabés por dónde empezar.",
-      // El problema ya se dijo en el subtítulo: repetirlo textual en el primer
-      // ítem se lee como un error, no como énfasis.
-      items: problem
-        ? [
-            "Empezás, lo dejás a la mitad y volvés a arrancar de cero cada vez.",
-            "Juntás información suelta pero nunca terminás de armar algo que funcione.",
-            "Probás lo que ves por ahí y no sabés si te sirve a vos.",
-          ]
-        : [
-            "Guardás ideas por todos lados y cuando llega el momento no sabés cuál usar.",
-            "Improvisás sobre la marcha y el resultado nunca se parece a lo que imaginabas.",
-            "Creés que necesitás experiencia o herramientas caras para lograr algo bueno.",
-          ],
-      closing: "El problema no es tu capacidad.\nEs empezar sin una referencia clara.",
-    },
-
-    gallery: {
-      kicker: "IMAGINÁ TODO LO QUE PODÉS LOGRAR",
-      title: transformation || "Esto es lo que vas a poder hacer",
-      subtitle: "Una imagen principal, un video opcional y algunos ejemplos de lo que se puede lograr.",
-      featured_alt: `Imagen principal de ${productName}`,
-      featured_url: cover,
-      video_url: "",
-      images: Array.from({ length: 6 }, (_, index) => ({ alt: `Ejemplo ${index + 1}`, url: "" })),
-      note: "",
-    },
-
-    solution: {
-      badge: "LA SOLUCIÓN",
       image: cover,
       image_alt: coverAlt,
-      title: productName,
-      subtitle: pick(product?.subtitle, offer?.promise),
-      text: pick(
-        product?.description,
-        "Todo lo que necesitás para pasar de “no sé por dónde empezar” a tener algo claro adelante.",
-      ),
-      tags: cortos.slice(0, 4),
-      highlight: "No necesitás experiencia previa.",
-      stats: [
-        { value: String(benefits.length || 6), label: "beneficios" },
-        { value: String(bonuses.length || 0), label: "bonos" },
-        { value: "100%", label: "digital" },
+      ebook_label: "EBOOK:",
+      product_name: productName,
+      // Un puntaje y una cantidad de ventas son datos, no copy: si el vendedor
+      // no los tiene, la franja de estrellas no se dibuja.
+      rating_value: "",
+      rating_note: "",
+      urgency_text: "Acceso inmediato al confirmar el pago.",
+      bonuses: filasDeBonos,
+      savings: "",
+      slots_note: "",
+      deadline: "",
+      timer_label: "Oferta termina en",
+      expired: "La oferta cerró",
+      cta,
+      trust: [
+        "Entrega inmediata",
+        "Pago seguro",
+        offer?.guarantee ? offer.guarantee : "Producto digital",
       ],
-      features: ["Paso a paso", "Descargable", "Para principiantes", "Acceso inmediato"],
-    },
-
-    modules: {
-      kicker: "TODO INCLUIDO EN UN SOLO ACCESO",
-      title: `Esto es lo que recibís dentro de ${productName}`,
-      box_title: "QUÉ INCLUYE",
-      items: benefits.length
-        ? benefits.slice(0, 6).map((benefit, index) => ({
-            title: benefit,
-            description: `Detalle del punto ${index + 1}. Contá acá qué se lleva la persona y para qué le sirve.`,
-          }))
-        : [
-            {
-              title: "El contenido principal",
-              description: "El corazón del producto, organizado y listo para usar.",
-            },
-            {
-              title: "Cómo aplicarlo",
-              description: "Qué hacer con lo que recibís, paso a paso.",
-            },
-          ],
-      metrics: [
-        { value: String(benefits.length || 6), label: "beneficios" },
-        { value: String(bonuses.length || 0), label: "bonos" },
-      ],
+      viewers_note: "viendo este producto ahora",
     },
 
     bonuses: {
-      kicker: "RECURSOS COMPLEMENTARIOS",
-      title: bonuses.length ? `Además te llevás ${bonuses.length} bonos` : "Además te llevás estos bonos",
-      items: bonuses.length
-        ? bonuses.map((bonus) => ({
-            name: bonus.name,
-            description: bonus.description ?? "",
-            badge: "INCLUIDO",
-          }))
-        : [
-            {
-              name: "Todavía no cargaste bonos",
-              description: "Sumalos desde Mi oferta y aparecen acá automáticamente.",
-              badge: "INCLUIDO",
-            },
-          ],
-      footer_note: "Todos incluidos con tu acceso, sin pagos mensuales.",
+      kicker: "BONOS GRATIS INCLUIDOS",
+      title: `Además del producto, te llevás ${bonuses.length === 1 ? "este regalo" : "estos regalos"}`,
+      subtitle: "",
+      items: bonuses.map((bonus) => ({
+        name: bonus.name,
+        description: pick(bonus.description),
+        value: "",
+      })),
+      total_label: "Estos bonos tienen un valor total de",
+      total_value: "",
     },
 
-    pricing: {
-      title: transformation ? `Empezá hoy a ${lower(transformation)}` : "Empezá hoy",
-      badge: "ACCESO COMPLETO",
-      image: cover,
-      image_alt: coverAlt,
-      product_name: productName,
-      subtitle: pick(product?.subtitle, offer?.promise),
-      price_label: priceLabel,
-      compare_label: compareLabel,
-      note: "Pago único, sin suscripciones",
-      includes: benefits.length
-        ? benefits.slice(0, 6)
-        : ["Lo principal que te llevás", "El segundo entregable", "Acceso inmediato"],
-      cta,
-      trust: [
-        "Pago único",
-        "Acceso inmediato",
-        offer?.guarantee ? offer.guarantee : "Garantía de 7 días",
-      ],
+    benefits: {
+      title: "¿Qué vas a encontrar adentro?",
+      subtitle: "Todo lo que necesitás en un solo lugar",
+      items: (benefits.length ? benefits : ["El primer beneficio", "El segundo beneficio"])
+        .slice(0, 4)
+        .map((benefit, index) => ({
+          emoji: ["🧾", "⚡", "🎯", "📚"][index] ?? "✅",
+          title: benefit,
+          description: "",
+        })),
     },
 
-    testimonials: {
-      kicker: "",
-      title: "Lo que dicen quienes ya lo tienen",
-      subtitle: "Reemplazá estos textos por testimonios reales antes de publicar.",
+    problems: {
+      title: "¿Te sentís identificado?",
+      subtitle: `Si alguno de estos problemas te suena familiar, ${productName} es para vos`,
       items: [
-        { name: "Nombre real de tu cliente", location: "", text: "Su comentario, tal cual te lo escribió." },
-        { name: "Nombre real de tu cliente", location: "", text: "Su comentario, tal cual te lo escribió." },
+        {
+          title: problem || "La situación que vivís hoy",
+          description: "",
+        },
       ],
+      closing: 'Si respondiste "sí" a alguna de estas… tenemos la solución.',
+    },
+
+    /*
+     * Los testimonios arrancan vacíos y no es un descuido.
+     *
+     * Es el único bloque que ni la app ni un modelo pueden llenar: un
+     * testimonio inventado es un problema legal, no de copy. La pregunta y el
+     * cierre del chat sí van puestos, porque son el envoltorio del formato y no
+     * afirman nada sobre nadie.
+     */
+    social_proof: {
+      kicker: "TESTIMONIOS REALES",
+      title: "Lo que dicen quienes ya lo tienen",
+      question: "¡Hola! ¿Cómo te fue con el material?",
+      closing_reply: "¡Qué bueno! Me alegra mucho 🔥",
+      items: [],
+      stats: [],
       placeholder: true,
     },
 
+    pricing: {
+      title: "Todo lo que incluye tu compra",
+      subtitle: "Acceso inmediato a todo esto por un único pago",
+      items: [
+        { name: productName, value: priceLabel },
+        ...bonuses.map((bonus) => ({ name: bonus.name, value: "GRATIS" })),
+        ...(offer?.guarantee ? [{ name: offer.guarantee, value: "INCLUIDA" }] : []),
+      ],
+      total_label: "Valor total regular",
+      total_value: compareLabel,
+      today_label: "Oferta de hoy",
+      note: "Precio único · Acceso de por vida",
+      cta,
+      savings: "",
+      trust_note: offer?.guarantee
+        ? `${offer.guarantee} · Compra 100% segura`
+        : "Compra 100% segura",
+    },
+
+    features: {
+      title: "Cómo lo usás",
+      subtitle: "En solo 3 pasos simples",
+      items: [
+        { title: "Paso 1", description: "Comprás y recibís el acceso en tu correo al instante." },
+        { title: "Paso 2", description: "Abrís el material y empezás por donde te sirve hoy." },
+        { title: "Paso 3", description: "Lo aplicás y volvés a consultarlo cada vez que lo necesitás." },
+      ],
+    },
+
     guarantee: {
-      title: "Probalo con tranquilidad",
-      text: pick(
-        offer?.guarantee,
-        "Si dentro de los primeros 7 días considerás que no es para vos, podés pedir la devolución según las condiciones informadas al momento de la compra.",
-      ),
-      seal: "GARANTÍA DE 7 DÍAS",
-      note: "El acceso es digital e inmediato. No se envía ningún producto físico.",
+      title: pick(offer?.guarantee, "Probalo con tranquilidad"),
+      text: "Si comprás y no te cierra, pedís la devolución dentro del plazo informado al momento de la compra y recuperás tu dinero.",
+      seal: pick(offer?.guarantee, "Protección al comprador"),
     },
 
     faq: {
-      kicker: "PREGUNTAS FRECUENTES",
-      title: "Todo lo que necesitás saber\nantes de empezar",
+      title: "Preguntas frecuentes",
+      subtitle: "Resolvemos todas tus dudas",
       items: [
         {
-          question: "¿Cómo lo recibo?",
-          answer: "Es digital: apenas se confirma el pago te llega por mail el acceso a todo el material.",
-        },
-        {
-          question: "¿Necesito experiencia previa?",
-          answer: "No. Está organizado para que puedas empezar desde cero y avanzar a tu ritmo.",
-        },
-        {
-          question: "¿Puedo verlo cuando quiera?",
-          answer: "Sí. No hay horarios ni clases en vivo: entrás y consultás las veces que necesites.",
-        },
-        {
-          question: "¿Qué pasa si no era lo que esperaba?",
-          answer: pick(
-            offer?.guarantee,
-            "Tenés una garantía de 7 días, sujeta a las condiciones informadas al momento de la compra.",
-          ),
+          question: "¿Cómo lo recibo y cuándo?",
+          answer:
+            "Es un producto digital: al confirmarse el pago te llega el acceso por correo. No hay envíos ni tiempos de espera.",
         },
       ],
     },
 
     cta: {
-      kicker: "PODÉS EMPEZAR HOY",
-      image: cover,
-      image_alt: coverAlt,
-      headline: "No necesitás esperar a estar listo.",
-      subheadline: "Solo necesitás dar el primer paso.",
+      headline: transformation ? `Empezá hoy a ${lower(transformation)}` : "Empezá hoy",
+      subheadline: "",
+      bonus_note: bonuses.length
+        ? `Incluye ${bonuses.length} ${bonuses.length === 1 ? "bono gratis" : "bonos gratis"}`
+        : "",
+      bonuses: filasDeBonos,
+      savings: "",
       cta,
-      micro: `Acceso digital inmediato · ${priceLabel} · Pago único`,
-      trust: [
-        "Pago único",
-        "Acceso inmediato",
-        offer?.guarantee ? offer.guarantee : "Garantía de 7 días",
-      ],
-    },
-
-    /* --- Bloques que usan los estilos "Lanzamiento" y "Express" --- */
-
-    countdown: {
-      title: transformation ? `Empezá hoy a ${lower(transformation)}` : "Precio de lanzamiento",
-      text: "Poné acá la fecha real de cierre de tu promo. Si no tenés una, sacá este bloque: un contador que nunca termina se nota.",
-    },
-
-    benefits: {
-      title: "Con esto vas a poder",
-      items: benefits.length
-        ? benefits.slice(0, 6)
-        : [
-            "El primer resultado concreto que se lleva",
-            "El segundo, con el mismo nivel de detalle",
-            "El tercero, para cerrar",
-          ],
-    },
-
-    features: {
-      title: "Cómo funciona",
-      items: [
-        {
-          title: "1. Pagás y accedés al toque",
-          description:
-            "Apenas se confirma el pago te llega el acceso por mail. Sin esperas ni envíos.",
-        },
-        {
-          title: "2. Entrás al material",
-          description: pick(
-            product?.subtitle,
-            "Está todo ordenado adentro, para que sepas por dónde empezar.",
-          ),
-        },
-        {
-          title: "3. Lo aplícás",
-          description: transformation
-            ? `Vas siguiendo el paso a paso hasta ${lower(transformation)}.`
-            : "Vas siguiendo el paso a paso a tu ritmo.",
-        },
-      ],
-    },
-
-    comparison: {
-      title: "La diferencia entre seguir probando y tenerlo resuelto",
-      without_title: "Por tu cuenta",
-      with_title: `Con ${productName}`,
-      without_items: problem
-        ? [
-            problem,
-            "Juntás información suelta y nunca terminás de armar algo que funcione.",
-            "Empezás, lo dejás a la mitad y volvés a arrancar de cero.",
-          ]
-        : [
-            "Probás cosas sueltas sin saber si van a funcionar.",
-            "Improvisás sobre la marcha.",
-            "Seguís “probando” en vez de tener algo armado.",
-          ],
-      with_items: benefits.length
-        ? benefits.slice(0, 4)
-        : [
-            "Tenés un paso a paso probado.",
-            "Sabés exactamente qué hacer primero.",
-            "Aplicás desde el primer día.",
-          ],
-    },
-
-    /*
-     * Los dos bloques espejo.
-     *
-     * Sin IA no hay forma de escribirlos bien —dependen de conocer a la persona
-     * mejor de lo que la conoce la plantilla— así que el borrador local arma la
-     * forma con lo que el vendedor ya cargó y deja la segunda línea de cada
-     * ítem escrita como lo que es: una instrucción de qué falta. Es preferible
-     * a llenar cinco tarjetas con frases de relleno que se ven terminadas.
-     */
-    para_vos_si: {
-      title: "Esto es para vos si…",
-      items: [
-        {
-          line1: problem
-            ? `Ya intentaste resolver ${lower(problem)} por tu cuenta, pero seguís en el mismo lugar`
-            : "Ya intentaste resolverlo por tu cuenta, pero seguís en el mismo lugar",
-          line2:
-            "Completá esta línea con por qué le pasa y en qué termina: ahí es donde la persona se reconoce.",
-        },
-        {
-          line1: "Juntás información de todos lados y cuando llega el momento no sabés cuál usar",
-          line2: "Escribí la consecuencia real: qué pierde, cuánto tiempo, cómo se siente.",
-        },
-      ],
-    },
-
-    vas_a_lograr: {
-      title: transformation ? `Vas a lograr ${lower(transformation)}` : "Vas a lograr…",
-      items: (benefits.length ? benefits.slice(0, 5) : ["El primer resultado concreto"]).map(
-        (benefit) => ({
-          line1: benefit,
-          line2: "Agregá sin qué dolor lo conseguís y con qué beneficio te quedás.",
-        }),
-      ),
-    },
-
-    urgency_bar: {
-      message: offer?.compare_at_price
-        ? "El precio de lanzamiento está por subir"
-        : "Precio de lanzamiento",
-      note: "Cambiá esto por el motivo real por el que conviene comprar hoy. Si no tenés uno, sacá el bloque.",
-    },
-
-    live_purchases: {
-      title: "Últimas compras",
-      empty_note:
-        "Acá van a aparecer solas tus ventas reales, con el nombre de pila del comprador. Hasta tu primera venta, el bloque no se muestra en tu página.",
+      trust: ["Pago seguro", "Acceso inmediato"],
     },
 
     footer: {
       brand: workspaceName.toUpperCase(),
       text: `© ${new Date().getFullYear()} ${workspaceName}. Todos los derechos reservados.`,
-      links: ["Términos y condiciones", "Política de privacidad", "Contacto"],
+      legal: [
+        {
+          title: "Términos y condiciones",
+          text: "Al comprar aceptás estos términos.\nAdquirís un producto digital de acceso inmediato: una vez confirmado el pago recibís las instrucciones de acceso por correo. No se envían productos físicos.\nEl precio publicado corresponde a un pago único, sin cargos recurrentes. Los pagos se procesan mediante plataformas seguras de terceros y este sitio no almacena los datos de tu tarjeta.\nEl contenido es de uso personal e intransferible: queda prohibida su reventa, copia o redistribución.",
+        },
+        {
+          title: "Política de privacidad",
+          text: "Recopilamos los datos que nos das al comprar: nombre, correo electrónico y teléfono.\nLos usamos únicamente para procesar la compra, entregarte el producto y darte soporte.\nNo vendemos ni compartimos tus datos con fines publicitarios. Solo se comparten con los proveedores de pago necesarios para procesar la transacción.\nPodés pedir el acceso, la corrección o la eliminación de tus datos escribiéndonos por los canales de contacto.",
+        },
+      ],
+    },
+
+    sticky_cta: {
+      timer_label: "Termina en",
+      deadline: "",
+      expired: "cerrada",
+      pack_label: bonuses.length
+        ? `PRODUCTO + ${bonuses.length} ${bonuses.length === 1 ? "BONO" : "BONOS"}`
+        : "",
+      cta: "Descargar ahora",
     },
   };
 

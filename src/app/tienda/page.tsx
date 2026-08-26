@@ -8,6 +8,7 @@ import { tiendaActual } from "@/lib/public-url";
 import { all } from "@/lib/db";
 import { getWorkspaceBySlug } from "@/lib/repo";
 import { formatMoney, parseJson } from "@/lib/utils";
+import { LANDING_FONTS_HREF } from "@/components/landing/theme";
 
 /**
  * La portada de una tienda.
@@ -67,7 +68,7 @@ export default async function StorefrontPage() {
       <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
       <link
         rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,700;0,800;1,700&display=swap"
+        href={LANDING_FONTS_HREF}
       />
 
       <main className="mx-auto w-full max-w-3xl px-5 py-16 sm:px-8">

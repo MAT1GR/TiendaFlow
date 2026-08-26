@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
 import { LandingEditor } from "@/app/(app)/app/landings/[id]/editor";
+import { LANDING_FONTS_HREF } from "@/components/landing/theme";
 import { requireSession } from "@/lib/auth";
 import { getLandingPage, getOffer, listLandingSections } from "@/lib/repo";
 import { formatMoney, parseJson } from "@/lib/utils";
@@ -33,32 +34,47 @@ export default async function LandingEditorPage({
   const theme = parseJson<unknown>(page.theme, {});
 
   return (
-    <LandingEditor
-      page={{
-        id: page.id,
-        name: page.name,
-        status: page.status,
-        theme: theme,
-        seoTitle: page.seo_title,
-        seoDescription: page.seo_description,
-      }}
-      sections={sections.map((section) => ({
-        id: section.id,
-        type: section.type,
-        content: parseJson<Record<string, unknown>>(section.content, {}),
-      }))}
-      offer={
-        offer
-          ? {
-              id: offer.id,
-              name: offer.name,
-              priceLabel: formatMoney(offer.price, offer.currency),
-              compareLabel: offer.compare_at_price
-                ? formatMoney(offer.compare_at_price, offer.currency)
-                : null,
-            }
-          : null
-      }
-    />
+    <>
+      {/*
+        Las tipografías de las landings, para la vista previa.
+
+        El resto de la app usa Inter y este editor vive adentro de la app, así
+        que sin esto la vista previa dibujaba los títulos con la fuente del
+        sistema: el vendedor elegía "serif elegante" y no veía ninguna serif
+        hasta publicar. Una vista previa que miente sobre la tipografía no es
+        una vista previa.
+      */}
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+      <link rel="stylesheet" href={LANDING_FONTS_HREF} />
+
+      <LandingEditor
+        page={{
+          id: page.id,
+          name: page.name,
+          status: page.status,
+          theme: theme,
+          seoTitle: page.seo_title,
+          seoDescription: page.seo_description,
+        }}
+        sections={sections.map((section) => ({
+          id: section.id,
+          type: section.type,
+          content: parseJson<Record<string, unknown>>(section.content, {}),
+        }))}
+        offer={
+          offer
+            ? {
+                id: offer.id,
+                name: offer.name,
+                priceLabel: formatMoney(offer.price, offer.currency),
+                compareLabel: offer.compare_at_price
+                  ? formatMoney(offer.compare_at_price, offer.currency)
+                  : null,
+              }
+            : null
+        }
+      />
+    </>
   );
 }
